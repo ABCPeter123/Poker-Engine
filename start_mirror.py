@@ -98,11 +98,11 @@ def main():
         pass
     env = dict(os.environ)
     env["PATH"] = str(exe.parent) + os.pathsep + env.get("PATH", "")
-    command = [str(exe), "-n", "Private Mirror", "-nh", "-pw",
+    command = [str(exe), "-n", "Private Mirror", "-nh", "-pin",
                "-s", "1920x1080", "-fps", "30", "-vs", "d3d11videosink force-aspect-ratio=true"]
     if args.software:
         command.append("-avdec")
-    print("Starting private AirPlay receiver. Connect from iPhone Control Center.", flush=True)
+    print("Starting private AirPlay receiver with Apple-style PIN authentication. Enter the current PIN displayed in this terminal when prompted.", flush=True)
     process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, encoding="utf-8", errors="replace", bufsize=1)
     updates = queue.Queue()

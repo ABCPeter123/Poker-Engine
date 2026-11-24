@@ -43,7 +43,8 @@ for line in sys.stdin:
         # OCR is optional and expensive. Keep the fast card/visual path independent.
         now = time.monotonic()
         use_ocr = tesseract if req.get("ocr") and now-last_ocr >= 3 else None
-        result = review_image(image, use_ocr, previous, "private practice frame")
+        comparable = previous if previous is not None and previous.info.get("capture_crop")==image.info.get("capture_crop") else None
+        result = review_image(image, use_ocr, comparable, "private practice frame")
         previous = image
         if use_ocr:
             last_ocr = now

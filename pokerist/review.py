@@ -18,6 +18,7 @@ if __name__ == "__main__":
 from PIL import Image
 import numpy as np
 from seat_cues import seat_evidence
+from frame_crop import game_bounds
 
 WIDTH, HEIGHT = 1536, 709
 # Coordinates are normalized to the supplied landscape layout.
@@ -149,9 +150,11 @@ def read_numbers(image, executable):
 
 def normalize(original):
     original=original.convert("RGB")
-    if abs(original.width/original.height-WIDTH/HEIGHT)>.06:
-        raise ValueError("Frame aspect ratio does not match calibrated landscape layout; crop the visible game area.")
-    return original.resize((WIDTH,HEIGHT))
+    bounds=game_bounds(original)
+    visible=original.crop(bounds)
+    image=visible.resize((WIDTH,HEIGHT))
+    image.info["capture_crop"]={"input_size":list(original.size),"bounds":list(bounds),"visible_size":list(visible.size),"cropped":bounds!=(0,0,*original.size)}
+    return image
 
 def review(path, executable=None, previous_path=None):
     with Image.open(path) as original:
@@ -160,6 +163,8 @@ def review(path, executable=None, previous_path=None):
     if previous_path:
         with Image.open(previous_path) as old:
             previous=normalize(old)
+        if previous.info.get("capture_crop")!=image.info.get("capture_crop"):
+            previous=None
     return review_image(image, executable, previous, Path(path).name)
 
 def review_image(image, executable=None, previous=None, source="frame"):
@@ -173,6 +178,7 @@ def review_image(image, executable=None, previous=None, source="frame"):
     numbers,err=read_numbers(image,executable)
     return {"layout":"Pokerist landscape, five seats, prototype",
             "source":source,"verified":False,
+            "capture_crop":image.info.get("capture_crop"),
             "board_slots":board,"hole_slots":hole,
             "street_candidate":{0:"Preflop",3:"Flop",4:"Turn",5:"River"}.get(count) if contiguous else None,
             "quality":{"duplicate_card_candidates":duplicate,"noncontiguous_board":not contiguous,"unrecognized_visible_cards":sum(c is not None and c["candidate"] is None for c in hole+board)},

@@ -80,3 +80,7 @@ After sharing a window, enable the permission checkbox only for a private practi
 ### AirPlay missing from browser window picker
 
 Connect the phone and restore the native video window before sharing. The launcher attempts to label its own renderer `AirPlay Mirror (UxPlay)` for easier selection; some renderers may retain their original name. Screen Review prefers the window picker; use Compatibility picker to omit advanced constraints or Entire screen for a preview-only fallback. The browser always requires manual source selection. Switching sources preserves the prior capture if the picker is cancelled or a new source cannot start. The viewer reports stalled/muted capture, and requires a new explicit selection if the track ends. Entire-screen capture may include private information and cannot start the practice recognition panel. No browser flags or security settings need to be disabled.
+
+### Captured window normalization
+
+The recognition backend strips near-black outer padding and a detected light Windows title bar before comparing against the calibrated landscape geometry. It does not arbitrarily stretch an unsupported window into the expected layout. The result includes original frame dimensions, crop bounds and visible dimensions. A 1102 × 540 receiver frame with a 29-pixel title bar becomes approximately 1102 × 511. Unsupported layouts still produce an explicit error. Cropping fixes geometry only; missing hero cards and unsupported ranks remain unknown. No change to the existing authorized-practice restriction.

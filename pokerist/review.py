@@ -19,6 +19,7 @@ from PIL import Image
 import numpy as np
 from seat_cues import seat_evidence
 from frame_crop import game_bounds
+from table_observation import observe_table
 
 WIDTH, HEIGHT = 1536, 709
 # Coordinates are normalized to the supplied landscape layout.
@@ -48,6 +49,8 @@ SUITS.update({
     "s_mirror":"0c0,1e0,1f8,3fc,3fe,7ff,7ff,fff,fff,fff,ffe,ffc,3f0,000,010,030",
     "s_black":"020,070,0f0,1f8,3fc,3fe,7fe,fff,fff,fff,fff,7fe,3ec,020,060,070"
 })
+RANKS.update({"8_sample":"3fc,79c,606,606,e06,606,79c,3fc,79c,f07,e07,e07,e07,e07,79e,3fc","4_sample_black":"1e0,1f0,1f8,1f8,198,184,184,186,187,183,1c3,fff,fff,1c0,180,1c0","4_sample_red":"1c0,3e0,3f0,3f8,3f8,3f8,3fc,3dc,3de,3ce,fff,fff,ffc,7c0,380,300","7_sample":"fff,fff,600,300,380,1c0,1c0,1c0,0e0,0e0,070,070,070,078,078,078","6_sample":"3fc,79e,e07,007,007,0c7,7ff,f0f,e0f,e07,e07,e07,e07,e0f,78e,3fc","T_sample":"718,d98,89c,898,898,898,898,898,898,898,898,898,898,d98,700,000","9_sample":"1e0,7f8,7f8,e18,e1c,71c,70e,79e,7fc,3f8,3c0,3c2,3c7,1cf,1fe,07c"})
+SUITS.update({"c_sample":"0f0,1f8,1f8,1f8,1f8,1f8,3fc,7fe,fff,fff,fff,fff,7fe,060,060,060","c_sample2":"0f0,1f0,1f8,1f8,1f8,1f8,3fc,7ff,fff,fff,fff,fff,7de,060,060,060","h_sample":"3bc,7fe,7fe,ffe,fff,fff,fff,ffe,7fe,7fe,3fc,3fc,1f8,0f0,0f0,060","s_sample":"060,060,0f0,1f8,3fc,7ff,fff,fff,fff,fff,fff,7fe,020,020,060,060","s_sample2":"040,060,0f0,1f8,3fc,7fe,7fe,7fe,fff,fff,7fe,7fe,040,060,060,000","s_sample3":"060,0f0,0f0,1f8,3fe,7fe,7ff,fff,fff,fff,7fe,7fe,020,060,060,060","d_sample":"0c0,0e0,1f0,1fc,3fc,3fe,7ff,7ff,fff,7fe,7fe,3fc,1fc,0f8,070,030"})
 BOARD = [
     ((552,244,575,281),(550,282,576,309),(548,242,628,353)),
     ((642,244,666,281),(641,282,668,310),(638,242,719,353)),
@@ -63,6 +66,10 @@ HOLE = [
 HOLE_MIRROR = [
     ((815,480,837,518),(811,519,836,545),(811,477,836,548)),
     ((854,476,880,514),(848,515,873,541),(849,477,890,548))
+]
+HOLE_WIDE = [
+    ((805,470,841,508),(809,509,837,539),(811,471,836,544)),
+    ((853,465,883,505),(847,506,874,535),(849,469,890,548))
 ]
 NUMBERS = {
     "pot":(745,204,790,229),
@@ -98,7 +105,7 @@ def match(m, templates, threshold=.18):
         grouped[label]=min(grouped.get(label,1.0),distance)
     scores=sorted((distance,label) for label,distance in grouped.items())
     distance, label=scores[0]
-    margin=scores[1][0]-distance
+    margin=scores[1][0]-distance if len(scores)>1 else 1.0
     return (label if distance<=threshold and margin>=.025 else None), round(distance,3)
 
 def face_present(image, box):
@@ -107,10 +114,10 @@ def face_present(image, box):
     light=(a.min(2)>180)&(np.ptp(a,axis=2)<32)
     return float(light.mean())>=.20 and float((light.mean(axis=1)>=.15).mean())>=.60
 
-def card(image, spec, alternate=None):
+def card(image, spec, *alternates):
     present=False
     readings={}
-    for r,s,body in [spec]+([alternate] if alternate else []):
+    for r,s,body in [spec]+list(alternates):
         if not face_present(image,body):
             continue
         present=True
@@ -204,12 +211,13 @@ def review(path, executable=None, previous_path=None):
 def review_image(image, executable=None, previous=None, source="frame"):
     cues=seat_evidence(image,executable,previous)
     board=[card(image,spec) for spec in BOARD]
-    hole=[card(image,spec,alternate) for spec,alternate in zip(HOLE,HOLE_MIRROR)]
+    hole=[card(image,spec,alternate,wide) for spec,alternate,wide in zip(HOLE,HOLE_MIRROR,HOLE_WIDE)]
     count=sum(c is not None for c in board)
     contiguous=all(c is not None for c in board[:count]) and all(c is None for c in board[count:])
     known=[c["candidate"] for c in hole+board if c and c["candidate"]]
     duplicate=len(set(known))!=len(known)
     numbers,err=read_numbers(image,executable)
+    observation=observe_table(image,executable,number_text,numbers,cues,hole)
     return {"layout":"Pokerist landscape, five seats, prototype",
             "source":source,"verified":False,
             "capture_crop":image.info.get("capture_crop"),
@@ -218,8 +226,9 @@ def review_image(image, executable=None, previous=None, source="frame"):
             "quality":{"duplicate_card_candidates":duplicate,"noncontiguous_board":not contiguous,"unrecognized_visible_cards":sum(c is not None and c["candidate"] is None for c in hole+board)},
             "number_candidates":numbers,
             "dealer":None,"active_player":None,"bets":None,"actions":None,
+            "table_observation":observation,
             "seat_evidence":cues,
-            "limitations":["Only five rank glyphs are calibrated; unknown ranks can be rejected or misclassified.",
+            "limitations":["Nine ranks have sample glyphs; 2, 5, K and A are not calibrated. Unknown ranks can be rejected or misclassified.",
                            "Fixed crop coordinates assume the supplied screen layout and scale.",
                            "All candidates require human review; no inferred player actions.",
                            "A rounded pot label is not an exact chip count."]+([err] if err else [])}

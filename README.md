@@ -88,3 +88,7 @@ The recognition backend strips near-black outer padding and a detected light Win
 ### Preflop logo regression
 
 Card-face detection now requires sustained bright neutral card stock rather than the previous permissive brightness threshold. This rejects the pale Pokerist lettering when the board is empty. Rank/suit matching uses consistent red or black ink and limits suit candidates accordingly. Two observed hole-card coordinate variants and additional glyph templates cover the supplied J-heart/3-spade screenshot while retaining the earlier 9-spade/3-diamond layout. These are calibration samples, not a general accuracy benchmark. Other ranks and layouts can remain unrecognized. Use only for offline review or authorized practice.
+
+### Character and table diagnostics
+
+The character matcher now includes screenshot-derived 8, 7, 6, 10 and additional 4/9 and suit masks; 10 is represented as T internally. The wide hole-card crop captures both digits. The 2, 5, K and A ranks still need genuine glyph samples. The authorized-practice panel now displays each seat's candidate stack, visible bet, status text, card-back evidence, active band and dealer marker, with raw OCR and age of the last scan. Missing readings remain unknown. Dealer matching is calibrated against the supplied upper-right and right marker examples; other locations are estimated regions. Bet and status regions are experimental. OCR needs Tesseract installed. This is not a reconstructed betting ledger.

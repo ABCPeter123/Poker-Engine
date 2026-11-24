@@ -1,6 +1,6 @@
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
-const routes={'/':'index.html','/analysis.html':'analysis.html','/table-engine.js':'table-engine.js','/table-app.js':'table-app.js','/table.css':'table.css','/quick-input.js':'quick-input.js','/index.html':'index.html','/app.js':'app.js','/engine.js':'engine.js','/styles.css':'styles.css','/worker.js':'worker.js'};
+const routes={'/':'index.html','/screen-review.html':'screen-review.html','/screen-review.js':'screen-review.js','/overlay.css':'overlay.css','/analysis.html':'analysis.html','/table-engine.js':'table-engine.js','/table-app.js':'table-app.js','/table.css':'table.css','/quick-input.js':'quick-input.js','/index.html':'index.html','/app.js':'app.js','/engine.js':'engine.js','/styles.css':'styles.css','/worker.js':'worker.js'};
 const types={html:'text/html; charset=utf-8',js:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8'};
 const port=Number(process.env.PORT||8000);
 createServer(async(req,res)=>{

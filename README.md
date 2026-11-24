@@ -44,3 +44,9 @@ Call EV = equity × (eligible pot + call) − call. Check is a free-showdown pro
 - app.js, index.html, styles.css: interface and local persistence
 - server.mjs: loopback-only static server
 - tests/: Node regression tests
+
+## Screen review and practice HUD
+
+Open /screen-review.html in Chrome or Edge on localhost. Choose an already mirrored window with Share a window; the browser asks for permission each time. Or open a saved recording or image. Freeze a frame and draw on it using mouse or touch; Clear drawing resets the annotations. Stop sharing releases the capture tracks. No screen frames are sent to a server, parsed live, or used as strategy inputs. iPhone mirroring requires a separate compatible receiver on Windows.
+
+Open /analysis.html?practice=1 to see the local generated-deal HUD. It overlays equity, pot odds, and highest modeled chip-EV action on the simulated table as you reveal streets. It is not connected to screen capture or Pokerist. The offline screenshot parser remains separate.

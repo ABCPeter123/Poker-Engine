@@ -73,7 +73,7 @@ def score(rows):
     return groups
 
 
-def evaluate_case(case,root,variants,ocr,enhanced=False):
+def evaluate_case(case,root,variants,ocr,enhanced=False,deep=False):
     from PIL import Image
     from review import normalize, read_cards, review_image
     with Image.open(root/case["file"]) as raw:
@@ -90,7 +90,10 @@ def evaluate_case(case,root,variants,ocr,enhanced=False):
         t=time.perf_counter()
         normalized=normalize(transform(image,variant))
         if ocr:
-            result=review_image(normalized,ocr,source="saved benchmark",enhanced=enhanced)
+            result=review_image(normalized,ocr,source="saved benchmark",enhanced=enhanced,deep=deep)
+        elif deep:
+            from saved_card_review import read_deep
+            result=read_deep(normalized,read_cards)
         elif enhanced:
             from saved_card_review import read_enhanced
             result=read_enhanced(normalized,read_cards)
@@ -171,6 +174,7 @@ def main():
     parser.add_argument("--variants",nargs="+",choices=VARIANTS,default=list(VARIANTS))
     parser.add_argument("--ocr",action="store_true",help="Include numeric and seat observations; requires installed Tesseract")
     parser.add_argument("--enhanced",action="store_true",help="Test optional saved-image multi-view card recovery")
+    parser.add_argument("--deep",action="store_true",help="Test additional offline alignment checks")
     parser.add_argument("--min-card-accuracy",type=float,default=1.0)
     parser.add_argument("--max-incorrect",type=int,default=0)
     parser.add_argument("--max-p95-ms",type=float,help="Optional latency gate, measured per variant")
@@ -190,11 +194,11 @@ def main():
     results=[];errors=[]
     for case in cases:
         try:
-            results.extend(evaluate_case(case,args.images,args.variants,exe,args.enhanced))
+            results.extend(evaluate_case(case,args.images,args.variants,exe,args.enhanced,args.deep))
         except Exception as exc:
             errors.append({"file":case["file"],"error":str(exc)})
     report=summarize(results,errors)
-    report["reader_mode"]="enhanced" if args.enhanced else "baseline"
+    report["reader_mode"]="deep" if args.deep else "enhanced" if args.enhanced else "baseline"
     report["expected_frames"]=len(cases)*len(args.variants)
     report["passed"]=report["frames_processed"]==report["expected_frames"] and gate(report,args.min_card_accuracy,args.max_incorrect,args.max_p95_ms)
     if args.baseline:

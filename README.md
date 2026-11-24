@@ -163,3 +163,17 @@ A strict accuracy gate can still fail even when the comparison shows improvement
 ### Additional saved-image OCR evidence
 
 Enhanced saved-image review now displays three single-line OCR passes for each stack and the pot, alongside original OCR evidence. It may recover an otherwise rejected numeric candidate only when the original raw amount is syntactically valid, two independent preprocessing passes have confidence at least 75, and all valid readings agree. If readings disagree, the manual confirmation input is blanked instead of prefilling a disputed amount. Existing raw candidate data is retained for audit. No change to the live reader. The three passes are correlated readings of the same image, not proof of accuracy. Tested the preprocessing in a local experiment on 21 manually labelled amounts across four screenshots; several readings remained incorrect or missing, including high-confidence errors. No verified improvement in integrated accuracy is claimed. See `pokerist/fixtures/external_sources.md` for screened public screenshot sources. External images could be viewed but not downloaded into the development environment.
+
+
+### Deep saved-image alignment experiment
+
+An optional offline-only `--deep` mode runs the existing enhanced card reader, then tests eight offsets of three pixels in normalized-image coordinates for remaining visible unreadable slots. The alignment pass uses the same conservative three-agreeing-votes/no-dissent rule, preserves original and enhanced identities and empty slots, and records separate provenance for recovered candidates. It does not affect the live worker or the standard saved-image upload endpoint.
+
+On an isolated reproduction of the classifier across 18 calibration images and their downscaled and JPEG variants, the additional alignment pass changed correct visible-card counts from 56 to 59 (original), 54 to 56 (downscale), and 32 to 32 (JPEG), with zero incorrect identities and 62/62 correct empty slots per variant. Exact card frames changed from 13 to 15, 11 to 12, and 0 to 0. A less conservative two-vote setting produced three wrong identities and was rejected. A separate distance-transform matching experiment was also rejected because it did not improve overall accuracy. These measurements are from previously used calibration images and isolated classifier code, not an independent full-pipeline test. The extra passes cost more time and do not improve chip OCR.
+
+```powershell
+py pokerist/benchmark_saved_frames.py "E:\Poker-Screenshots" --deep --baseline enhanced.json --output deep.json
+py pokerist/review.py "E:\Poker-Screenshots\example.png" --deep --no-ocr
+```
+
+All readings still require human confirmation.

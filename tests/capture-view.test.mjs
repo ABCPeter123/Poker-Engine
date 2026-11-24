@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {previewDimensions,captureOptions,captureHealth} from '../capture-view.js';
+test('medium preserves aspect ratio',()=>{const r=previewDimensions(1536,709,720,1000,500);assert.equal(r.width,720);assert.equal(r.height,332);});
+test('portrait and height limits',()=>{const r=previewDimensions(709,1536,720,1000,400);assert.equal(r.height,400);assert.equal(r.width,184);});
+test('native never upscales',()=>{assert.equal(previewDimensions(400,200,900,1200,700,true).width,400);assert.equal(previewDimensions(0,200,900,1200,700),null);});
+test('capture settings prefer detail without hard resolution limits',()=>{const r=captureOptions('detail');assert.equal(r.video.width.ideal,3840);assert.equal(r.video.frameRate.ideal,30);assert.equal(captureOptions('smooth').video.frameRate.ideal,60);assert.equal(r.audio,false);});
+test('quality diagnostics distinguish incoming and rendered dimensions',()=>{const r=captureHealth({width:800,height:400,sourceWidth:1600,sourceHeight:800,renderWidth:900,renderHeight:450,fps:24,dropped:2,total:100});assert.ok(r.includes('800 × 400'));assert.ok(r.includes('24.0 FPS'));assert.ok(r.includes('2.0% dropped'));assert.ok(r.includes('upscaled'));assert.ok(r.includes('below reported'));});

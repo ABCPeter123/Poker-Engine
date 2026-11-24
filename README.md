@@ -124,3 +124,7 @@ Added corner masks extracted from the latest saved-image examples (10-spade, 8-d
 ### Gold-bordered pair and observation timestamps
 
 Added saved-image corner masks for the highlighted red and black fives and their diamond/spade glyphs. The red-ink mask also rejects warm orange pixels. These samples are calibration data, not an independent accuracy test. In the authorized-practice diagnostics, amount age is measured from image capture rather than completion of OCR; the status includes processing duration. Old amount readings are marked stale rather than presented as newly captured. The displayed mirror can advance during recognition, so the panel describes an earlier captured image and is not a synchronized betting ledger. No strategy or action logic changed.
+
+### Repeatable saved-image checks
+
+Run `py pokerist/check_saved_frame.py "PATH_TO_SAVED_SCREENSHOT.png" pokerist/fixtures/20261124-223659.expected.json --crop 88 21 805 352` for the supplied 889 x 833 screenshot. The expected observations are transcribed from the visible saved image; the original screenshot is not stored in the repository. For other screenshots, supply their own expected JSON and optional game-area crop. The checker reports matching, missing and incorrect fields separately, including incorrect high-confidence amounts and false empty slots. It returns a nonzero exit code when any expected observation fails. This is an offline test harness, not a change to live recognition or advice.

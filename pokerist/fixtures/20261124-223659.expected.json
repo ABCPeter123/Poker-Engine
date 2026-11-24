@@ -1,0 +1,27 @@
+{
+  "hole_slots": [
+    null,
+    null
+  ],
+  "board_slots": [
+    "4h",
+    "2s",
+    "5d",
+    null,
+    null
+  ],
+  "amounts": {
+    "pot": 150,
+    "left": 0,
+    "upper_left": 19850,
+    "upper_right": 450,
+    "right": 106550
+  },
+  "dealer": "upper_right",
+  "turn": "upper_right",
+  "statuses": {
+    "left": "Sat out",
+    "upper_left": "Check",
+    "right": "Check"
+  }
+}

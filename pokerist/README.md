@@ -16,3 +16,15 @@ Optional number OCR requires a separately installed Tesseract executable. If not
     py pokerist/review.py "C:\\path\\to\\screenshot.jpg" --tesseract "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 
 The 1536x709 five-seat layout and rank glyphs J, 4, 9, Q and 3 were calibrated from the supplied screenshot. Other ranks, alternate layouts, bet fields, dealer and active-player tracking are not yet calibrated. A template match is a candidate, not a validated reading; all values should be reviewed. No screenshots are stored in the repository or sent anywhere. No real-time screen capture, automatic actions or live recommendations.
+
+## Profile indicators and seat changes
+
+The optional review output now includes experimental seat evidence. A bright green segment plus red or amber in a profile-base crop produces a multicolor-band candidate. One unique candidate is reported separately from the unverified active-player field. Multiple candidates are marked as conflicting. A saved previous screenshot can be used to measure brightness and appearance changes:
+
+    py pokerist/review.py later.jpg --previous earlier.jpg
+
+Darkened avatars can correspond to nonactive, folded, or obscured players. A large appearance change may be a departure or animation; neither is promoted to a fold or departure automatically. Yellow/orange regions near approximate bet locations are searched for the literal ALL IN label using optional Tesseract. Color alone never implies all-in. Absence of OCR text remains unknown. These cues require positive screenshots for calibration; they do not drive the table tracker or live recommendations.
+
+Run synthetic cue tests:
+
+    py -m unittest discover -s pokerist -p "test_*.py"

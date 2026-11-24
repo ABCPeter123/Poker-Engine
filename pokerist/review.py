@@ -13,6 +13,7 @@ import tempfile
 import shutil
 from PIL import Image
 import numpy as np
+from seat_cues import seat_evidence
 
 WIDTH, HEIGHT = 1536, 709
 # Coordinates are normalized to the supplied landscape layout.
@@ -131,12 +132,19 @@ def read_numbers(image, executable):
     except (OSError,subprocess.SubprocessError,ValueError) as e:
         return {},f"Number OCR failed: {e}"
 
-def review(path, executable=None):
+def review(path, executable=None, previous_path=None):
     with Image.open(path) as original:
         original=original.convert("RGB")
         if abs(original.width/original.height-WIDTH/HEIGHT)>.06:
             raise ValueError("Screenshot aspect ratio does not match calibrated landscape layout")
         image=original.resize((WIDTH,HEIGHT))
+    previous=None
+    if previous_path:
+        with Image.open(previous_path) as old:
+            if abs(old.width/old.height-WIDTH/HEIGHT)>.06:
+                raise ValueError("Previous screenshot aspect ratio does not match")
+            previous=old.convert("RGB").resize((WIDTH,HEIGHT))
+    cues=seat_evidence(image,executable,previous)
     board=[card(image,spec) for spec in BOARD]
     hole=[card(image,spec) for spec in HOLE]
     count=sum(c is not None for c in board)
@@ -147,6 +155,7 @@ def review(path, executable=None):
             "street_candidate":{0:"Preflop",3:"Flop",4:"Turn",5:"River"}.get(count),
             "number_candidates":numbers,
             "dealer":None,"active_player":None,"bets":None,"actions":None,
+            "seat_evidence":cues,
             "limitations":["Only five rank glyphs are calibrated; unknown ranks can be rejected or misclassified.",
                            "Fixed crop coordinates assume the supplied screen layout and scale.",
                            "All candidates require human review; no inferred player actions.",
@@ -156,6 +165,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("screenshot",nargs="?")
     parser.add_argument("--output",default="pokerist-review.json")
+    parser.add_argument("--previous",help="Earlier saved screenshot of the same table for visual comparison")
     parser.add_argument("--tesseract",default=os.getenv("TESSERACT_CMD") or shutil.which("tesseract"))
     args=parser.parse_args()
     if not args.screenshot:
@@ -165,7 +175,7 @@ def main():
         root.destroy()
         if not args.screenshot:
             return
-    result=review(args.screenshot,args.tesseract)
+    result=review(args.screenshot,args.tesseract,args.previous)
     Path(args.output).write_text(json.dumps(result,indent=2),encoding="utf-8")
     print(json.dumps(result,indent=2))
     print("Review saved to",args.output)

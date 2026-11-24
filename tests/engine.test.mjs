@@ -1,0 +1,12 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {evaluate,equity,analyze,deal,showdown} from '../engine.js';
+const c=s=>s.split(' ').map(x=>'cdhs'.indexOf(x[1])*13+'23456789TJQKA'.indexOf(x[0]));
+test('all categories',()=>{const hands=['Ac Kd 9h 6s 3c','Ac Ad 9h 6s 3c','Ac Ad 9h 9s 3c','Ac Ad Ah 6s 3c','Ac 2d 3h 4s 5c','Ac Jc 9c 6c 3c','Ac Ad Ah 6s 6c','Ac Ad Ah As 3c','Ac Kc Qc Jc Tc'];hands.forEach((h,i)=>assert.equal(evaluate(c(h)).category,i));});
+test('wheel loses to six-high',()=>assert.ok(evaluate(c('2c 3d 4h 5s 6c')).value>evaluate(c('Ac 2d 3h 4s 5c')).value));
+test('double trips makes full house',()=>assert.equal(evaluate(c('Ac Ad Ah Kc Kd Kh 2s')).category,6));
+test('kickers and flush comparisons',()=>{assert.ok(evaluate(c('Ac Ad Kh 7s 2c')).value>evaluate(c('Ac Ad Qh 7s 2c')).value);assert.ok(evaluate(c('Ac Kc Jc 8c 3c')).value>evaluate(c('Ac Kc Tc 8c 3c')).value);});
+test('duplicate rejected',()=>assert.throws(()=>evaluate(c('Ac Ac Qc Jc Tc'))));
+test('exact board tie',()=>{const x=equity({hole:c('2d 3d'),board:c('Ac Kc Qc Jc Tc')});assert.equal(x.equity,.5);assert.equal(x.samples,990);assert.equal(x.tie,1);assert.equal(x.exact,true);});
+test('multiway split fractional equity',()=>{const x=equity({hole:c('2d 3d'),board:c('Ac Kc Qc Jc Tc'),opponents:3,iterations:100});assert.equal(x.equity,.25);assert.equal(x.tie,1);});
+test('seed reproducible and AA plausible',()=>{const input={hole:c('Ac Ad'),iterations:3000};const x=equity(input);assert.deepEqual(x,equity(input));assert.ok(x.equity>.79&&x.equity<.9);assert.ok(Math.abs(x.win+x.tie+x.loss-1)<1e-10);});
+test('chip EV and capped call',()=>{const x=analyze({equity:.25,pot:100,call:50,stack:100,raiseTo:0});assert.equal(x.actions[0].action,'Fold');assert.equal(x.potOdds,1/3);assert.equal(analyze({equity:.5,pot:100,call:50,stack:20,raiseTo:0}).callCost,20);});
+test('practice deal unique; showdown conserves split',()=>{const d=deal({opponents:8,seed:4});assert.equal(new Set([...d.hole,...d.villains.flat(),...d.board]).size,23);const s=showdown(d.hole,d.board,d.villains);assert.ok(s.winners.length>=1);assert.equal(s.heroShare,s.winners.includes(0)?1/s.winners.length:0);});

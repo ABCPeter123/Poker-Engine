@@ -84,3 +84,7 @@ Connect the phone and restore the native video window before sharing. The launch
 ### Captured window normalization
 
 The recognition backend strips near-black outer padding and a detected light Windows title bar before comparing against the calibrated landscape geometry. It does not arbitrarily stretch an unsupported window into the expected layout. The result includes original frame dimensions, crop bounds and visible dimensions. A 1102 × 540 receiver frame with a 29-pixel title bar becomes approximately 1102 × 511. Unsupported layouts still produce an explicit error. Cropping fixes geometry only; missing hero cards and unsupported ranks remain unknown. No change to the existing authorized-practice restriction.
+
+### Preflop logo regression
+
+Card-face detection now requires sustained bright neutral card stock rather than the previous permissive brightness threshold. This rejects the pale Pokerist lettering when the board is empty. Rank/suit matching uses consistent red or black ink and limits suit candidates accordingly. Two observed hole-card coordinate variants and additional glyph templates cover the supplied J-heart/3-spade screenshot while retaining the earlier 9-spade/3-diamond layout. These are calibration samples, not a general accuracy benchmark. Other ranks and layouts can remain unrecognized. Use only for offline review or authorized practice.

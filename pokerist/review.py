@@ -30,6 +30,11 @@ RANKS = {
     "9_hole":"1c1,ff8,e1c,c1c,c0c,c1c,c0c,c1c,f3c,ff8,c00,c00,c0c,e1c,e38,7f8",
     "3":"3c0,ff0,f78,e38,e10,e00,f00,7e0,3c0,780,706,707,787,3cf,3fe,0fc"
 }
+RANKS.update({
+    "J_mirror":"700,f00,f00,f00,f00,f00,f00,f00,f00,f00,f00,f03,f03,78f,7ff,1fe",
+    "3_mirror":"3e0,670,c38,c10,c00,600,700,1e0,380,300,300,302,383,183,1ee,078",
+    "9_black":"7fc,fff,e07,e07,e07,e07,e07,e07,fff,ffe,e00,e00,e07,e07,fff,7fe"
+})
 SUITS = {
     "d":"060,0f0,0f0,1f8,1fc,3fc,7fe,fff,fff,7ff,3fe,1fc,1f8,0f0,0f0,060",
     "d_board_q":"000,000,060,0f0,0f8,1fc,3fe,7ff,fff,fff,7fe,3fe,1fc,0f8,0f0,060",
@@ -38,6 +43,11 @@ SUITS = {
     "h":"7bc,7fe,fff,fff,fff,fff,fff,7fe,7fc,3f8,1f0,0f0,0e0,040,001,001",
     "s":"001,040,0e0,1f1,3f8,7fc,ffd,fff,fff,7fd,3f9,041,0c1,001,001,001"
 }
+SUITS.update({
+    "h_mirror":"188,3fc,7fe,fff,fff,fff,fff,fff,ffe,7fe,7fe,3fc,1f8,1f8,0f0,060",
+    "s_mirror":"0c0,1e0,1f8,3fc,3fe,7ff,7ff,fff,fff,fff,ffe,ffc,3f0,000,010,030",
+    "s_black":"020,070,0f0,1f8,3fc,3fe,7fe,fff,fff,fff,fff,7fe,3ec,020,060,070"
+})
 BOARD = [
     ((552,244,575,281),(550,282,576,309),(548,242,628,353)),
     ((642,244,666,281),(641,282,668,310),(638,242,719,353)),
@@ -48,6 +58,11 @@ BOARD = [
 HOLE = [
     ((813,473,835,507),(810,510,837,540),(811,471,836,544)),
     ((854,468,879,505),(848,505,873,532),(849,469,890,548))
+]
+# Second observed layout: slightly lower glyphs in the mirrored frame.
+HOLE_MIRROR = [
+    ((815,480,837,518),(811,519,836,545),(811,477,836,548)),
+    ((854,476,880,514),(848,515,873,541),(849,477,890,548))
 ]
 NUMBERS = {
     "pot":(745,204,790,229),
@@ -62,9 +77,11 @@ def decode(value):
     return np.array([[bool(int(row,16)&(1<<j)) for j in range(12)]
                      for row in value.split(",")])
 
-def glyph(image, box):
+def glyph(image, box, color=None):
     a=np.array(image.crop(box)).astype(int)
-    m=(a.max(2)<110)|((a[:,:,0]-a[:,:,1]>50)&(a[:,:,0]-a[:,:,2]>45))
+    red=(a[:,:,0]-a[:,:,1]>50)&(a[:,:,0]-a[:,:,2]>45)
+    black=a.max(2)<110
+    m=red if color=="red" else black if color=="black" else red|black
     ys,xs=np.where(m)
     if len(ys)<15:
         return None
@@ -84,19 +101,36 @@ def match(m, templates, threshold=.18):
     margin=scores[1][0]-distance
     return (label if distance<=threshold and margin>=.025 else None), round(distance,3)
 
-def card(image, spec):
-    r,s,body=spec
-    a=np.array(image.crop(body)).astype(int)
-    # Bright neutral card face. Reject blue felt/background.
-    light=(a.min(2)>150)&((a.max(2)-a.min(2))<55)
-    if float(light.mean())<.28:
+def face_present(image, box):
+    a=np.asarray(image.crop(box),dtype=np.int16)
+    # Require sustained bright neutral card stock, not pale lettering on blue felt.
+    light=(a.min(2)>180)&(np.ptp(a,axis=2)<32)
+    return float(light.mean())>=.20 and float((light.mean(axis=1)>=.15).mean())>=.60
+
+def card(image, spec, alternate=None):
+    present=False
+    readings={}
+    for r,s,body in [spec]+([alternate] if alternate else []):
+        if not face_present(image,body):
+            continue
+        present=True
+        for color,allowed in [("red","dh"),("black","cs")]:
+            rank,rd=match(glyph(image,r,color),RANKS)
+            suit,sd=match(glyph(image,s,color),{k:v for k,v in SUITS.items() if k[0] in allowed},.25)
+            if rank and suit:
+                label=rank+suit
+                reading=(rd+sd,rank,suit,rd,sd)
+                if label not in readings or reading[0]<readings[label][0]:
+                    readings[label]=reading
+    if not present:
         return None
-    rank,rd=match(glyph(image,r),RANKS)
-    suit,sd=match(glyph(image,s),SUITS,.25)
-    return {"candidate":rank+suit if rank and suit else None,
-            "rank_candidate":rank,"suit_candidate":suit,
-            "rank_distance":rd,"suit_distance":sd,
-            "verified":False}
+    ordered=sorted(readings.values())
+    if not ordered or (len(ordered)>1 and ordered[1][0]-ordered[0][0]<.05):
+        return {"candidate":None,"rank_candidate":None,"suit_candidate":None,
+                "rank_distance":None,"suit_distance":None,"verified":False}
+    _,rank,suit,rd,sd=ordered[0]
+    return {"candidate":rank+suit,"rank_candidate":rank,"suit_candidate":suit,
+            "rank_distance":rd,"suit_distance":sd,"verified":False}
 
 def number_text(text):
     value=re.sub(r"\s+","",text.upper()).replace("O","0").replace(",",".")
@@ -170,7 +204,7 @@ def review(path, executable=None, previous_path=None):
 def review_image(image, executable=None, previous=None, source="frame"):
     cues=seat_evidence(image,executable,previous)
     board=[card(image,spec) for spec in BOARD]
-    hole=[card(image,spec) for spec in HOLE]
+    hole=[card(image,spec,alternate) for spec,alternate in zip(HOLE,HOLE_MIRROR)]
     count=sum(c is not None for c in board)
     contiguous=all(c is not None for c in board[:count]) and all(c is None for c in board[count:])
     known=[c["candidate"] for c in hole+board if c and c["candidate"]]

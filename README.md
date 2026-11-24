@@ -64,3 +64,9 @@ Screen Review defaults to a 720-pixel-wide preview, constrained to 55% of the vi
 ### Landscape mirroring
 
 Disable portrait orientation lock on the iPhone, open the app in landscape and use UxPlay with `-s 1920x1080 -fps 30`. Auto orientation follows the incoming video dimensions and resizes on source changes. If the captured window contains sideways video, choose Rotate left/right or 180 degrees. The rotation preference persists and applies to frozen frames and drawings too. It does not change the iPhone or UxPlay's native orientation, and does not remove black borders inside a captured window.
+
+### Native AirPlay window fitting (Windows)
+
+Stop the old UxPlay process, then run `py start_mirror.py` from the repo root. The launcher starts your existing UxPlay installation using a Direct3D11 sink that preserves source aspect ratio, with 1080p requested and a random connection code. It reads UxPlay's reported stream geometry and resizes only that process's visible native window on each geometry change. Older UxPlay builds may not report the supported geometry format; the sink still preserves the aspect ratio, but window auto-sizing then requires a newer build. Use `--software` if the GPU decoder fails during rotation or `--exe` for a different install location. Ctrl+C stops the receiver. It does not install software or modify the phone, firewall, or UxPlay source. Browser sharing is still a separate explicit permission.
+
+Confirmed saved-frame review can now calculate showdown equity through the same worker as the practice engine, after you select the observed number of opponents. No live capture frames are sent to recognition or strategy analysis. No best-action recommendation is generated from a third-party game's media.

@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {reviewEquityInput} from '../review-equity.js';
+const record={source:'saved frame',corrected:{verified_by_user:true,hole:['9s','3d'],board:['Jd','4c','9h','Qd']}};
+test('confirmed saved cards become valid engine input',()=>{const r=reviewEquityInput(record,2);assert.deepEqual(r.hole,[46,14]);assert.deepEqual(r.board,[22,2,33,23]);assert.equal(r.opponents,2);});
+test('unconfirmed or missing cards rejected',()=>{assert.throws(()=>reviewEquityInput({...record,source:'share'},2));assert.throws(()=>reviewEquityInput({source:'saved frame',corrected:{...record.corrected,verified_by_user:false}},2));assert.throws(()=>reviewEquityInput(record,0));assert.throws(()=>reviewEquityInput({source:'saved frame',corrected:{...record.corrected,board:null}},2));});

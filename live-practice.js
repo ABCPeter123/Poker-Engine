@@ -70,3 +70,88 @@ export function observationAge(capturedAt,now,maxAge=10000){
  if(!Number.isFinite(capturedAt)||!Number.isFinite(now)||capturedAt<0||now<capturedAt)return {ageMs:null,fresh:false};
  const ageMs=now-capturedAt;return {ageMs,fresh:ageMs<=maxAge};
 }
+
+
+export const BET_SEATS=Object.freeze(['hero','left','upper_left','upper_right','right']);
+const streets=['Preflop','Flop','Turn','River'];
+const blank=()=>({value:0,observed:false,approximate:false,pending:null,warning:null,lastSeen:null,stack:null,source:'initial'});
+const seats=()=>Object.fromEntries(BET_SEATS.map(s=>[s,blank()]));
+export function createBetMemory(){return {street:null,hole:null,dealer:null,boundary:null,last:null,seats:seats(),status:'Waiting for round confirmation'};}
+function streetOf(r){
+ const b=r?.board_slots;
+ if(!Array.isArray(b)||b.length!==5||r.quality?.duplicate_card_candidates||r.quality?.noncontiguous_board)return null;
+ const n=b.filter(Boolean).length,s=({0:'Preflop',3:'Flop',4:'Turn',5:'River'})[n];
+ return s===r.street_candidate&&b.slice(0,n).every(Boolean)&&!b.slice(n).some(Boolean)?s:null;
+}
+function holeOf(r){
+ const h=r?.hole_slots;
+ if(!Array.isArray(h)||h.length!==2)return null;
+ const a=h.map(c=>c?.candidate);
+ return a.every(x=>typeof x==='string'&&/^[2-9TJQKA][cdhs]$/.test(x))&&a[0]!==a[1]?a.sort().join(' '):null;
+}
+const fresh=(t,now)=>Number.isFinite(t)&&Number.isFinite(now)&&t>=0&&now>=t&&now-t<=5000;
+function amount(c,confidence,minimum=75){
+ return c&&Number.isSafeInteger(c.value)&&c.value>=0&&Number.isFinite(confidence)&&confidence>=minimum?c:null;
+}
+function accept(e,b,stack,t,source){
+ return {...e,value:b.value,observed:true,approximate:!!b.approximate,stack:stack?.value??null,lastSeen:t,pending:null,warning:source==='correction'?'Corrected from repeated lower readings':null,source};
+}
+export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false}={}){
+ const old=previous||createBetMemory();
+ if(!fresh(t,now)||(old.last!==null&&t<=old.last))return old;
+ let state={...old,last:t,seats:Object.fromEntries(BET_SEATS.map(s=>[s,{...old.seats[s]}]))};
+ const street=streetOf(r),hole=holeOf(r),d=r?.table_observation?.dealer?.candidate,dealer=BET_SEATS.includes(d)?d:null;
+ if(!street||(state.street&&street!=='Preflop'&&streets.indexOf(street)<streets.indexOf(state.street))){
+  state.boundary=null;state.status='Round uncertain; holding prior values';
+  for(const e of Object.values(state.seats))e.pending=null;
+  return state;
+ }
+ const newHole=street==='Preflop'&&state.street==='Preflop'&&hole&&state.hole&&hole!==state.hole;
+ const newDealer=street==='Preflop'&&state.street==='Preflop'&&dealer&&state.dealer&&dealer!==state.dealer;
+ if(street!==state.street||newHole||newDealer){
+  const key=[street,newHole?hole:null,newDealer?dealer:null].join('|'),p=state.boundary;
+  state.boundary={key,count:p?.key===key&&t-p.last<=6000?p.count+1:1,last:t};
+  if(state.boundary.count<2){state.status='Checking round change';for(const e of Object.values(state.seats))e.pending=null;return state;}
+  state={...state,street,hole,dealer,boundary:null,seats:seats()};
+ }else{
+  state.boundary=null;state.hole=state.hole||hole;state.dealer=state.dealer||dealer;
+ }
+ state.status=state.street+' · tracked candidates';
+ if(!ocr)return state;
+ for(const id of BET_SEATS){
+  const e=state.seats[id],s=r?.table_observation?.seats?.[id],b=amount(s?.bet,s?.bet?.ocr_confidence??s?.bet_confidence);
+  const stack=amount(s?.stack,s?.stack?.ocr_confidence??s?.stack_confidence,85);
+  if(!b){e.pending=null;e.warning=e.observed?'Missing sample; holding last value':null;continue;}
+  const v=b.value;
+  if(v===e.value&&e.observed){e.pending=null;e.warning=null;e.lastSeen=t;if(!b.approximate)e.approximate=false;if(stack&&!stack.approximate)e.stack=stack.value;continue;}
+  const p=e.pending,approximate=!!b.approximate;
+  const count=p?.value===v&&p.approximate===approximate&&t-p.last<=15000?p.count+1:1;
+  const sameStack=stack&&!stack.approximate&&p?.stack===stack.value;
+  const stackCount=sameStack?p.stackCount+1:stack&&!stack.approximate?1:0;
+  e.pending={value:v,approximate,count,last:t,stack:stack&&!stack.approximate?stack.value:null,stackCount};
+  // Exact stack/bet conservation supports an increase, but OCR stack values
+  // are themselves candidates. Never use them as an absolute hard limit.
+  const supported=e.stack!==null&&stackCount>=2&&!approximate&&!e.approximate&&e.stack+e.value===stack.value+v;
+  if(v>e.value||!e.observed){
+   const large=v>Math.max(1000,e.value*4),need=large&&!supported?3:2;
+   e.warning='Provisional '+v+' ('+count+'/'+need+')';
+   if(count>=need)state.seats[id]=accept(e,b,stack,t,'ocr');
+  }else{
+   // A lower observation is not a negative bet. It is a possible correction
+   // or refund. Require stronger repeated evidence, never treat absence as zero.
+   const need=supported?3:4;
+   e.warning='Disputed: lower reading '+v+' ('+count+'/'+need+')';
+   if(count>=need&&!approximate)state.seats[id]=accept(e,b,stack,t,'correction');
+  }
+ }
+ return state;
+}
+export function correctTrackedBet(state,seat,value,now){
+ if(!BET_SEATS.includes(seat)||!Number.isSafeInteger(value)||value<0||!Number.isFinite(now))throw Error('Enter a nonnegative whole chip amount.');
+ const s=state||createBetMemory();
+ return {...s,last:Math.max(s.last??0,now),seats:{...s.seats,[seat]:{...blank(),value,observed:true,lastSeen:now,source:'manual',warning:'Manually corrected'}}};
+}
+export function trackedBetLabel(e){
+ if(!e)return '0 (initial)';
+ return (e.approximate?'≈':'')+e.value.toLocaleString('en-CA')+(e.observed?'':' (initial)')+(e.warning?' *':'');
+}

@@ -51,7 +51,7 @@ for line in sys.stdin:
             last_ocr = now
         requested = bool(req.get("ocr"))
         scan_error = result.get("table_observation", {}).get("ocr_warning") if use_ocr else None
-        number_error = next((s for s in result.get("limitations", []) if s.startswith("Number OCR failed") or s.startswith("Tesseract")), None) if use_ocr else None
+        number_error = result.get("number_ocr_error") if use_ocr else None
         state = "disabled" if not requested else "unavailable" if not tesseract else "failed" if use_ocr and (scan_error or number_error) else "sampled" if use_ocr else "waiting"
         send({"id":request_id, "result":result, "ocr_sampled":bool(use_ocr),
               "ocr_status":{"state":state,"detail":ocr_error if state=="unavailable" else scan_error or number_error if state=="failed" else None}})

@@ -32,6 +32,7 @@ def select_amount(words, parse, threshold=75):
     raw=" / ".join(" ".join(w["text"] for w in line) for line in lines)
     result={"raw":raw,"candidate":None,"ocr_confidence":round(min((w["confidence"] for w in words),default=-1),1),"text_bounds":None}
     candidates=[]
+    plausible=[]
     for line in lines:
         tokens=[w["text"].strip() for w in line]
         # Grouped integer labels can be split at thousands separators.
@@ -41,10 +42,11 @@ def select_amount(words, parse, threshold=75):
             continue
         if not re.fullmatch(r"\d+(?:[.,]\d+)?[KMkm]?\.?",tokens[0]):
             continue
-        if any(w["confidence"]<threshold for w in line):
-            continue
         candidate=parse(" ".join(tokens))
         if not candidate:
+            continue
+        plausible.append(candidate["value"])
+        if any(not np.isfinite(w["confidence"]) or w["confidence"]<threshold for w in line):
             continue
         confidence=round(min(w["confidence"] for w in line),1)
         bounds=[min(w["x"] for w in line),min(w["y"] for w in line),
@@ -52,7 +54,7 @@ def select_amount(words, parse, threshold=75):
         candidates.append((candidate,confidence,bounds))
     # Multiple plausible numeric lines are ambiguous. Do not choose a stack
     # from a nearby bet, or vice versa.
-    if len(candidates)==1:
+    if len(candidates)==1 and len(plausible)==1:
         candidate,confidence,bounds=candidates[0]
         candidate["ocr_confidence"]=confidence
         result.update(candidate=candidate,ocr_confidence=confidence,text_bounds=bounds)

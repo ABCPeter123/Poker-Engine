@@ -20,6 +20,10 @@ class AdaptiveLabelTests(unittest.TestCase):
     def test_bad_fragment_unknown(self):
         self.assertIsNone(select_amount([w("9",10,confidence=40),w("500",30)],number_text)["candidate"])
         self.assertIsNone(select_amount([w("50",10),w("25",50)],number_text)["candidate"])
+    def test_competing_low_confidence_line_blocks_high_confidence(self):
+        self.assertIsNone(select_amount([w("500",10),w("5000",10,40,confidence=20)],number_text)["candidate"])
+    def test_nonfinite_confidence_is_rejected(self):
+        self.assertIsNone(select_amount([w("500",10,confidence=float("nan"))],number_text)["candidate"])
     def test_no_text_unknown(self):
         self.assertIsNone(select_amount([],number_text)["candidate"])
     def test_rounded_amount(self):

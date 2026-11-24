@@ -159,3 +159,7 @@ py pokerist/benchmark_saved_frames.py "E:\Poker-Screenshots" --enhanced --baseli
 ```
 
 A strict accuracy gate can still fail even when the comparison shows improvements. Preserve the output reports locally.
+
+### Additional saved-image OCR evidence
+
+Enhanced saved-image review now displays three single-line OCR passes for each stack and the pot, alongside original OCR evidence. It may recover an otherwise rejected numeric candidate only when the original raw amount is syntactically valid, two independent preprocessing passes have confidence at least 75, and all valid readings agree. If readings disagree, the manual confirmation input is blanked instead of prefilling a disputed amount. Existing raw candidate data is retained for audit. No change to the live reader. The three passes are correlated readings of the same image, not proof of accuracy. Tested the preprocessing in a local experiment on 21 manually labelled amounts across four screenshots; several readings remained incorrect or missing, including high-confidence errors. No verified improvement in integrated accuracy is claimed. See `pokerist/fixtures/external_sources.md` for screened public screenshot sources. External images could be viewed but not downloaded into the development environment.

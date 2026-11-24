@@ -277,6 +277,9 @@ def review_image(image, executable=None, previous=None, source="frame", *, enhan
         cards=read_cards(image)
     hole=cards["hole_slots"]
     numbers,err=read_numbers(image,executable)
+    if enhanced and executable:
+        from saved_amount_review import add_saved_amount_evidence
+        numbers=add_saved_amount_evidence(image,executable,NUMBERS,numbers,number_text)
     observation=observe_table(image,executable,number_text,numbers,cues,hole)
     return {"layout":"Pokerist landscape, five seats, prototype",
             "source":source,"verified":False,

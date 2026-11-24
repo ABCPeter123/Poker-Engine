@@ -26,10 +26,13 @@ RANKS = {
     "4":"3e0,3f0,3f0,3b8,398,3dc,3cc,3ce,3c6,3c3,3c7,fff,3c0,3c0,3c0,180",
     "9":"0ff,0fd,1fc,18e,1cc,1cc,18c,1ce,1fc,1fc,1c0,180,18c,1cc,0fc,070",
     "Q":"3f8,7fc,f0f,f0f,f0f,f0f,f0f,f0f,f0f,f0f,f0f,f0f,70f,7fe,3fc,7e0",
+    "9_hole":"1c1,ff8,e1c,c1c,c0c,c1c,c0c,c1c,f3c,ff8,c00,c00,c0c,e1c,e38,7f8",
     "3":"3c0,ff0,f78,e38,e10,e00,f00,7e0,3c0,780,706,707,787,3cf,3fe,0fc"
 }
 SUITS = {
     "d":"060,0f0,0f0,1f8,1fc,3fc,7fe,fff,fff,7ff,3fe,1fc,1f8,0f0,0f0,060",
+    "d_board_q":"000,000,060,0f0,0f8,1fc,3fe,7ff,fff,fff,7fe,3fe,1fc,0f8,0f0,060",
+    "d_hole":"0c0,1e0,1f0,3f8,3fc,3fe,7ff,7ff,ffe,ffe,ffc,3fc,1f8,0f8,070,030",
     "c":"060,0f0,1f8,1f8,1f8,0f0,1f8,7fe,fff,fff,fff,fff,7fe,39c,060,060",
     "h":"7bc,7fe,fff,fff,fff,fff,fff,7fe,7fc,3f8,1f0,0f0,0e0,040,001,001",
     "s":"001,040,0e0,1f1,3f8,7fc,ffd,fff,fff,7fd,3f9,041,0c1,001,001,001"
@@ -70,7 +73,12 @@ def glyph(image, box):
 def match(m, templates, threshold=.18):
     if m is None:
         return None, None
-    scores=sorted((float(np.mean(m!=decode(v))),k) for k,v in templates.items())
+    grouped={}
+    for key,value in templates.items():
+        label=key.split("_")[0]
+        distance=float(np.mean(m!=decode(value)))
+        grouped[label]=min(grouped.get(label,1.0),distance)
+    scores=sorted((distance,label) for label,distance in grouped.items())
     distance, label=scores[0]
     margin=scores[1][0]-distance
     return (label if distance<=threshold and margin>=.025 else None), round(distance,3)
@@ -152,11 +160,15 @@ def review(path, executable=None, previous_path=None):
     board=[card(image,spec) for spec in BOARD]
     hole=[card(image,spec) for spec in HOLE]
     count=sum(c is not None for c in board)
+    contiguous=all(c is not None for c in board[:count]) and all(c is None for c in board[count:])
+    known=[c["candidate"] for c in hole+board if c and c["candidate"]]
+    duplicate=len(set(known))!=len(known)
     numbers,err=read_numbers(image,executable)
     return {"layout":"Pokerist landscape, five seats, prototype",
             "source":Path(path).name,"verified":False,
             "board_slots":board,"hole_slots":hole,
-            "street_candidate":{0:"Preflop",3:"Flop",4:"Turn",5:"River"}.get(count),
+            "street_candidate":{0:"Preflop",3:"Flop",4:"Turn",5:"River"}.get(count) if contiguous else None,
+            "quality":{"duplicate_card_candidates":duplicate,"noncontiguous_board":not contiguous,"unrecognized_visible_cards":sum(c is not None and c["candidate"] is None for c in hole+board)},
             "number_candidates":numbers,
             "dealer":None,"active_player":None,"bets":None,"actions":None,
             "seat_evidence":cues,

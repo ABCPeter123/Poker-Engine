@@ -1,0 +1,437 @@
+{
+  "description": "User-supplied saved-image calibration set. Originals stay local; labels are manually transcribed. Not an independent test set.",
+  "cases": [
+    {
+      "file": "image(5).png",
+      "crop": [
+        23,
+        24,
+        739,
+        349
+      ],
+      "expected": {
+        "hole_slots": [
+          "Jh",
+          "3s"
+        ],
+        "board_slots": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(6).png",
+      "crop": [
+        13,
+        27,
+        729,
+        358
+      ],
+      "expected": {
+        "hole_slots": [
+          null,
+          null
+        ],
+        "board_slots": [
+          "8c",
+          "4c",
+          "4h",
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(7).png",
+      "crop": [
+        10,
+        30,
+        726,
+        361
+      ],
+      "expected": {
+        "hole_slots": [
+          null,
+          null
+        ],
+        "board_slots": [
+          "8c",
+          "4c",
+          "4h",
+          "7s",
+          "6s"
+        ]
+      }
+    },
+    {
+      "file": "image(8).png",
+      "crop": [
+        9,
+        25,
+        725,
+        356
+      ],
+      "expected": {
+        "hole_slots": [
+          "Ts",
+          "9d"
+        ],
+        "board_slots": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(9).png",
+      "crop": [
+        24,
+        27,
+        740,
+        358
+      ],
+      "expected": {
+        "hole_slots": [
+          null,
+          null
+        ],
+        "board_slots": [
+          "Kd",
+          "8c",
+          "As",
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(10).png",
+      "crop": [
+        23,
+        31,
+        739,
+        362
+      ],
+      "expected": {
+        "hole_slots": [
+          null,
+          null
+        ],
+        "board_slots": [
+          "Kd",
+          "8c",
+          "As",
+          "9s",
+          "Qs"
+        ]
+      }
+    },
+    {
+      "file": "image(20261124-215618).png",
+      "crop": [
+        8,
+        25,
+        724,
+        356
+      ],
+      "expected": {
+        "hole_slots": [
+          null,
+          null
+        ],
+        "board_slots": [
+          "2d",
+          "5s",
+          "As",
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(20261124-215809).png",
+      "crop": [
+        11,
+        26,
+        727,
+        353
+      ],
+      "expected": {
+        "hole_slots": [
+          "Jc",
+          "3c"
+        ],
+        "board_slots": [
+          "Qd",
+          "As",
+          "Kc",
+          "2c",
+          "Jd"
+        ]
+      }
+    },
+    {
+      "file": "image(20261124-220204).png",
+      "crop": [
+        13,
+        31,
+        729,
+        360
+      ],
+      "expected": {
+        "hole_slots": [
+          null,
+          null
+        ],
+        "board_slots": [
+          "As",
+          "4c",
+          "4h",
+          "8s",
+          "Jc"
+        ]
+      }
+    },
+    {
+      "file": "image(20261124-220245).png",
+      "crop": [
+        79,
+        26,
+        795,
+        357
+      ],
+      "expected": {
+        "hole_slots": [
+          "8h",
+          "Qd"
+        ],
+        "board_slots": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(20261124-221113).png",
+      "crop": [
+        13,
+        27,
+        729,
+        358
+      ],
+      "expected": {
+        "hole_slots": [
+          null,
+          null
+        ],
+        "board_slots": [
+          "5s",
+          "3d",
+          "Ac",
+          "7h",
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(20261124-221131).png",
+      "crop": [
+        19,
+        19,
+        735,
+        350
+      ],
+      "expected": {
+        "hole_slots": [
+          "7h",
+          "2c"
+        ],
+        "board_slots": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(20261124-221146).png",
+      "crop": [
+        10,
+        21,
+        726,
+        352
+      ],
+      "expected": {
+        "hole_slots": [
+          "7h",
+          "2c"
+        ],
+        "board_slots": [
+          "8d",
+          "Kd",
+          "8h",
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(20261124-222310).png",
+      "crop": [
+        16,
+        29,
+        732,
+        360
+      ],
+      "expected": {
+        "hole_slots": [
+          null,
+          null
+        ],
+        "board_slots": [
+          "Ts",
+          "Ah",
+          "4d",
+          "8d",
+          null
+        ]
+      }
+    },
+    {
+      "file": "image(20261124-222353).png",
+      "crop": [
+        86,
+        25,
+        802,
+        356
+      ],
+      "expected": {
+        "hole_slots": [
+          "Qd",
+          "8h"
+        ],
+        "board_slots": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "amounts": {
+          "hero": 19950,
+          "left": 450,
+          "upper_left": 15500,
+          "upper_right": 76791,
+          "right": 197779
+        }
+      }
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "expected": {
+        "hole_slots": [
+          "Qd",
+          "8h"
+        ],
+        "board_slots": [
+          "5c",
+          "3h",
+          "2h",
+          null,
+          null
+        ],
+        "amounts": {
+          "pot": 4500,
+          "hero": 19000,
+          "left": 0,
+          "upper_left": 14500,
+          "upper_right": 75816,
+          "right": 196829
+        }
+      }
+    },
+    {
+      "file": "image(20261124-223533).png",
+      "crop": [
+        87,
+        27,
+        803,
+        358
+      ],
+      "expected": {
+        "hole_slots": [
+          "5d",
+          "5s"
+        ],
+        "board_slots": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "amounts": {
+          "hero": 0,
+          "left": 0,
+          "upper_left": 19950,
+          "upper_right": 2000,
+          "right": 84400
+        }
+      }
+    },
+    {
+      "file": "image(20261124-223659).png",
+      "crop": [
+        88,
+        21,
+        804,
+        352
+      ],
+      "expected": {
+        "hole_slots": [
+          null,
+          null
+        ],
+        "board_slots": [
+          "4h",
+          "2s",
+          "5d",
+          null,
+          null
+        ],
+        "amounts": {
+          "pot": 150,
+          "left": 0,
+          "upper_left": 19850,
+          "upper_right": 450,
+          "right": 106550
+        },
+        "dealer": "upper_right",
+        "turn": "upper_right",
+        "statuses": {
+          "left": "Sat out",
+          "upper_left": "Check",
+          "right": "Check"
+        }
+      }
+    }
+  ]
+}

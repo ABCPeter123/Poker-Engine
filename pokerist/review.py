@@ -4,6 +4,7 @@ No screen mirroring, continuous capture, game interaction or live advice.
 All readings are candidates requiring confirmation. Original image stays local.
 """
 import argparse
+from functools import lru_cache
 import json
 import os
 from pathlib import Path
@@ -119,9 +120,14 @@ NUMBERS = {
     "right":(1110,454,1280,485)
 }
 
+@lru_cache(maxsize=256)
 def decode(value):
-    return np.array([[bool(int(row,16)&(1<<j)) for j in range(12)]
-                     for row in value.split(",")])
+    mask=np.array([[bool(int(row,16)&(1<<j)) for j in range(12)]
+                   for row in value.split(",")])
+    if mask.shape != (16,12):
+        raise ValueError("Template must contain sixteen 12-bit rows")
+    mask.setflags(write=False)
+    return mask
 
 def ink_masks(a):
     # The gold outline and warm face-card illustration are not rank ink.
@@ -249,23 +255,30 @@ def review(path, executable=None, previous_path=None):
             previous=None
     return review_image(image, executable, previous, Path(path).name)
 
-def review_image(image, executable=None, previous=None, source="frame"):
-    cues=seat_evidence(image,executable,previous)
+def read_cards(image):
     board=[card(image,spec,lower_corner(spec),narrow_suit(spec),wide_ten=ten_corner(spec)) for spec in BOARD]
     hole=[card(image,spec,alternate,wide,highlight,rotated,gold_pair) for spec,alternate,wide,highlight,rotated,gold_pair in zip(HOLE,HOLE_MIRROR,HOLE_WIDE,HOLE_HIGHLIGHT,HOLE_ROTATED,HOLE_GOLD_PAIR)]
     count=sum(c is not None for c in board)
     contiguous=all(c is not None for c in board[:count]) and all(c is None for c in board[count:])
     known=[c["candidate"] for c in hole+board if c and c["candidate"]]
     duplicate=len(set(known))!=len(known)
+    return {"board_slots":board,"hole_slots":hole,
+            "street_candidate":{0:"Preflop",3:"Flop",4:"Turn",5:"River"}.get(count) if contiguous else None,
+            "quality":{"duplicate_card_candidates":duplicate,
+                       "noncontiguous_board":not contiguous,
+                       "unrecognized_visible_cards":sum(c is not None and c["candidate"] is None for c in hole+board)}}
+
+def review_image(image, executable=None, previous=None, source="frame"):
+    cues=seat_evidence(image,executable,previous)
+    cards=read_cards(image)
+    hole=cards["hole_slots"]
     numbers,err=read_numbers(image,executable)
     observation=observe_table(image,executable,number_text,numbers,cues,hole)
     return {"layout":"Pokerist landscape, five seats, prototype",
             "source":source,"verified":False,
             "capture_crop":image.info.get("capture_crop"),
-            "board_slots":board,"hole_slots":hole,
-            "street_candidate":{0:"Preflop",3:"Flop",4:"Turn",5:"River"}.get(count) if contiguous else None,
-            "quality":{"duplicate_card_candidates":duplicate,"noncontiguous_board":not contiguous,"unrecognized_visible_cards":sum(c is not None and c["candidate"] is None for c in hole+board)},
-            "number_candidates":numbers,
+            **cards,
+            "number_candidates":numbers,"number_ocr_error":err,
             "dealer":None,"active_player":None,"bets":None,"actions":None,
             "table_observation":observation,
             "seat_evidence":cues,

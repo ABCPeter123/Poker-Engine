@@ -128,3 +128,15 @@ Added saved-image corner masks for the highlighted red and black fives and their
 ### Repeatable saved-image checks
 
 Run `py pokerist/check_saved_frame.py "PATH_TO_SAVED_SCREENSHOT.png" pokerist/fixtures/20261124-223659.expected.json --crop 88 21 805 352` for the supplied 889 x 833 screenshot. The expected observations are transcribed from the visible saved image; the original screenshot is not stored in the repository. For other screenshots, supply their own expected JSON and optional game-area crop. The checker reports matching, missing and incorrect fields separately, including incorrect high-confidence amounts and false empty slots. It returns a nonzero exit code when any expected observation fails. This is an offline test harness, not a change to live recognition or advice.
+
+## Recognition quality audit
+
+Do not treat template coverage as recognition accuracy. The saved corpus has 18 labeled user-provided screenshots and 64 visible card instances (62 empty slots). Originals are deliberately kept outside this public repository. The benchmark loads your local copies, applies original, reduced-resolution and JPEG variants, records missing and incorrect readings separately, and measures per-frame median/p95 latency. It defaults to a strict 100% visible-card accuracy gate, zero wrong identities, and no false empty-slot positives. Missing files fail the run rather than silently reducing the denominator. The optional OCR mode additionally checks explicitly labeled amounts and seat cues; all visual readings remain candidates. Example:
+
+```powershell
+py -m pip install -r pokerist/requirements.txt
+py pokerist/benchmark_saved_frames.py "E:\Poker-Screenshots"
+py pokerist/benchmark_saved_frames.py "E:\Poker-Screenshots" --ocr --variants original
+```
+
+The JSON report includes every frame/field; the manifest contains crop coordinates and expected observations. Original screenshots are not committed. The corpus is calibration/regression data, not a held-out test. A local isolated reproduction of the current card classifier (manual game-area crops, before template caching) measured 55/64 correct visible cards, nine missing, zero wrong, and 62/62 correct empty slots; downscaling to 75% yielded 36/64 correct. These are not live or full Windows pipeline measurements. Two experimental ink-mask replacements degraded original-image accuracy, so they were not adopted. Card reading is split from other recognition for repeatable measurement, and decoded masks are cached read-only. All-in OCR now sizes its montage from its actual region widths and rejects substring-only status matches. The automated workflow runs the JS/Python suites on Linux and Windows; the private image corpus is a separate local gate.

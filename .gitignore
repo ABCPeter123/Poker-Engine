@@ -1,3 +1,7 @@
 node_modules/
 .DS_Store
 *.log
+
+# Private saved images and local quality reports
+saved-benchmark.json
+pokerist/fixtures/local-images/

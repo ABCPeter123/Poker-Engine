@@ -46,7 +46,7 @@ def bar_evidence(a):
 def label_candidate(raw):
     # Require actual label text. Yellow pixels alone are not an all-in.
     normalized=re.sub(r"[^A-Z]","",raw.upper())
-    return bool("ALLIN" in normalized)
+    return normalized=="ALLIN"
 
 def allin_ocr(image, executable):
     result={seat:{"candidate":None,"raw":"","verified":False} for seat in SEATS}
@@ -54,15 +54,19 @@ def allin_ocr(image, executable):
         return result,"All-in OCR unavailable without Tesseract"
     # Search only approximate bet zones; these boxes are not yet confirmed
     # using positive all-in screenshots.
-    canvas=Image.new("L",(500,200*len(SEATS)),255)
+    # Size the montage from the actual regions: the hero crop used to be clipped.
+    scale,pad=3,5
+    pitch=max((spec["bet"][3]-spec["bet"][1])*scale for spec in SEATS.values())+2*pad
+    width=max((spec["bet"][2]-spec["bet"][0])*scale for spec in SEATS.values())+2*pad
+    canvas=Image.new("L",(width,pitch*len(SEATS)),255)
     for i,(seat,spec) in enumerate(SEATS.items()):
         a=pixels(image,spec["bet"])
         r,g,b=np.moveaxis(a,-1,0)
         warm=(r>160)&(g>85)&(r>b+55)&(g>b+25)&(r>=g-12)
         result[seat]["warm_pixels"]=int(warm.sum())
         crop=Image.fromarray(np.uint8(255-255*warm))
-        crop=crop.resize((crop.width*3,crop.height*3))
-        canvas.paste(crop,(5,i*200+5))
+        crop=crop.resize((crop.width*scale,crop.height*scale))
+        canvas.paste(crop,(pad,i*pitch+pad))
     try:
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/"allin.png"
@@ -74,7 +78,7 @@ def allin_ocr(image, executable):
             cols=line.split("\t",11)
             if len(cols)!=12 or cols[0]!="5" or not cols[11].strip():
                 continue
-            idx=(int(cols[7])+int(cols[9])//2)//200
+            idx=(int(cols[7])+int(cols[9])//2)//pitch
             if idx in rows:
                 rows[idx].append((int(cols[6]),cols[11]))
         for i,seat in enumerate(SEATS):

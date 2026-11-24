@@ -20,6 +20,8 @@ class CueTests(unittest.TestCase):
         self.assertTrue(label_candidate("ALL-IN"))
         self.assertTrue(label_candidate("All in"))
         self.assertFalse(label_candidate("2500"))
+        self.assertFalse(label_candidate("CALL IN"))
+        self.assertFalse(label_candidate("NOT ALL IN"))
     def test_darkness_and_appearance_never_imply_fold_or_departure(self):
         previous=Image.new("RGB",(1536,709),(150,150,150))
         image=Image.new("RGB",(1536,709),(70,70,70))

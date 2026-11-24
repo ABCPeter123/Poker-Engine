@@ -20,10 +20,31 @@ const factory = function tableEngine(){
   const next=order(s,after).find(i=>s.pending.includes(i));
   if(next===undefined)finishStreet(s);else{s.actor=next;s.phase="betting";}
  }
+ function draft({stacks=Array(6).fill(1000),hero=0,button=0,sb=5,bb=10,hand=1,hole=[]}={}){
+  if(!Array.isArray(stacks)||stacks.length<2||stacks.length>9||stacks.some(n=>!int(n))||!int(hero)||hero>=stacks.length||!int(button)||button>=stacks.length||!int(sb)||!int(bb)||sb<=0||bb<sb)throw Error("Enter valid seats, stacks and blinds");
+  const s={players:stacks.map((stack,i)=>({seat:i,stack,start:stack,street:0,total:0,folded:stack===0,sittingOut:stack===0,actedAt:null,last:""})),hero,button,sb,bb,hand,street:0,bet:0,minIncrement:bb,actor:null,phase:"setup",pending:[],hole:[],board:[],log:[],payouts:null};
+  return setCards(s,"hole",hole);
+ }
+ function blindSeats(s){
+  const active=s.players.filter(p=>p.stack>0||(!p.sittingOut&&s.phase!=="setup")).map(p=>p.seat);
+  if(active.length<2||!active.includes(s.button))return {small:null,big:null};
+  const next=i=>order(s,i).find(j=>active.includes(j));
+  const small=active.length===2?s.button:next(s.button);
+  return {small,big:next(small)};
+ }
+ function prepareNext(s){const stacks=s.players.map(p=>p.stack);const button=order(s,s.button).find(i=>stacks[i]>0)??s.button;return draft({stacks,hero:s.hero,button,sb:s.sb,bb:s.bb,hand:s.hand+1});}
+ function editDraft(prev,patch){if(prev.phase!=="setup")throw Error("Edit seats and blinds before starting the hand");const old=prev.players.map(p=>p.stack),stacks=patch.stacks??old;const hero=patch.hero??Math.min(prev.hero,stacks.length-1),button=patch.button??Math.min(prev.button,stacks.length-1);return draft({stacks,hero,button,sb:patch.sb??prev.sb,bb:patch.bb??prev.bb,hand:prev.hand,hole:hero===prev.hero?prev.hole:[]});}
+ function correctStack(prev,i,stack){if(prev.phase==="setup"){const stacks=prev.players.map(p=>p.stack);if(!int(i)||i>=stacks.length||!int(stack))throw Error("Invalid stack");stacks[i]=stack;return editDraft(prev,{stacks});}
+  if(!["betting","board","result"].includes(prev.phase)||!int(i)||i>=prev.players.length||!int(stack))throw Error("Invalid stack correction");
+  const s=copy(prev),p=s.players[i];if(p.sittingOut||(!p.folded&&((p.stack===0)!==(stack===0))))throw Error("Use undo to correct an all-in or sitting-out status");
+  const delta=stack-p.stack;if(!delta)return s;p.stack=stack;p.start+=delta;log(s,i,"Stack correction",delta);return s;
+ }
+ function launch(s){if(s.phase!=="setup")throw Error("Hand already started");const next=start({stacks:s.players.map(p=>p.stack),hero:s.hero,button:s.button,sb:s.sb,bb:s.bb,hand:s.hand});return setCards(next,"hole",s.hole);}
  function start({stacks,hero=0,button=0,sb=5,bb=10,hand=1}){
-  if(!Array.isArray(stacks)||stacks.length<2||stacks.length>9||stacks.some(n=>!int(n)||n===0)||!int(hero)||hero>=stacks.length||!int(button)||button>=stacks.length||!int(sb)||!int(bb)||sb<=0||bb<sb)throw Error("Enter 2–9 positive stacks and valid blinds / seats");
-  const s={players:stacks.map((stack,i)=>({seat:i,stack,start:stack,street:0,total:0,folded:false,actedAt:null,last:""})),hero,button,sb,bb,hand,street:0,bet:bb,minIncrement:bb,actor:null,phase:"betting",pending:[],hole:[],board:[],log:[],payouts:null};
-  const small=stacks.length===2?button:(button+1)%stacks.length,big=(small+1)%stacks.length;
+  const s=draft({stacks,hero,button,sb,bb,hand});const {small,big}=blindSeats(s);
+  if(small===null)throw Error("At least two funded seats are required and dealer must be funded");
+  if(s.players[hero].stack===0)throw Error("Your seat needs chips before starting");
+  s.phase="betting";s.bet=bb;
   for(const [i,n,label] of [[small,sb,"SB"],[big,bb,"BB"]]){const p=s.players[i],v=Math.min(p.stack,n);pay(p,v);p.last=label+" "+v;log(s,i,label,v);}
   s.pending=s.players.map((p,i)=>can(p)?i:-1).filter(i=>i>=0);advance(s,big);return s;
  }
@@ -51,6 +72,6 @@ const factory = function tableEngine(){
  function settle(prev,winners){const s=copy(prev);if(s.phase!=="result")throw Error("Hand has not ended");const layers=pots(s),payouts=s.players.map(()=>0);if(!Array.isArray(winners)||winners.length!==layers.length)throw Error("Select winners for every pot");
   layers.forEach((layer,j)=>{const selected=layer.eligible.length===1?layer.eligible:winners[j];if(!Array.isArray(selected)||!selected.length||new Set(selected).size!==selected.length||selected.some(i=>!layer.eligible.includes(i)))throw Error("Select eligible winners for each pot");const share=Math.floor(layer.amount/selected.length);selected.forEach(i=>payouts[i]+=share);let odd=layer.amount%selected.length;for(const i of order(s,s.button))if(odd&&selected.includes(i)){payouts[i]++;odd--;}});
   s.players.forEach((p,i)=>p.stack+=payouts[i]);s.payouts=payouts;s.phase="settled";return s;}
- return {STREETS,start,legal,act,setCards,nextStreet,pot,pots,eligibleAfterCall,settle};
+ return {STREETS,draft,blindSeats,editDraft,correctStack,prepareNext,launch,start,legal,act,setCards,nextStreet,pot,pots,eligibleAfterCall,settle};
 };
-export const {STREETS,start,legal,act,setCards,nextStreet,pot,pots,eligibleAfterCall,settle}=factory();
+export const {STREETS,draft,blindSeats,editDraft,correctStack,prepareNext,launch,start,legal,act,setCards,nextStreet,pot,pots,eligibleAfterCall,settle}=factory();

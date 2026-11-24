@@ -100,3 +100,7 @@ Stack, pot and displayed-bet OCR now searches broad seat-relative regions rather
 ### Highlighted cards and participation evidence
 
 All 13 rank labels now have corner-glyph samples. New red K, black A, red/black 2, black 5, black Q, highlighted red J and highlighted black J samples come from the supplied saved screenshots. The character mask separates red ink from warm gold outlines and black ink from colored artwork; alternate corner regions handle the observed few-pixel shifts. The five-seat review reports `No participation detected` when there is no visible card, current-turn cue or explicit action evidence. This is an observation, not proof of folding or an empty seat; it does not automatically change the opponent count. Recognition accuracy on unseen frames remains unverified.
+
+### Temporary card memory
+
+In the permitted-practice view, each slot must be read directly twice before it can be held. A single missing or unreadable slot can retain its last value for at most five seconds and three missed samples if another card in that group still matches. Cached cards have an asterisk. A complete board disappearance, contradictory card, duplicate reading, source change or capture error invalidates prior memory; both missing hole cards are cleared immediately. Cached values are display-only and cannot seed or update the equity calculation. No new cards are invented. Saved-image review remains independent.

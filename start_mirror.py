@@ -58,6 +58,9 @@ def native_window(pid, geometry, max_width):
     u.IsZoomed.argtypes = [wintypes.HWND]
     u.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
     u.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+    u.GetWindowTextLengthW.argtypes = [wintypes.HWND]
+    u.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    u.SetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPCWSTR]
     u.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT]
     u.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
     u.MonitorFromWindow.restype = wintypes.HANDLE
@@ -79,6 +82,13 @@ def native_window(pid, geometry, max_width):
     if not candidates:
         return False
     _, hwnd = max(candidates, key=lambda x: x[0])
+    title = ctypes.create_unicode_buffer(u.GetWindowTextLengthW(hwnd) + 1)
+    u.GetWindowTextW(hwnd, title, len(title))
+    if "renderer" in title.value.lower() or "uxplay" in title.value.lower() or "airplay mirror" in title.value.lower():
+        if title.value != "AirPlay Mirror (UxPlay)":
+            u.SetWindowTextW(hwnd, "AirPlay Mirror (UxPlay)")
+    if geometry is None:
+        return True
     outer, client = wintypes.RECT(), wintypes.RECT()
     if not u.GetWindowRect(hwnd, ctypes.byref(outer)) or not u.GetClientRect(hwnd, ctypes.byref(client)):
         return False
@@ -169,6 +179,7 @@ def main():
     fitted = None
     last_sink = 0.0
     last_fit_attempt = 0.0
+    last_title_check = 0.0
     try:
         while process.poll() is None:
             try:
@@ -189,6 +200,9 @@ def main():
             except queue.Empty:
                 pass
             now = time.monotonic()
+            if now - last_title_check >= 2:
+                last_title_check = now
+                native_window(process.pid, None, args.max_width)
             if geometry and geometry != fitted and now < deadline and now - last_fit_attempt >= .35:
                 last_fit_attempt = now
                 if native_window(process.pid, geometry, args.max_width):

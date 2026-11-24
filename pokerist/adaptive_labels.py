@@ -30,7 +30,7 @@ def text_lines(words):
 def select_amount(words, parse, threshold=75):
     lines=text_lines(words)
     raw=" / ".join(" ".join(w["text"] for w in line) for line in lines)
-    result={"raw":raw,"candidate":None,"ocr_confidence":round(min((w["confidence"] for w in words),default=-1),1),"text_bounds":None}
+    result={"raw":raw,"candidate":None,"ocr_confidence":round(min((w["confidence"] if np.isfinite(w["confidence"]) else -1 for w in words),default=-1),1),"text_bounds":None}
     candidates=[]
     plausible=[]
     for line in lines:

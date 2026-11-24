@@ -146,6 +146,11 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false}={}){
  }
  return state;
 }
+export function interruptBetMemory(state){
+ const s=state||createBetMemory();
+ return {...s,boundary:null,status:'Capture interrupted; prior bets retained',
+  seats:Object.fromEntries(BET_SEATS.map(id=>[id,{...s.seats[id],pending:null,warning:s.seats[id].observed?'Capture interrupted':null}]))};
+}
 export function correctTrackedBet(state,seat,value,now){
  if(!BET_SEATS.includes(seat)||!Number.isSafeInteger(value)||value<0||!Number.isFinite(now))throw Error('Enter a nonnegative whole chip amount.');
  const s=state||createBetMemory();

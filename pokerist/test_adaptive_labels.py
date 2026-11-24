@@ -23,7 +23,9 @@ class AdaptiveLabelTests(unittest.TestCase):
     def test_competing_low_confidence_line_blocks_high_confidence(self):
         self.assertIsNone(select_amount([w("500",10),w("5000",10,40,confidence=20)],number_text)["candidate"])
     def test_nonfinite_confidence_is_rejected(self):
-        self.assertIsNone(select_amount([w("500",10,confidence=float("nan"))],number_text)["candidate"])
+        r=select_amount([w("500",10,confidence=float("nan"))],number_text)
+        self.assertIsNone(r["candidate"])
+        self.assertEqual(r["ocr_confidence"],-1)
     def test_no_text_unknown(self):
         self.assertIsNone(select_amount([],number_text)["candidate"])
     def test_rounded_amount(self):

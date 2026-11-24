@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createBetMemory,updateBetMemory,correctTrackedBet,BET_SEATS,trackedBetLabel} from '../live-practice.js';
+import {createBetMemory,updateBetMemory,correctTrackedBet,BET_SEATS,trackedBetLabel,interruptBetMemory} from '../live-practice.js';
 const c=candidate=>({candidate});
 const r=(value,street='Preflop',options={})=>({street_candidate:street,quality:{},hole_slots:[c('As'),c('Kd')],board_slots:['2c','3h','4d','5s','6h'].map((x,i)=>i<({Preflop:0,Flop:3,Turn:4,River:5})[street]?c(x):null),table_observation:{dealer:{candidate:'hero'},seats:{hero:{bet:value===null?null:{value,approximate:!!options.approximate,ocr_confidence:options.confidence??95},stack:options.stack===undefined?null:{value:options.stack,ocr_confidence:95}}}}});
 const step=(s,v,t,street='Preflop',opts={})=>updateBetMemory(s,r(v,street,opts),{capturedAt:t,now:t+100,ocr:opts.ocr??true});
@@ -16,3 +16,5 @@ test('low confidence and stale sample cannot seed increase',()=>{let s=seed();s=
 test('approximate lower amount remains disputed',()=>{let s=seed();for(const t of [400,500,600,700,800])s=step(s,20,t,'Preflop',{approximate:true});assert.equal(s.seats.hero.value,50);});
 test('stack conservation supports large increase with two repeated samples',()=>{let s=step(step(step(createBetMemory(),50,100,'Preflop',{stack:19950}),50,200,'Preflop',{stack:19950}),50,300,'Preflop',{stack:19950});s=step(s,5000,400,'Preflop',{stack:15000});s=step(s,5000,500,'Preflop',{stack:15000});assert.equal(s.seats.hero.value,5000);});
 test('new preflop hole cards reset after two observations',()=>{let s=seed();for(const t of [400,500])s=updateBetMemory(s,{...r(null),hole_slots:[c('Qs'),c('Jd')]},{capturedAt:t,now:t+100,ocr:true});assert.equal(s.seats.hero.value,0);assert.equal(s.hole,'Jd Qs');});
+
+test('capture interruption drops provisional votes but retains accepted bets',()=>{let s=seed();s=step(s,50000,400);s=step(s,50000,500);s=interruptBetMemory(s);assert.equal(s.seats.hero.value,50);assert.equal(s.seats.hero.pending,null);s=step(s,50000,600);assert.equal(s.seats.hero.value,50);});

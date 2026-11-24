@@ -20,6 +20,7 @@ import numpy as np
 from seat_cues import seat_evidence
 from frame_crop import game_bounds
 from table_observation import observe_table
+from adaptive_labels import scan_regions, select_amount
 
 WIDTH, HEIGHT = 1536, 709
 # Coordinates are normalized to the supplied landscape layout.
@@ -72,12 +73,12 @@ HOLE_WIDE = [
     ((853,465,883,505),(847,506,874,535),(849,469,890,548))
 ]
 NUMBERS = {
-    "pot":(745,204,790,229),
-    "hero":(700,588,780,613),
-    "left":(325,458,405,483),
-    "upper_left":(539,163,602,184),
-    "upper_right":(956,162,1025,185),
-    "right":(1167,458,1248,483)
+    "pot":(685,198,850,234),
+    "hero":(620,584,830,618),
+    "left":(245,454,455,487),
+    "upper_left":(450,158,660,190),
+    "upper_right":(868,158,1078,190),
+    "right":(1080,454,1300,487)
 }
 
 def decode(value):
@@ -152,44 +153,10 @@ def number_text(text):
             if unit else int(value),"approximate":bool(unit),"verified":False}
 
 def read_numbers(image, executable):
-    if not executable:
-        return {}, "Tesseract not installed; number OCR unavailable"
-    # One OCR invocation per imported screenshot. Fixed rows map output to fields.
-    canvas=Image.new("L",(500,100*len(NUMBERS)),255)
-    for i,box in enumerate(NUMBERS.values()):
-        a=np.asarray(image.crop(box))
-        mask=(a.min(2)>112)&(np.ptp(a.astype(np.int16),axis=2)<55)
-        crop=Image.fromarray(np.uint8(255-255*mask))
-        crop=crop.resize((crop.width*3,crop.height*3))
-        canvas.paste(crop,(20,i*100+10))
-    try:
-        with tempfile.TemporaryDirectory() as tmp:
-            filename=Path(tmp)/"numbers.png"
-            canvas.save(filename)
-            p=subprocess.run([executable,str(filename),"stdout","--psm","6","tsv"],
-                             capture_output=True,text=True,timeout=20,check=True)
-        rows={i:[] for i in range(len(NUMBERS))}
-        for line in p.stdout.splitlines()[1:]:
-            cols=line.split("\t",11)
-            if len(cols)!=12 or cols[0]!="5" or not cols[11].strip():
-                continue
-            idx=(int(cols[7])+int(cols[9])//2)//100
-            if idx in rows:
-                rows[idx].append((int(cols[6]),cols[11],float(cols[10])))
-        result={}
-        for i,k in enumerate(NUMBERS):
-            words=sorted(rows[i])
-            text=" ".join(w[1] for w in words)
-            candidate=number_text(text)
-            confidence=round(min((w[2] for w in words),default=-1),1)
-            if candidate and confidence>=75:
-                candidate["ocr_confidence"]=confidence
-            else:
-                candidate=None
-            result[k]={"raw":text,"candidate":candidate,"ocr_confidence":confidence}
-        return result,None
-    except (OSError,subprocess.SubprocessError,ValueError) as e:
-        return {},f"Number OCR failed: {e}"
+    rows,error=scan_regions(image,executable,[(key,box,"amount") for key,box in NUMBERS.items()])
+    if error:
+        return {},error
+    return {key:select_amount(rows.get(key,[]),number_text) for key in NUMBERS},None
 
 def normalize(original):
     original=original.convert("RGB")

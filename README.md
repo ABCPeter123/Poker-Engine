@@ -92,3 +92,7 @@ Card-face detection now requires sustained bright neutral card stock rather than
 ### Character and table diagnostics
 
 The character matcher now includes screenshot-derived 8, 7, 6, 10 and additional 4/9 and suit masks; 10 is represented as T internally. The wide hole-card crop captures both digits. The 2, 5, K and A ranks still need genuine glyph samples. The authorized-practice panel now displays each seat's candidate stack, visible bet, status text, card-back evidence, active band and dealer marker, with raw OCR and age of the last scan. Missing readings remain unknown. Dealer matching is calibrated against the supplied upper-right and right marker examples; other locations are estimated regions. Bet and status regions are experimental. OCR needs Tesseract installed. This is not a reconstructed betting ledger.
+
+### Moving chip labels
+
+Stack, pot and displayed-bet OCR now searches broad seat-relative regions rather than assuming digits start at fixed x coordinates. Sparse OCR returns word positions, grouped by text baseline, and the recognizer accepts only one plausible high-confidence amount line. It handles space-separated thousands and abbreviated amounts. Raw OCR and detected text bounds are retained; competing lines or malformed fragments remain unknown. This does not guarantee that a chip icon will never be read as a digit, or support seats outside the calibrated five-seat layout. Use saved-hand review or explicitly permitted practice only.

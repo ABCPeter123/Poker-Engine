@@ -50,9 +50,9 @@ HOLE = [
 ]
 NUMBERS = {
     "pot":(745,204,790,229),
-    "hero":(698,590,766,610),
+    "hero":(704,590,766,610),
     "left":(325,460,392,480),
-    "upper_left":(558,163,578,183),
+    "upper_left":(559,163,578,183),
     "upper_right":(960,163,1017,183),
     "right":(1169,460,1237,480)
 }
@@ -137,9 +137,12 @@ def read_numbers(image, executable):
             words=sorted(rows[i])
             text=" ".join(w[1] for w in words)
             candidate=number_text(text)
-            if candidate:
-                candidate["ocr_confidence"]=round(min(w[2] for w in words),1)
-            result[k]={"raw":text,"candidate":candidate}
+            confidence=round(min((w[2] for w in words),default=-1),1)
+            if candidate and confidence>=75:
+                candidate["ocr_confidence"]=confidence
+            else:
+                candidate=None
+            result[k]={"raw":text,"candidate":candidate,"ocr_confidence":confidence}
         return result,None
     except (OSError,subprocess.SubprocessError,ValueError) as e:
         return {},f"Number OCR failed: {e}"

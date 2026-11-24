@@ -1,6 +1,8 @@
+import {validateReview} from './review-validation.js';
 const $=id=>document.getElementById(id),video=$('video'),frame=$('frame'),ink=$('ink'),ctx=ink.getContext('2d');
 let stream=null,url=null,source='none',frozen=false,drawing=false,point=null,revision=0,reviewPending=false,frameVersion=0,lastReview=null;
-function resetReview(){frameVersion++;lastReview=null;$('export-review').disabled=true;$('review-overlay').hidden=true;$('review-result').hidden=true;}
+let verifiedReview=null;
+function resetReview(){frameVersion++;lastReview=null;verifiedReview=null;$('verify-panel').hidden=true;$('export-verified').disabled=true;$('export-review').disabled=true;$('review-overlay').hidden=true;$('review-result').hidden=true;}
 function status(msg){$('status').textContent=msg;}
 function controls(){$('recording-controls').hidden=source!=='recording';$('timeline').disabled=source!=='recording'||!Number.isFinite(video.duration);$('recognize').disabled=!frozen||!['image','recording'].includes(source)||reviewPending;$('stop').disabled=source==='none';$('freeze').disabled=frozen||source==='none'||!video.videoWidth;$('resume').disabled=!frozen||source==='image';$('clear').disabled=!frozen;video.hidden=source==='none'||frozen;frame.hidden=!frozen;ink.hidden=!frozen;$('empty').hidden=source!=='none';}
 function stop(){revision++;resetReview();if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.pause();video.srcObject=null;video.removeAttribute('src');video.load();if(url)URL.revokeObjectURL(url);url=null;source='none';frozen=false;drawing=false;point=null;controls();}
@@ -39,10 +41,22 @@ $('recognize').onclick=async()=>{
    const line=document.createElement('div');line.textContent=value;overlay.append(line);
   }
   if(result.quality?.duplicate_card_candidates||result.quality?.noncontiguous_board){const line=document.createElement('div');line.textContent='Conflicting candidates: verify cards';overlay.append(line);}
-  lastReview={...result,recording_time_seconds:source==='recording'?video.currentTime:null};$('export-review').disabled=false;overlay.hidden=false;$('review-result').textContent=JSON.stringify(lastReview,null,2);$('review-result').hidden=false;
+  lastReview={...result,recording_time_seconds:source==='recording'?video.currentTime:null};populateVerification(lastReview);$('export-review').disabled=false;overlay.hidden=false;$('review-result').textContent=JSON.stringify(lastReview,null,2);$('review-result').hidden=false;
   status('Candidate recognition complete. Confirm all readings manually.');
  }catch(e){if(version===frameVersion)status(e.message);}
  finally{reviewPending=false;controls();}
 };
 
 $('export-review').onclick=()=>{if(!lastReview)return;const url=URL.createObjectURL(new Blob([JSON.stringify(lastReview,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='pokerist-frame-review.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+
+function populateVerification(result){
+ const area=$('verify-fields');area.replaceChildren();verifiedReview=null;$('export-verified').disabled=true;
+ const slotText=slots=>slots.every(c=>!c||c.candidate)?slots.filter(Boolean).map(c=>c.candidate).join(' '):'';
+ const defaults={hole:slotText(result.hole_slots),board:slotText(result.board_slots),street:result.street_candidate||''};
+ for(const key of ['pot','hero','left','upper_left','upper_right','right'])defaults[key]=result.number_candidates?.[key]?.candidate?.display||'';
+ const labels={hole:'Your cards',board:'Community cards',street:'Street (Preflop if no board)',pot:'Pot',hero:'Your stack',left:'Left stack',upper_left:'Upper-left stack',upper_right:'Upper-right stack',right:'Right stack'};
+ for(const [key,label] of Object.entries(labels)){const wrap=document.createElement('label'),input=document.createElement('input');wrap.textContent=label;input.dataset.field=key;input.value=defaults[key]||'';input.autocomplete='off';input.addEventListener('input',()=>{verifiedReview=null;$('export-verified').disabled=true;$('verify-status').textContent='Unconfirmed edits';});wrap.append(input);area.append(wrap);}
+ $('verify-status').textContent='Check all filled fields before confirming.';$('verify-panel').hidden=false;
+}
+$('confirm-review').onclick=()=>{try{const values=Object.fromEntries([...$('verify-fields').querySelectorAll('input')].map(e=>[e.dataset.field,e.value]));verifiedReview={source:'saved frame',recording_time_seconds:lastReview?.recording_time_seconds??null,corrected:validateReview(values),raw:lastReview};$('verify-status').textContent='Corrected readings confirmed. Blank fields remain unknown.';$('export-verified').disabled=false;}catch(e){verifiedReview=null;$('export-verified').disabled=true;$('verify-status').textContent=e.message;}};
+$('export-verified').onclick=()=>{if(!verifiedReview)return;const url=URL.createObjectURL(new Blob([JSON.stringify(verifiedReview,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='pokerist-verified-review.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};

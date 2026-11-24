@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {validateReview} from '../review-validation.js';
+test('corrected cards and approximate displayed pot',()=>{const r=validateReview({hole:'9s 3d',board:'Jd 4c 9h Qd',pot:'2.2K',hero:'19 450'});assert.deepEqual(r.hole,['9s','3d']);assert.equal(r.street,'Turn');assert.equal(r.pot.value,2200);assert.equal(r.pot.approximate,true);assert.equal(r.stacks.hero.value,19450);assert.equal(r.stacks.left,null);});
+test('duplicates and incomplete cards rejected',()=>{assert.throws(()=>validateReview({hole:'As As'}));assert.throws(()=>validateReview({board:'As Kd'}));assert.throws(()=>validateReview({pot:'19.4'}));});
+test('unknown fields stay unknown',()=>{const r=validateReview({});assert.equal(r.hole,null);assert.equal(r.board,null);assert.equal(r.pot,null);assert.deepEqual(validateReview({street:'Preflop'}).board,[]);});

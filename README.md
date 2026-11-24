@@ -54,3 +54,5 @@ Open /analysis.html?practice=1 to see the local generated-deal HUD. It overlays 
 ### Saved recording navigation
 
 Use the timeline and ±1-second controls to seek a saved recording and freeze the selected frame. Analyze saved frame shows candidates and flags duplicate cards or noncontiguous community-card slots. Export review JSON includes the recording timestamp. The rank/suit recognizer accepts multiple glyph templates for a single symbol without treating those variants as competing labels. Calibration still covers only the supplied five ranks and layout; no live recognition or recommendations are connected to the shared-window preview.
+
+Saved-frame verification: after recognition, correct the card and chip fields against the frozen image, then confirm and export a verified JSON record. Unknown fields stay null; rounded amounts stay approximate. OCR results with confidence below 75 are withheld from prefilled values. No imported media feeds strategy decisions.

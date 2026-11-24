@@ -11,11 +11,11 @@ from adaptive_labels import scan_regions, select_amount, text_lines
 SEAT_ORDER=("hero","left","upper_left","upper_right","right")
 # Normalized 1536x709 coordinates. Other seats/layouts are not calibrated.
 REGIONS={
- "hero":{"bet":(725,410,905,467),"status":(655,566,795,588),"back":None},
- "left":{"bet":(420,274,590,330),"status":(285,437,410,460),"back":(411,326,466,376)},
- "upper_left":{"bet":(475,184,645,238),"status":(490,142,625,165),"back":(620,143,675,191)},
- "upper_right":{"bet":(805,184,980,238),"status":(915,142,1048,165),"back":(858,143,912,191)},
- "right":{"bet":(960,274,1150,330),"status":(1128,437,1260,460),"back":(1070,326,1126,376)}
+ "hero":{"bet":(725,420,905,461),"status":(655,566,795,588),"back":None},
+ "left":{"bet":(420,285,590,320),"status":(285,437,410,460),"back":(411,326,466,376)},
+ "upper_left":{"bet":(475,193,645,228),"status":(490,142,625,165),"back":(620,143,675,191)},
+ "upper_right":{"bet":(890,193,1060,228),"status":(915,142,1048,165),"back":(858,143,912,191)},
+ "right":{"bet":(960,285,1150,320),"status":(1128,437,1260,460),"back":(1070,326,1126,376)}
 }
 ANCHORS={"upper_left":(350,95),"upper_right":(418,95),"left":(241,175),"right":(527,175),"hero":(405,205)}
 D=np.array([142,144,145,146,151,157,156,148,141,139,140,140,139,144,142,144,168,197,207,207,202,180,152,138,137,138,140,148,182,208,212,212,215,219,218,199,164,139,139,145,183,215,210,136,105,104,105,164,216,199,160,138,155,207,226,194,100,129,165,120,112,182,225,184,138,160,210,227,178,104,183,243,195,112,150,234,194,142,160,210,226,164,104,187,245,204,117,148,232,193,144,153,206,220,148,93,149,183,139,108,167,225,188,141,143,190,211,154,115,126,133,120,143,198,208,166,138,134,149,188,189,182,183,186,191,208,209,168,136,140,135,118,141,175,190,197,197,193,185,161,129,128,141,139,132,117,114,124,132,133,129,117,112,124,141,142,140,141,139,126,107,98,98,103,115,131,140,141,141],dtype=np.int16).reshape(13,13)
@@ -83,6 +83,7 @@ def observe_table(image,exe,number_text,numbers,cues,hole):
         visible=any(c is not None for c in hole) if seat=="hero" else back
         seats[seat]={"stack":numbers.get(seat,{}).get("candidate"),
             "stack_raw":numbers.get(seat,{}).get("raw",""),
+            "stack_confidence":numbers.get(seat,{}).get("ocr_confidence"),
             "bet":value,"bet_raw":bet.get("raw",""),"bet_confidence":bet.get("ocr_confidence"),
             "bet_text_bounds":bet.get("text_bounds"),
             "stack_text_bounds":numbers.get(seat,{}).get("text_bounds"),

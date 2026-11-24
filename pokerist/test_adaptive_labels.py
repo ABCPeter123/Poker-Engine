@@ -1,5 +1,6 @@
 import unittest
-from adaptive_labels import select_amount
+from adaptive_labels import select_amount, numeric_mask
+import numpy as np
 from review import number_text, NUMBERS
 
 def w(text,x,y=10,confidence=95):
@@ -23,6 +24,27 @@ class AdaptiveLabelTests(unittest.TestCase):
         self.assertIsNone(select_amount([],number_text)["candidate"])
     def test_rounded_amount(self):
         self.assertEqual(select_amount([w("8.6K",10)],number_text)["candidate"]["value"],8600)
+    def test_stack_icon_preprocessing(self):
+        a=np.full((22,60,3),60,dtype=np.uint8)
+        a[3:17,3:16]=235
+        a[4:17,19:27]=235
+        a[4:17,30:38]=235
+        m=numeric_mask(a,"stack")
+        self.assertFalse(m[:,:16].any())
+        self.assertTrue(m[:,19:27].any())
+    def test_colored_chip_preprocessing(self):
+        a=np.full((35,80,3),60,dtype=np.uint8)
+        a[6:29,6:28]=[200,30,20]
+        a[12:18,10:14]=235
+        a[11:24,39:47]=235
+        m=numeric_mask(a,"bet")
+        self.assertFalse(m[:,:28].any())
+        self.assertTrue(m[:,39:47].any())
+    def test_low_confidence_keeps_raw_not_amount(self):
+        result=select_amount([w("22200",10,confidence=0)],number_text)
+        self.assertEqual(result["raw"],"22200")
+        self.assertEqual(result["ocr_confidence"],0)
+        self.assertIsNone(result["candidate"])
     def test_search_regions_wider_than_old_crops(self):
         self.assertTrue(all(box[2]-box[0]>=160 for box in NUMBERS.values()))
 

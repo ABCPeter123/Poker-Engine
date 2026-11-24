@@ -87,11 +87,11 @@ HOLE_HIGHLIGHT = [
 ]
 NUMBERS = {
     "pot":(685,198,850,234),
-    "hero":(620,584,830,618),
-    "left":(245,454,455,487),
-    "upper_left":(450,158,660,190),
-    "upper_right":(868,158,1078,190),
-    "right":(1080,454,1300,487)
+    "hero":(640,588,820,616),
+    "left":(265,462,435,484),
+    "upper_left":(480,165,650,184),
+    "upper_right":(890,165,1060,184),
+    "right":(1110,462,1280,484)
 }
 
 def decode(value):
@@ -173,10 +173,8 @@ def number_text(text):
             if unit else int(value),"approximate":bool(unit),"verified":False}
 
 def read_numbers(image, executable):
-    rows,error=scan_regions(image,executable,[(key,box,"amount") for key,box in NUMBERS.items()])
-    if error:
-        return {},error
-    return {key:select_amount(rows.get(key,[]),number_text) for key in NUMBERS},None
+    rows,error=scan_regions(image,executable,[(key,box,"bet" if key=="pot" else "stack") for key,box in NUMBERS.items()])
+    return {key:select_amount(rows.get(key,[]),number_text) for key in NUMBERS},error
 
 def normalize(original):
     original=original.convert("RGB")

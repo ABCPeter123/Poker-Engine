@@ -58,11 +58,27 @@ def select_amount(words, parse, threshold=75):
         result.update(candidate=candidate,ocr_confidence=confidence,text_bounds=bounds)
     return result
 
+def stack_line_mask(a):
+    # Isolate the dense amount stripe before inspecting the leading emblem.
+    # Preserve full horizontal width for large amounts.
+    a=np.asarray(a,dtype=np.int16)
+    mask=(a.min(2)>140)&(np.ptp(a,axis=2)<55)
+    h,w=mask.shape
+    density=mask[:,w//5:w-w//5].sum(1)
+    bands=np.flatnonzero(np.diff(np.r_[False,density>=3,False])).reshape(-1,2)
+    if not len(bands):
+        return mask
+    y0,y1=max(bands,key=lambda t:(density[t[0]:t[1]].sum(),t[1]-t[0]))
+    mask[:y0]=False
+    mask[y1:]=False
+    return mask
+
 def numeric_mask(a,kind):
     """Separate white digit ink from chip artwork. All readings stay candidates."""
     a=np.asarray(a,dtype=np.int16)
     mask=(a.min(2)>112)&(np.ptp(a,axis=2)<45)
     if kind=="stack":
+        mask=stack_line_mask(a)
         # Stack labels have a leading chip emblem. Remove a separated,
         # emblem-sized first run only within the expected text line.
         runs=np.flatnonzero(np.diff(np.r_[False,mask.sum(0)>=2,False])).reshape(-1,2)
@@ -80,7 +96,7 @@ def numeric_mask(a,kind):
             mask[:,max(0,int(cols[0])-6):min(mask.shape[1],int(cols[-1])+7)]=False
     return mask
 
-def scan_regions(image, executable, regions):
+def scan_regions(image, executable, regions, *, unrestricted=False):
     """One OCR pass across variable-width search regions; retain source boxes."""
     if not executable:
         return {}, "Tesseract unavailable"
@@ -89,8 +105,8 @@ def scan_regions(image, executable, regions):
     numeric=[entry for entry in regions if entry[2]!="status"]
     status=[entry for entry in regions if entry[2]=="status"]
     if numeric and status:
-        a,ea=scan_regions(image,executable,numeric)
-        b,eb=scan_regions(image,executable,status)
+        a,ea=scan_regions(image,executable,numeric,unrestricted=unrestricted)
+        b,eb=scan_regions(image,executable,status,unrestricted=unrestricted)
         return {**a,**b}, "; ".join(x for x in (ea,eb) if x) or None
     if not regions:
         return {},None
@@ -108,8 +124,8 @@ def scan_regions(image, executable, regions):
     try:
         with tempfile.TemporaryDirectory() as temp:
             p=Path(temp)/"labels.png";canvas.save(p)
-            command=[executable,str(p),"stdout","--psm","11"]
-            if numeric:
+            command=[executable,str(p),"stdout","--psm","6" if unrestricted else "11"]
+            if numeric and not unrestricted:
                 command+=["-c","tessedit_char_whitelist=0123456789.KM"]
             proc=subprocess.run(command+["tsv"],capture_output=True,text=True,timeout=10,check=True)
         rows={key:[] for key,_,_ in regions}
@@ -128,3 +144,22 @@ def scan_regions(image, executable, regions):
         return rows,None
     except (OSError,ValueError,subprocess.SubprocessError) as exc:
         return {},str(exc)
+
+def reconcile_amount(primary, alternate, parse):
+    """An alternate scan can rescue rejected confidence, not disagreements."""
+    if primary.get("candidate") is not None:
+        return primary
+    result=dict(primary)
+    result["alternate_raw"]=alternate.get("raw","")
+    result["alternate_confidence"]=alternate.get("ocr_confidence")
+    # Compare the complete numeric string after removing spaces only.
+    # Do not repair a letter, chip icon, or missing leading digit by guessing.
+    a=re.sub(r"\s+","",primary.get("raw","").upper())
+    b=re.sub(r"\s+","",alternate.get("raw","").upper())
+    if a!=b or not re.fullmatch(r"\d+(?:\.\d+)?[KM]?",a):
+        return result
+    if alternate.get("candidate") is not None:
+        result["candidate"]=dict(alternate["candidate"],confirmed_by_two_passes=True)
+        result["text_bounds"]=alternate.get("text_bounds")
+        result["ocr_confidence"]=alternate.get("ocr_confidence")
+    return result

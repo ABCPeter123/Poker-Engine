@@ -20,7 +20,7 @@ import numpy as np
 from seat_cues import seat_evidence
 from frame_crop import game_bounds
 from table_observation import observe_table
-from adaptive_labels import scan_regions, select_amount
+from adaptive_labels import scan_regions, select_amount, reconcile_amount
 from ocr_runtime import resolve_tesseract
 from card_geometry import gold_mask, face_bounds, corner_regions
 
@@ -57,6 +57,9 @@ SUITS.update({"c_sample":"0f0,1f8,1f8,1f8,1f8,1f8,3fc,7fe,fff,fff,fff,fff,7fe,06
 # Extracted corner glyphs from the four supplied saved screenshots.
 RANKS.update({"K_corner0":"606,787,7cf,1ef,1ff,0ff,0ff,0ff,1ff,1ff,1cf,3cf,78f,78f,f0f,e07","K_corner1":"707,787,3c7,1e7,0f7,0ff,0ff,0ff,0ff,1ff,1c7,3c7,787,787,f07,f07","K_cornerblack":"e07,707,386,1c6,0c6,076,07f,0ff,0fe,1c6,1c6,386,707,707,f07,e07","A_corner0":"060,0f0,0f0,0f0,1f8,198,19c,38c,38c,30c,70e,7fe,7fe,606,e07,c03","A_corner1":"060,0f0,0f0,0f0,1f8,1d8,1dc,18c,38c,306,70e,7fe,7fe,606,e07,c03","A_corner2":"070,0f0,0f0,0f0,0f8,1d8,1dc,19c,38c,30e,70e,7fe,7fe,706,e07,e07","A_corner3":"070,070,070,0f8,1d8,1c8,1cc,18c,38e,38e,38e,7fe,7ff,e07,e07,e03","2_cornerred":"3fc,7fe,f9f,f8f,f8f,f86,780,7c0,3e0,1f0,0f8,07c,03e,07f,fff,fff","2_cornerblack":"1fc,7fc,f0e,e06,e06,600,700,380,1c0,0e0,070,078,01c,01e,01f,fff","5_corner":"7ff,01f,00f,00f,00f,7ff,fff,f0f,e00,e00,e00,e00,e07,f0f,7df,3fc","Q_cornerblack":"3f8,79e,e06,e07,e07,e07,e07,e07,e07,e07,e07,e07,e07,79e,3fc,700","Q_cornerred":"3f8,7fe,f1e,f0f,f0f,e0f,e0f,e0f,e0f,f0f,f0f,f0f,7de,7fc,7e0,700","J_highlightboard":"f00,f00,f00,f00,f00,f00,f00,f00,f00,f00,f00,f87,f87,7df,7fe,1fc","J_highlighthole":"c00,e00,e00,e00,e00,e00,e00,e00,e00,e00,e00,e03,e07,f07,7ff,3fe","3_cornerhole":"000,380,7c0,cc0,c40,c00,c00,700,780,700,600,610,218,318,3b0,1f0","8_corner":"3fc,78f,e0f,e07,e07,f07,79e,7fe,7fe,f07,e07,e07,e07,f0f,79f,3fc","9_corner":"3fc,7be,e0f,e07,e07,e07,e07,f0f,ffe,ffc,e00,e00,e07,f07,7fe,3fc"})
 SUITS.update({"d_corner":"060,0f0,1f8,3fc,3fc,7fe,fff,fff,fff,7fe,7fe,3fc,1f8,1f0,0f0,060","d_highlight":"030,078,0f8,1fc,3fe,7fe,7fe,fff,fff,7fe,7fe,3fe,1fc,0fc,0f8,070","s_corner":"020,060,0f0,1f8,3fc,7fe,7fe,fff,fff,7ff,7fe,3fc,020,020,060,060","c_corner":"0f0,1f0,1f8,1f8,1f0,1f8,3fc,7fe,fff,fff,fff,7fe,7fc,040,060,060","c_highlight":"078,0fc,0fc,0fe,0fc,1fe,3ff,7ff,fff,fff,fff,fff,7ff,030,030,030","c_cornerhole":"1e0,1e0,3f0,3f0,3f0,3f8,1fe,3fe,7ff,7ff,fff,ffe,7fe,7c0,3a0,030"})
+# Corner masks sampled from the November 24 saved images.
+RANKS.update({"T_capture0":"788,f8c,ccf,84c,84c,84c,c4c,c4c,c4c,c4c,c4c,c4c,c4c,ccc,fcc,78c","8_capture1":"1f8,7fe,fff,f0f,f0f,f0f,bfe,7fe,ffe,fde,f0e,f0a,f0e,f9e,ffe,5fe","8_capture2":"1e0,3f0,ff8,e38,e18,f1c,73c,7fc,3fc,3fe,38c,38e,38b,3cf,1fe,1fc","3_capture4":"070,3fc,7be,78f,70e,780,780,7e0,7e0,f80,f80,e80,f8b,b9f,7fe,1f8"})
+SUITS.update({"s_capture0":"060,0f0,0f0,1f8,3fc,7fe,ffe,fff,fff,fff,ffe,7fe,060,060,060,060","d_capture1":"040,0e0,0f0,1f8,3fc,3fe,7fe,7ff,fff,3fe,7fe,3fc,1f8,1f0,0e0,060","h_capture2":"03c,03c,7fe,7ff,7ff,ffe,ffe,fff,7ff,7fe,7fe,3fc,1f8,0f8,078,030","h_capture4":"3fe,7de,7ff,fff,ffe,ffe,ffe,ffe,7fe,7fc,3fc,1f8,1f8,0f8,060,060"})
 BOARD = [
     ((552,244,575,281),(550,282,576,309),(548,242,628,353)),
     ((642,244,666,281),(641,282,668,310),(638,242,719,353)),
@@ -86,13 +89,27 @@ HOLE_HIGHLIGHT = [
     ((811,478,832,515),(810,516,835,545),(811,477,836,548)),
     ((852,473,878,514),(846,514,874,539),(849,477,890,548))
 ]
+# Keep the normal rank crop for single characters; only the ten candidate
+# can be sourced from a wider rank strip.
+def ten_corner(spec):
+    r,s,body=spec
+    return ((r[0]-5,r[1]-2,r[0]+32,r[3]),s,body)
+
+def narrow_suit(spec):
+    r,s,body=spec
+    return (r,(s[0],s[1]-2,s[2],s[3]-3),body)
+
+HOLE_ROTATED = [
+    HOLE[0],
+    ((852,464,879,501),(845,503,874,529),(849,469,890,548))
+]
 NUMBERS = {
     "pot":(685,198,850,234),
-    "hero":(640,588,820,616),
-    "left":(265,462,435,484),
-    "upper_left":(480,165,650,184),
-    "upper_right":(890,165,1060,184),
-    "right":(1110,462,1280,484)
+    "hero":(640,584,820,617),
+    "left":(265,454,435,485),
+    "upper_left":(480,158,650,188),
+    "upper_right":(890,158,1060,188),
+    "right":(1110,454,1280,485)
 }
 
 def decode(value):
@@ -137,7 +154,7 @@ def face_present(image, box):
     light=(a.min(2)>180)&(np.ptp(a,axis=2)<32)
     return float(light.mean())>=.20 and float((light.mean(axis=1)>=.15).mean())>=.60
 
-def card(image, spec, *alternates):
+def card(image, spec, *alternates, wide_ten=None):
     present=False
     readings={}
     regions=set()
@@ -159,6 +176,18 @@ def card(image, spec, *alternates):
                     readings[label]=reading
     if not present:
         return None
+    if wide_ten is not None:
+        r,s,_=wide_ten
+        # Compare against all ranks, not just T, so other broad glyphs
+        # cannot become a ten simply because it is the only candidate.
+        for color,allowed in [("red","dh"),("black","cs")]:
+            rank,rd=match(glyph(image,r,color),RANKS)
+            suit,sd=match(glyph(image,s,color),{k:v for k,v in SUITS.items() if k[0] in allowed},.25)
+            if rank=="T" and suit:
+                label=rank+suit
+                reading=(rd+sd,rank,suit,rd,sd)
+                if label not in readings or reading[0]<readings[label][0]:
+                    readings[label]=reading
     ordered=sorted(readings.values())
     if not ordered or (len(ordered)>1 and ordered[1][0]-ordered[0][0]<.05):
         return {"candidate":None,"rank_candidate":None,"suit_candidate":None,
@@ -180,8 +209,19 @@ def number_text(text):
             if unit else int(value),"approximate":bool(unit),"verified":False}
 
 def read_numbers(image, executable):
-    rows,error=scan_regions(image,executable,[(key,box,"bet" if key=="pot" else "stack") for key,box in NUMBERS.items()])
-    return {key:select_amount(rows.get(key,[]),number_text) for key in NUMBERS},error
+    regions=[(key,box,"bet" if key=="pot" else "stack") for key,box in NUMBERS.items()]
+    rows,error=scan_regions(image,executable,regions)
+    results={key:select_amount(rows.get(key,[]),number_text) for key in NUMBERS}
+    # A whitelist can yield zero confidence on a correct digit sequence.
+    # Only retry rejected nonempty stack strings, and require agreement.
+    retry=[entry for entry in regions if entry[2]=="stack" and
+           results[entry[0]]["raw"] and results[entry[0]]["candidate"] is None]
+    if retry and executable and not error:
+        alternate,alt_error=scan_regions(image,executable,retry,unrestricted=True)
+        if not alt_error:
+            for key,_,_ in retry:
+                results[key]=reconcile_amount(results[key],select_amount(alternate.get(key,[]),number_text),number_text)
+    return results,error
 
 def normalize(original):
     original=original.convert("RGB")
@@ -204,8 +244,8 @@ def review(path, executable=None, previous_path=None):
 
 def review_image(image, executable=None, previous=None, source="frame"):
     cues=seat_evidence(image,executable,previous)
-    board=[card(image,spec,lower_corner(spec)) for spec in BOARD]
-    hole=[card(image,spec,alternate,wide,highlight) for spec,alternate,wide,highlight in zip(HOLE,HOLE_MIRROR,HOLE_WIDE,HOLE_HIGHLIGHT)]
+    board=[card(image,spec,lower_corner(spec),narrow_suit(spec),wide_ten=ten_corner(spec)) for spec in BOARD]
+    hole=[card(image,spec,alternate,wide,highlight,rotated) for spec,alternate,wide,highlight,rotated in zip(HOLE,HOLE_MIRROR,HOLE_WIDE,HOLE_HIGHLIGHT,HOLE_ROTATED)]
     count=sum(c is not None for c in board)
     contiguous=all(c is not None for c in board[:count]) and all(c is None for c in board[count:])
     known=[c["candidate"] for c in hole+board if c and c["candidate"]]

@@ -8,6 +8,13 @@ class SavedFrameTests(unittest.TestCase):
         self.assertEqual([x['status'] for x in field_results(result,expected)],['match','match','missing','match','match','incorrect','missing','incorrect'])
     def test_unreadable_not_empty(self):
         self.assertEqual(field_results({'board_slots':[{'candidate':None}]},{'board_slots':[None]})[0]['status'],'incorrect')
+    def test_missing_slots_cannot_pass_as_empty(self):
+        for result in ({},{"board_slots":[]},{"board_slots":None}):
+            self.assertEqual(field_results(result,{"board_slots":[None]})[0]["status"],"missing")
+        self.assertEqual(field_results({"board_slots":[{}]},{"board_slots":[None]})[0]["status"],"incorrect")
+    def test_bet_distinct_from_stack(self):
+        result={"table_observation":{"seats":{"hero":{"bet":{"value":50},"stack":{"value":19950}}}}}
+        self.assertEqual(field_results(result,{"bets":{"hero":50}})[0]["status"],"match")
     def test_zero_not_missing(self):
         self.assertEqual(field_results({'number_candidates':{'left':{'candidate':{'value':0}}}},{'amounts':{'left':0}})[0]['status'],'match')
 

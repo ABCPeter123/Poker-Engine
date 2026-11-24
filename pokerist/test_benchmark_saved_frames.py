@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from benchmark_saved_frames import validate_manifest, transform, score, summarize, gate
+from benchmark_saved_frames import validate_manifest, transform, score, summarize, gate, compare_reports
 from check_saved_frame import field_results
 from PIL import Image
 from review import decode, RANKS
@@ -35,6 +35,23 @@ class CorpusTests(unittest.TestCase):
         mask=decode(RANKS["J"])
         self.assertIs(mask,decode(RANKS["J"]))
         with self.assertRaises(ValueError):mask[0,0]=True
+    def test_compare_reports_no_regressions(self):
+        def report(value,digest="abc"):
+            rows=field_results({"board_slots":[{"candidate":value}]},{"board_slots":["As"]})
+            return {"details":[{"file":"a.png","variant":"original","sha256":digest,"fields":rows}]}
+        self.assertTrue(compare_reports(report("As"),report(None))["passed"])
+        self.assertFalse(compare_reports(report("Kd"),report("As"))["passed"])
+        self.assertFalse(compare_reports(report("Kd"),report(None))["passed"])
+        self.assertFalse(compare_reports(report("As","xyz"),report("As"))["passed"])
+    def test_latency_gate(self):
+        rows=field_results({"board_slots":[{"candidate":"As"}]},{"board_slots":["As"]})
+        report=summarize([{"variant":"original","elapsed_ms":50,"fields":rows}],[])
+        self.assertFalse(gate(report,1,0,max_p95_ms=49))
+        self.assertTrue(gate(report,1,0,max_p95_ms=50))
+    def test_manifest_rejects_path_separators(self):
+        for name in ("../x.png","..\\x.png","/x.png",".."):
+            with self.assertRaises(ValueError):
+                validate_manifest({"cases":[{"file":name,"expected":{}}]})
     def test_fixture_manifest_valid(self):
         import json
         data=json.loads((Path(__file__).with_name("fixtures")/"saved_corpus.json").read_text(encoding="utf-8"))

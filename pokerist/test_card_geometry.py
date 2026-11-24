@@ -23,7 +23,10 @@ class CardGeometryTests(unittest.TestCase):
         im=self.make_face(True)
         opts=corner_regions(im,BOARD[0])
         self.assertIn((BOARD[0][0],BOARD[0][1]),opts)
-        self.assertIn(((556,248,581,285),(555,286,581,313)),opts)
+        # The translated calibrated windows preserve their dimensions;
+        # the separate face-derived windows have their own dimensions.
+        self.assertIn(((556,248,579,285),(554,286,580,313)),opts)
+        self.assertIn(((556,248,581,284),(555,286,581,311)),opts)
     def test_logo_not_face(self):
         im=Image.new("RGB",(1536,709),(75,120,150))
         ImageDraw.Draw(im).rectangle((553,268,620,285),fill=(220,220,220))

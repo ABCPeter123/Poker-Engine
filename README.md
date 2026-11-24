@@ -177,3 +177,7 @@ py pokerist/review.py "E:\Poker-Screenshots\example.png" --deep --no-ocr
 ```
 
 All readings still require human confirmation.
+
+### Recognition performance and regression checks
+
+The matcher now uses cached packed binary templates and exact integer XOR/popcount in place of per-template NumPy comparisons. The Hamming distance, grouping, threshold and ambiguity margin are unchanged. Repeated corner reads within a card reuse results only inside that image. A deterministic equivalence test compares the previous and current matchers across real template masks and seeded noise; CI also prints a standalone matcher microbenchmark. `py pokerist/benchmark_matcher.py` measures matching only, not the full pipeline. The saved review JSON now reports stage timings in milliseconds (seat cues, cards, amounts, table observation, total); `benchmark_saved_frames.py --ocr` reports the median per stage. No capture-rate guarantee follows from matcher speed. OCR is still synchronous in the existing practice worker, and slow deep review remains offline only. Fixed the missing `deep` keyword in `review_image`; integration tests exercise all three review modes.

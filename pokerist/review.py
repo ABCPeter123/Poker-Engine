@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+import time
 import shutil
 if __name__ == "__main__":
     from bootstrap import ensure_requirements
@@ -148,18 +149,29 @@ def glyph(image, box, color=None):
     m=m[ys.min():ys.max()+1,xs.min():xs.max()+1]
     return np.asarray(Image.fromarray(np.uint8(m*255)).resize((12,16)))>=128
 
+def _pack_mask(mask):
+    return int.from_bytes(np.packbits(mask).tobytes(),"big")
+
+@lru_cache(maxsize=32)
+def _packed_templates(items):
+    return tuple((key.split("_")[0],_pack_mask(decode(value))) for key,value in items)
+
 def match(m, templates, threshold=.18):
     if m is None:
         return None, None
+    if m.shape != (16,12) or m.dtype != np.bool_:
+        raise ValueError("Expected a 16x12 boolean glyph")
+    packed=_pack_mask(m)
     grouped={}
-    for key,value in templates.items():
-        label=key.split("_")[0]
-        distance=float(np.mean(m!=decode(value)))
-        grouped[label]=min(grouped.get(label,1.0),distance)
-    scores=sorted((distance,label) for label,distance in grouped.items())
-    distance, label=scores[0]
+    # The glyph contains exactly 192 bits; XOR counts the same mismatches
+    # as the previous elementwise numpy comparison, without per-template arrays.
+    for label,value in _packed_templates(tuple(templates.items())):
+        distance=(packed^value).bit_count()
+        grouped[label]=min(grouped.get(label,192),distance)
+    scores=sorted((count/192,label) for label,count in grouped.items())
+    distance,label=scores[0]
     margin=scores[1][0]-distance if len(scores)>1 else 1.0
-    return (label if distance<=threshold and margin>=.025 else None), round(distance,3)
+    return (label if distance<=threshold and margin>=.025 else None),round(distance,3)
 
 def face_present(image, box):
     a=np.asarray(image.crop(box),dtype=np.int16)
@@ -178,10 +190,18 @@ def card(image, spec, *alternates, wide_ten=None):
             continue
         present=True
         regions.update(options or [(r,s)])
+    # Repeated alternative corner pairs often share one rank or suit box.
+    # Cache within this card only; never reuse pixels across images.
+    @lru_cache(maxsize=None)
+    def recognized(box,color,kind):
+        if kind=="rank":
+            return match(glyph(image,box,color),RANKS)
+        allowed="dh" if color=="red" else "cs"
+        return match(glyph(image,box,color),{k:v for k,v in SUITS.items() if k[0] in allowed},.25)
     for r,s in sorted(regions):
-        for color,allowed in [("red","dh"),("black","cs")]:
-            rank,rd=match(glyph(image,r,color),RANKS)
-            suit,sd=match(glyph(image,s,color),{k:v for k,v in SUITS.items() if k[0] in allowed},.25)
+        for color in ("red","black"):
+            rank,rd=recognized(r,color,"rank")
+            suit,sd=recognized(s,color,"suit")
             if rank and suit:
                 label=rank+suit
                 reading=(rd+sd,rank,suit,rd,sd)
@@ -193,9 +213,9 @@ def card(image, spec, *alternates, wide_ten=None):
         r,s,_=wide_ten
         # Compare against all ranks, not just T, so other broad glyphs
         # cannot become a ten simply because it is the only candidate.
-        for color,allowed in [("red","dh"),("black","cs")]:
-            rank,rd=match(glyph(image,r,color),RANKS)
-            suit,sd=match(glyph(image,s,color),{k:v for k,v in SUITS.items() if k[0] in allowed},.25)
+        for color in ("red","black"):
+            rank,rd=recognized(r,color,"rank")
+            suit,sd=recognized(s,color,"suit")
             if rank=="T" and suit:
                 label=rank+suit
                 reading=(rd+sd,rank,suit,rd,sd)
@@ -268,8 +288,10 @@ def read_cards(image):
                        "noncontiguous_board":not contiguous,
                        "unrecognized_visible_cards":sum(c is not None and c["candidate"] is None for c in hole+board)}}
 
-def review_image(image, executable=None, previous=None, source="frame", *, enhanced=False):
+def review_image(image, executable=None, previous=None, source="frame", *, enhanced=False, deep=False):
+    started=time.perf_counter()
     cues=seat_evidence(image,executable,previous)
+    after_cues=time.perf_counter()
     if deep:
         from saved_card_review import read_deep
         cards=read_deep(image,read_cards)
@@ -278,15 +300,22 @@ def review_image(image, executable=None, previous=None, source="frame", *, enhan
         cards=read_enhanced(image,read_cards)
     else:
         cards=read_cards(image)
+    after_cards=time.perf_counter()
     hole=cards["hole_slots"]
     numbers,err=read_numbers(image,executable)
     if (enhanced or deep) and executable:
         from saved_amount_review import add_saved_amount_evidence
         numbers=add_saved_amount_evidence(image,executable,NUMBERS,numbers,number_text)
+    after_amounts=time.perf_counter()
     observation=observe_table(image,executable,number_text,numbers,cues,hole)
+    finished=time.perf_counter()
+    timings={"seat_cues":round(1000*(after_cues-started),3),"cards":round(1000*(after_cards-after_cues),3),
+             "amounts":round(1000*(after_amounts-after_cards),3),"table_observation":round(1000*(finished-after_amounts),3),
+             "total":round(1000*(finished-started),3)}
     return {"layout":"Pokerist landscape, five seats, prototype",
             "source":source,"verified":False,
             "capture_crop":image.info.get("capture_crop"),
+            "timings_ms":timings,
             **cards,
             "number_candidates":numbers,"number_ocr_error":err,
             "dealer":None,"active_player":None,"bets":None,"actions":None,

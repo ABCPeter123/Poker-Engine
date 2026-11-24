@@ -100,7 +100,7 @@ def evaluate_case(case,root,variants,ocr,enhanced=False,deep=False):
         else:
             result=read_cards(normalized)
         results.append({"file":case["file"],"sha256":digest,"variant":variant,"elapsed_ms":round((time.perf_counter()-t)*1000,1),
-                        "fields":field_results(result,expected)})
+                        "fields":field_results(result,expected),"stage_ms":result.get("timings_ms")})
     return results
 
 
@@ -111,7 +111,12 @@ def summarize(results,errors):
     variants={}
     for variant,items in by_variant.items():
         times=sorted(i["elapsed_ms"] for i in items)
+        stages=defaultdict(list)
+        for item in items:
+            for stage,ms in (item.get("stage_ms") or {}).items():
+                stages[stage].append(ms)
         variants[variant]={"frames":len(items),
+            "stage_median_ms":{stage:round(statistics.median(values),3) for stage,values in stages.items()},
             "exact_card_frames":sum(all(row["status"]=="match" for row in i["fields"] if row["field"].startswith(("hole_slots[","board_slots["))) for i in items),
             "median_ms":round(statistics.median(times),1),
             "p95_ms":times[max(0,math.ceil(.95*len(times))-1)],

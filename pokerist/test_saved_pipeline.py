@@ -22,6 +22,18 @@ class SavedPipelineTests(unittest.TestCase):
         self.assertEqual(set(result["table_observation"]["seats"]),
                          {"hero","left","upper_left","upper_right","right"})
         self.assertEqual(json.loads(json.dumps(result,allow_nan=False))["board_slots"],[None]*5)
+    def test_all_review_modes_and_timings(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/"blank.png"
+            self.image().save(path)
+            for flags in ({},{"enhanced":True},{"deep":True}):
+                with self.subTest(flags=flags):
+                    result=review(path,None,**flags)
+                    self.assertEqual(result["board_slots"],[None]*5)
+                    timings=result["timings_ms"]
+                    self.assertEqual(set(timings),{"seat_cues","cards","amounts","table_observation","total"})
+                    self.assertTrue(all(v>=0 for v in timings.values()))
+                    self.assertAlmostEqual(timings["total"],sum(v for k,v in timings.items() if k!="total"),delta=.003)
     def test_visible_unknown_is_not_empty_after_normalization(self):
         im=self.image()
         d=ImageDraw.Draw(im)

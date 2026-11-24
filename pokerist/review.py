@@ -244,7 +244,7 @@ def normalize(original):
     image.info["capture_crop"]={"input_size":list(original.size),"bounds":list(bounds),"visible_size":list(visible.size),"cropped":bounds!=(0,0,*original.size)}
     return image
 
-def review(path, executable=None, previous_path=None):
+def review(path, executable=None, previous_path=None, *, enhanced=False):
     with Image.open(path) as original:
         image=normalize(original)
     previous=None
@@ -253,7 +253,7 @@ def review(path, executable=None, previous_path=None):
             previous=normalize(old)
         if previous.info.get("capture_crop")!=image.info.get("capture_crop"):
             previous=None
-    return review_image(image, executable, previous, Path(path).name)
+    return review_image(image, executable, previous, Path(path).name, enhanced=enhanced)
 
 def read_cards(image):
     board=[card(image,spec,lower_corner(spec),narrow_suit(spec),wide_ten=ten_corner(spec)) for spec in BOARD]
@@ -268,9 +268,13 @@ def read_cards(image):
                        "noncontiguous_board":not contiguous,
                        "unrecognized_visible_cards":sum(c is not None and c["candidate"] is None for c in hole+board)}}
 
-def review_image(image, executable=None, previous=None, source="frame"):
+def review_image(image, executable=None, previous=None, source="frame", *, enhanced=False):
     cues=seat_evidence(image,executable,previous)
-    cards=read_cards(image)
+    if enhanced:
+        from saved_card_review import read_enhanced
+        cards=read_enhanced(image,read_cards)
+    else:
+        cards=read_cards(image)
     hole=cards["hole_slots"]
     numbers,err=read_numbers(image,executable)
     observation=observe_table(image,executable,number_text,numbers,cues,hole)
@@ -294,6 +298,7 @@ def main():
     parser.add_argument("--previous",help="Earlier saved screenshot of the same table for visual comparison")
     parser.add_argument("--tesseract",default=None)
     parser.add_argument("--no-ocr",action="store_true")
+    parser.add_argument("--enhanced",action="store_true",help="Try conservative multi-view card recovery on a saved image")
     args=parser.parse_args()
     if not args.screenshot:
         from tkinter import Tk,filedialog
@@ -309,7 +314,7 @@ def main():
         executable,error=resolve_tesseract()
         if error:
             print(error,flush=True)
-    result=review(args.screenshot,executable,args.previous)
+    result=review(args.screenshot,executable,args.previous,enhanced=args.enhanced)
     Path(args.output).write_text(json.dumps(result,indent=2),encoding="utf-8")
     print(json.dumps(result,indent=2))
     print("Review saved to",args.output)

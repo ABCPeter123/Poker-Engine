@@ -144,3 +144,18 @@ The JSON report includes every frame/field; the manifest contains crop coordinat
 ### Field-level regression protection
 
 The saved-image benchmark now stores SHA-256 source image fingerprints, counts exact card frames, and accepts `--baseline earlier-report.json` to reject new wrong readings or any previously correct field becoming incorrect/missing on the same image and variant. `--max-p95-ms` optionally sets a processing-time limit. Missing or malformed slot arrays no longer score as correctly empty. This prevents inflated accuracy when a reader crashes or returns incomplete output. Synthetic integration tests exercise saved-file normalization, recognition output, and serialization with no external game interaction. The original-image corpus is still local and not a held-out test set.
+
+### Offline multi-view card recovery (experimental)
+
+Saved-image review can optionally run four contrast/sharpening variants when the original reader finds a visible but unreadable card. It preserves every previously recognized identity and empty slot, requires at least three agreeing recognized variants with no opposing recognized vote, rejects duplicate cards, and labels recovered candidates with their provenance. These are correlated views of the same pixels, not independent measurements. The saved-image upload endpoint uses the enhanced mode; the live worker remains unchanged. The CLI and benchmark expose `--enhanced`. All enhanced readings still require manual verification.
+
+A local reproduction of the card classifier tested on the 18 calibration screenshots and two degraded variants per screenshot yielded the following counts (64 visible cards and 62 empty slots per variant): original 55 to 56, downscale 36 to 54, JPEG 31 to 32. No incorrect visible-card identities or false empty-slot positives occurred in the selected conservative configuration. Complete frames changed from 13 to 13, 4 to 11, and 0 to 0 respectively. These are calibration results, not held-out accuracy measurements or a full native Windows run. A two-vote version produced a wrong suit and was rejected. Enhancement increases processing time on incomplete images and does not address chip OCR or all other visual errors.
+
+Compare both modes locally with the same image folder:
+
+```powershell
+py pokerist/benchmark_saved_frames.py "E:\Poker-Screenshots" --output baseline.json
+py pokerist/benchmark_saved_frames.py "E:\Poker-Screenshots" --enhanced --baseline baseline.json --output enhanced.json
+```
+
+A strict accuracy gate can still fail even when the comparison shows improvements. Preserve the output reports locally.

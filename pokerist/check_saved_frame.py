@@ -47,6 +47,7 @@ def main():
     parser.add_argument("expected", type=Path)
     parser.add_argument("--crop", nargs=4, type=int, metavar=("LEFT", "TOP", "RIGHT", "BOTTOM"))
     parser.add_argument("--no-ocr", action="store_true")
+    parser.add_argument("--enhanced", action="store_true")
     args = parser.parse_args()
     from PIL import Image
     from review import normalize, review_image
@@ -63,7 +64,7 @@ def main():
             if not (0 <= l < r <= im.width and 0 <= t < b <= im.height):
                 parser.error("Crop must be inside the saved image.")
             im = im.crop(args.crop)
-        result = review_image(normalize(im), exe, source="saved regression image")
+        result = review_image(normalize(im), exe, source="saved regression image", enhanced=args.enhanced)
     rows = field_results(result, expected)
     print(json.dumps(rows, indent=2))
     counts = {key: sum(row["status"] == key for row in rows) for key in ("match", "missing", "incorrect")}

@@ -22,6 +22,22 @@ def parse_geometry(line):
         return visible_w, visible_h
     return None
 
+def parse_sink_geometry(line):
+    # Only negotiated sink caps, not advertised capability ranges.
+    if "d3d11videosink" not in line.lower() or not re.search(r"set[_ ]caps|updating window with caps", line, re.I):
+        return None
+    width = re.search(r"\bwidth\s*=\s*(?:\(int\))?\s*(\d+)\b", line)
+    height = re.search(r"\bheight\s*=\s*(?:\(int\))?\s*(\d+)\b", line)
+    if not width or not height:
+        return None
+    w, h = int(width[1]), int(height[1])
+    if not (64 <= w <= 8192 and 64 <= h <= 8192):
+        return None
+    par = re.search(r"\bpixel-aspect-ratio\s*=\s*(?:\(fraction\))?\s*(\d+)\s*/\s*(\d+)", line)
+    if par and int(par[1]) and int(par[2]):
+        w = round(w * int(par[1]) / int(par[2]))
+    return (w, h) if 64 <= w <= 8192 else None
+
 def fit_size(w, h, limit_w, limit_h):
     scale = min(limit_w / w, limit_h / h)
     return max(1, round(w * scale)), max(1, round(h * scale))
@@ -84,6 +100,7 @@ def main():
     parser.add_argument("--exe", default=r"C:\msys64\ucrt64\bin\uxplay.exe")
     parser.add_argument("--max-width", type=int, default=1100)
     parser.add_argument("--software", action="store_true", help="Force software decoding if GPU rotation fails")
+    parser.add_argument("--landscape", action="store_true", help="Force a wide receiver window (fallback if stream geometry events are missing)")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("This launcher is for Windows.")
@@ -98,6 +115,9 @@ def main():
         pass
     env = dict(os.environ)
     env["PATH"] = str(exe.parent) + os.pathsep + env.get("PATH", "")
+    # Limit debug output to the renderer whose negotiated dimensions we need.
+    env["GST_DEBUG"] = "d3d11videosink:5"
+    env["GST_DEBUG_NO_COLOR"] = "1"
     command = [str(exe), "-n", "Private Mirror", "-nh", "-pin",
                "-s", "1920x1080", "-fps", "30", "-vs", "d3d11videosink force-aspect-ratio=true"]
     if args.software:
@@ -108,25 +128,41 @@ def main():
     updates = queue.Queue()
     def read_output():
         for line in process.stdout:
-            print(line.rstrip(), flush=True)
-            value = parse_geometry(line)
+            sink_size = parse_sink_geometry(line)
+            value = sink_size or parse_geometry(line)
             if value:
-                updates.put(value)
+                updates.put(("sink" if sink_size else "airplay", value))
+            if not re.search(r"\b(?:DEBUG|LOG|TRACE|MEMDUMP)\b", line):
+                print(line.rstrip(), flush=True)
     thread = threading.Thread(target=read_output, daemon=True)
     thread.start()
-    geometry = None
-    deadline = 0
+    geometry = (1536, 709) if args.landscape else None
+    deadline = time.monotonic() + 300 if args.landscape else 0
     fitted = None
+    last_sink = 0.0
+    last_fit_attempt = 0.0
     try:
         while process.poll() is None:
             try:
                 while True:
-                    geometry = updates.get_nowait()
-                    fitted = None
-                    deadline = time.monotonic() + 8
+                    kind, value = updates.get_nowait()
+                    if args.landscape:
+                        continue
+                    now = time.monotonic()
+                    if kind == "sink":
+                        last_sink = now
+                    elif last_sink and now - last_sink < 2:
+                        continue
+                    if value != geometry or fitted is None:
+                        geometry = value
+                        fitted = None
+                        deadline = now + 30
+                        print(f"Video geometry ({kind}): {value[0]} x {value[1]}", flush=True)
             except queue.Empty:
                 pass
-            if geometry and geometry != fitted and time.monotonic() < deadline:
+            now = time.monotonic()
+            if geometry and geometry != fitted and now < deadline and now - last_fit_attempt >= .35:
+                last_fit_attempt = now
                 if native_window(process.pid, geometry, args.max_width):
                     fitted = geometry
                     print(f"Native window fitted to {geometry[0]}:{geometry[1]}", flush=True)

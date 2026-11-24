@@ -60,6 +60,13 @@ def scan_labels(image,exe,number_text):
                 "confidence":round(min((w["confidence"] for w in words),default=-1),1)}
     return data,error
 
+def participation_label(action,visible,turn=False):
+    if action in ("Sat out","Fold"):
+        return action
+    if visible or turn or action in ("Check","Call","Raise","Bet","All-in","Big blind","Small blind"):
+        return "Participation evidence"
+    return "No participation detected"
+
 def observe_table(image,exe,number_text,numbers,cues,hole):
     labels,error=scan_labels(image,exe,number_text)
     dealer=dealer_marker(image)
@@ -83,7 +90,7 @@ def observe_table(image,exe,number_text,numbers,cues,hole):
             "card_visible_candidate":True if visible else None,
             "turn_candidate":cues.get("active_band_candidate")==seat,
             "dealer_candidate":dealer["candidate"]==seat,
-            "participation_candidate":"Sat out" if action=="Sat out" else "Fold" if action=="Fold" else "Cards visible" if visible else None,
+            "participation_candidate":participation_label(action,visible,cues.get("active_band_candidate")==seat),
             "verified":False}
     return {"dealer":dealer,"turn_candidate":cues.get("active_band_candidate"),
             "seats":seats,"ocr_sampled":bool(exe),"ocr_warning":error,

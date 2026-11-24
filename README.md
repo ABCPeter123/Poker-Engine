@@ -96,3 +96,7 @@ The character matcher now includes screenshot-derived 8, 7, 6, 10 and additional
 ### Moving chip labels
 
 Stack, pot and displayed-bet OCR now searches broad seat-relative regions rather than assuming digits start at fixed x coordinates. Sparse OCR returns word positions, grouped by text baseline, and the recognizer accepts only one plausible high-confidence amount line. It handles space-separated thousands and abbreviated amounts. Raw OCR and detected text bounds are retained; competing lines or malformed fragments remain unknown. This does not guarantee that a chip icon will never be read as a digit, or support seats outside the calibrated five-seat layout. Use saved-hand review or explicitly permitted practice only.
+
+### Highlighted cards and participation evidence
+
+All 13 rank labels now have corner-glyph samples. New red K, black A, red/black 2, black 5, black Q, highlighted red J and highlighted black J samples come from the supplied saved screenshots. The character mask separates red ink from warm gold outlines and black ink from colored artwork; alternate corner regions handle the observed few-pixel shifts. The five-seat review reports `No participation detected` when there is no visible card, current-turn cue or explicit action evidence. This is an observation, not proof of folding or an empty seat; it does not automatically change the opponent count. Recognition accuracy on unseen frames remains unverified.

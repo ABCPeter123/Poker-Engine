@@ -52,6 +52,9 @@ SUITS.update({
 })
 RANKS.update({"8_sample":"3fc,79c,606,606,e06,606,79c,3fc,79c,f07,e07,e07,e07,e07,79e,3fc","4_sample_black":"1e0,1f0,1f8,1f8,198,184,184,186,187,183,1c3,fff,fff,1c0,180,1c0","4_sample_red":"1c0,3e0,3f0,3f8,3f8,3f8,3fc,3dc,3de,3ce,fff,fff,ffc,7c0,380,300","7_sample":"fff,fff,600,300,380,1c0,1c0,1c0,0e0,0e0,070,070,070,078,078,078","6_sample":"3fc,79e,e07,007,007,0c7,7ff,f0f,e0f,e07,e07,e07,e07,e0f,78e,3fc","T_sample":"718,d98,89c,898,898,898,898,898,898,898,898,898,898,d98,700,000","9_sample":"1e0,7f8,7f8,e18,e1c,71c,70e,79e,7fc,3f8,3c0,3c2,3c7,1cf,1fe,07c"})
 SUITS.update({"c_sample":"0f0,1f8,1f8,1f8,1f8,1f8,3fc,7fe,fff,fff,fff,fff,7fe,060,060,060","c_sample2":"0f0,1f0,1f8,1f8,1f8,1f8,3fc,7ff,fff,fff,fff,fff,7de,060,060,060","h_sample":"3bc,7fe,7fe,ffe,fff,fff,fff,ffe,7fe,7fe,3fc,3fc,1f8,0f0,0f0,060","s_sample":"060,060,0f0,1f8,3fc,7ff,fff,fff,fff,fff,fff,7fe,020,020,060,060","s_sample2":"040,060,0f0,1f8,3fc,7fe,7fe,7fe,fff,fff,7fe,7fe,040,060,060,000","s_sample3":"060,0f0,0f0,1f8,3fe,7fe,7ff,fff,fff,fff,7fe,7fe,020,060,060,060","d_sample":"0c0,0e0,1f0,1fc,3fc,3fe,7ff,7ff,fff,7fe,7fe,3fc,1fc,0f8,070,030"})
+# Extracted corner glyphs from the four supplied saved screenshots.
+RANKS.update({"K_corner0":"606,787,7cf,1ef,1ff,0ff,0ff,0ff,1ff,1ff,1cf,3cf,78f,78f,f0f,e07","K_corner1":"707,787,3c7,1e7,0f7,0ff,0ff,0ff,0ff,1ff,1c7,3c7,787,787,f07,f07","K_cornerblack":"e07,707,386,1c6,0c6,076,07f,0ff,0fe,1c6,1c6,386,707,707,f07,e07","A_corner0":"060,0f0,0f0,0f0,1f8,198,19c,38c,38c,30c,70e,7fe,7fe,606,e07,c03","A_corner1":"060,0f0,0f0,0f0,1f8,1d8,1dc,18c,38c,306,70e,7fe,7fe,606,e07,c03","A_corner2":"070,0f0,0f0,0f0,0f8,1d8,1dc,19c,38c,30e,70e,7fe,7fe,706,e07,e07","A_corner3":"070,070,070,0f8,1d8,1c8,1cc,18c,38e,38e,38e,7fe,7ff,e07,e07,e03","2_cornerred":"3fc,7fe,f9f,f8f,f8f,f86,780,7c0,3e0,1f0,0f8,07c,03e,07f,fff,fff","2_cornerblack":"1fc,7fc,f0e,e06,e06,600,700,380,1c0,0e0,070,078,01c,01e,01f,fff","5_corner":"7ff,01f,00f,00f,00f,7ff,fff,f0f,e00,e00,e00,e00,e07,f0f,7df,3fc","Q_cornerblack":"3f8,79e,e06,e07,e07,e07,e07,e07,e07,e07,e07,e07,e07,79e,3fc,700","Q_cornerred":"3f8,7fe,f1e,f0f,f0f,e0f,e0f,e0f,e0f,f0f,f0f,f0f,7de,7fc,7e0,700","J_highlightboard":"f00,f00,f00,f00,f00,f00,f00,f00,f00,f00,f00,f87,f87,7df,7fe,1fc","J_highlighthole":"c00,e00,e00,e00,e00,e00,e00,e00,e00,e00,e00,e03,e07,f07,7ff,3fe","3_cornerhole":"000,380,7c0,cc0,c40,c00,c00,700,780,700,600,610,218,318,3b0,1f0","8_corner":"3fc,78f,e0f,e07,e07,f07,79e,7fe,7fe,f07,e07,e07,e07,f0f,79f,3fc","9_corner":"3fc,7be,e0f,e07,e07,e07,e07,f0f,ffe,ffc,e00,e00,e07,f07,7fe,3fc"})
+SUITS.update({"d_corner":"060,0f0,1f8,3fc,3fc,7fe,fff,fff,fff,7fe,7fe,3fc,1f8,1f0,0f0,060","d_highlight":"030,078,0f8,1fc,3fe,7fe,7fe,fff,fff,7fe,7fe,3fe,1fc,0fc,0f8,070","s_corner":"020,060,0f0,1f8,3fc,7fe,7fe,fff,fff,7ff,7fe,3fc,020,020,060,060","c_corner":"0f0,1f0,1f8,1f8,1f0,1f8,3fc,7fe,fff,fff,fff,7fe,7fc,040,060,060","c_highlight":"078,0fc,0fc,0fe,0fc,1fe,3ff,7ff,fff,fff,fff,fff,7ff,030,030,030","c_cornerhole":"1e0,1e0,3f0,3f0,3f0,3f8,1fe,3fe,7ff,7ff,fff,ffe,7fe,7c0,3a0,030"})
 BOARD = [
     ((552,244,575,281),(550,282,576,309),(548,242,628,353)),
     ((642,244,666,281),(641,282,668,310),(638,242,719,353)),
@@ -72,6 +75,15 @@ HOLE_WIDE = [
     ((805,470,841,508),(809,509,837,539),(811,471,836,544)),
     ((853,465,883,505),(847,506,874,535),(849,469,890,548))
 ]
+# The title-bar crop and highlighted card frame can shift corner glyphs a few pixels.
+def lower_corner(spec):
+    r,s,body=spec
+    return ((r[0],r[1]+4,r[2],r[3]+6),(s[0],s[1]+8,s[2],s[3]+8),body)
+
+HOLE_HIGHLIGHT = [
+    ((811,478,832,515),(810,516,835,545),(811,477,836,548)),
+    ((852,473,878,514),(846,514,874,539),(849,477,890,548))
+]
 NUMBERS = {
     "pot":(685,198,850,234),
     "hero":(620,584,830,618),
@@ -85,10 +97,17 @@ def decode(value):
     return np.array([[bool(int(row,16)&(1<<j)) for j in range(12)]
                      for row in value.split(",")])
 
+def ink_masks(a):
+    # The gold outline and warm face-card illustration are not rank ink.
+    a=np.asarray(a,dtype=np.int16)
+    r,g,b=np.moveaxis(a,-1,0)
+    red=(r-g>45)&(r-b>40)&((g-b<35)|(g<r*.55))
+    black=(a.max(2)<125)&(np.ptp(a,axis=2)<45)
+    return red,black
+
 def glyph(image, box, color=None):
-    a=np.array(image.crop(box)).astype(int)
-    red=(a[:,:,0]-a[:,:,1]>50)&(a[:,:,0]-a[:,:,2]>45)
-    black=a.max(2)<110
+    a=np.asarray(image.crop(box).convert("RGB"),dtype=np.int16)
+    red,black=ink_masks(a)
     m=red if color=="red" else black if color=="black" else red|black
     ys,xs=np.where(m)
     if len(ys)<15:
@@ -179,8 +198,8 @@ def review(path, executable=None, previous_path=None):
 
 def review_image(image, executable=None, previous=None, source="frame"):
     cues=seat_evidence(image,executable,previous)
-    board=[card(image,spec) for spec in BOARD]
-    hole=[card(image,spec,alternate,wide) for spec,alternate,wide in zip(HOLE,HOLE_MIRROR,HOLE_WIDE)]
+    board=[card(image,spec,lower_corner(spec)) for spec in BOARD]
+    hole=[card(image,spec,alternate,wide,highlight) for spec,alternate,wide,highlight in zip(HOLE,HOLE_MIRROR,HOLE_WIDE,HOLE_HIGHLIGHT)]
     count=sum(c is not None for c in board)
     contiguous=all(c is not None for c in board[:count]) and all(c is None for c in board[count:])
     known=[c["candidate"] for c in hole+board if c and c["candidate"]]
@@ -197,7 +216,7 @@ def review_image(image, executable=None, previous=None, source="frame"):
             "dealer":None,"active_player":None,"bets":None,"actions":None,
             "table_observation":observation,
             "seat_evidence":cues,
-            "limitations":["Nine ranks have sample glyphs; 2, 5, K and A are not calibrated. Unknown ranks can be rejected or misclassified.",
+            "limitations":["All thirteen ranks and four suits have sample glyphs. Recognition can still reject or misclassify unfamiliar rendering or occluded characters.",
                            "Fixed crop coordinates assume the supplied screen layout and scale.",
                            "All candidates require human review; no inferred player actions.",
                            "A rounded pot label is not an exact chip count."]+([err] if err else [])}

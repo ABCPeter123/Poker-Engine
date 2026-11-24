@@ -64,3 +64,9 @@ export function updateCardMemory(previous,result,now){
  const street=board.slice(0,count).every(Boolean)&&board.slice(count).every(x=>!x)?({0:'Preflop',3:'Flop',4:'Turn',5:'River'})[count]||null:null;
  return {slots,last:now,boardVisible,holeVisible,carried,displayHole:display.slice(0,2),displayBoard:board,displayStreet:street};
 }
+
+// The capture clock, not response arrival, determines the age of an observation.
+export function observationAge(capturedAt,now,maxAge=10000){
+ if(!Number.isFinite(capturedAt)||!Number.isFinite(now)||capturedAt<0||now<capturedAt)return {ageMs:null,fresh:false};
+ const ageMs=now-capturedAt;return {ageMs,fresh:ageMs<=maxAge};
+}

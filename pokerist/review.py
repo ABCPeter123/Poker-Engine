@@ -60,6 +60,9 @@ SUITS.update({"d_corner":"060,0f0,1f8,3fc,3fc,7fe,fff,fff,fff,7fe,7fe,3fc,1f8,1f
 # Corner masks sampled from the November 24 saved images.
 RANKS.update({"T_capture0":"788,f8c,ccf,84c,84c,84c,c4c,c4c,c4c,c4c,c4c,c4c,c4c,ccc,fcc,78c","8_capture1":"1f8,7fe,fff,f0f,f0f,f0f,bfe,7fe,ffe,fde,f0e,f0a,f0e,f9e,ffe,5fe","8_capture2":"1e0,3f0,ff8,e38,e18,f1c,73c,7fc,3fc,3fe,38c,38e,38b,3cf,1fe,1fc","3_capture4":"070,3fc,7be,78f,70e,780,780,7e0,7e0,f80,f80,e80,f8b,b9f,7fe,1f8"})
 SUITS.update({"s_capture0":"060,0f0,0f0,1f8,3fc,7fe,ffe,fff,fff,fff,ffe,7fe,060,060,060,060","d_capture1":"040,0e0,0f0,1f8,3fc,3fe,7fe,7ff,fff,3fe,7fe,3fc,1f8,1f0,0e0,060","h_capture2":"03c,03c,7fe,7ff,7ff,ffe,ffe,fff,7ff,7fe,7fe,3fc,1f8,0f8,078,030","h_capture4":"3fe,7de,7ff,fff,ffe,ffe,ffe,ffe,7fe,7fc,3fc,1f8,1f8,0f8,060,060"})
+# Gold-bordered pair from the supplied saved screenshot, sampled at the actual glyphs.
+RANKS.update({"5_gold_red":"1f8,00c,014,016,036,3fe,ffe,f1e,b80,b80,b80,b8e,f0e,f7e,3fe,1fc","5_gold_black":"770,038,018,018,03c,1fc,79c,700,700,700,382,183,183,1c7,0fe,078"})
+SUITS.update({"d_gold":"040,078,0f8,178,1fc,3fe,7fe,fff,fff,7fe,3fe,1fc,1f8,0f8,070,060","s_gold":"040,0e0,0f8,1fe,1fe,3fe,7fe,7ff,fff,fff,7ff,7ff,7fc,100,018,018"})
 BOARD = [
     ((552,244,575,281),(550,282,576,309),(548,242,628,353)),
     ((642,244,666,281),(641,282,668,310),(638,242,719,353)),
@@ -103,6 +106,10 @@ HOLE_ROTATED = [
     HOLE[0],
     ((852,464,879,501),(845,503,874,529),(849,469,890,548))
 ]
+HOLE_GOLD_PAIR = [
+    ((814,473,831,508),(810,510,833,538),(811,471,836,544)),
+    ((855,469,878,503),(846,506,872,531),(849,469,890,548))
+]
 NUMBERS = {
     "pot":(685,198,850,234),
     "hero":(640,584,820,617),
@@ -121,7 +128,7 @@ def ink_masks(a):
     a=np.asarray(a,dtype=np.int16)
     r,g,b=np.moveaxis(a,-1,0)
     gold=gold_mask(a)
-    red=(r>95)&(r-g>40)&(r-b>35)&~gold
+    red=(r>95)&(r-g>40)&(r-b>35)&~gold&((g-b<35)|(g<r*.55))
     black=(a.max(2)<125)&(np.ptp(a,axis=2)<55)&~gold
     return red,black
 
@@ -245,7 +252,7 @@ def review(path, executable=None, previous_path=None):
 def review_image(image, executable=None, previous=None, source="frame"):
     cues=seat_evidence(image,executable,previous)
     board=[card(image,spec,lower_corner(spec),narrow_suit(spec),wide_ten=ten_corner(spec)) for spec in BOARD]
-    hole=[card(image,spec,alternate,wide,highlight,rotated) for spec,alternate,wide,highlight,rotated in zip(HOLE,HOLE_MIRROR,HOLE_WIDE,HOLE_HIGHLIGHT,HOLE_ROTATED)]
+    hole=[card(image,spec,alternate,wide,highlight,rotated,gold_pair) for spec,alternate,wide,highlight,rotated,gold_pair in zip(HOLE,HOLE_MIRROR,HOLE_WIDE,HOLE_HIGHLIGHT,HOLE_ROTATED,HOLE_GOLD_PAIR)]
     count=sum(c is not None for c in board)
     contiguous=all(c is not None for c in board[:count]) and all(c is None for c in board[count:])
     known=[c["candidate"] for c in hole+board if c and c["candidate"]]

@@ -147,18 +147,22 @@ def read_numbers(image, executable):
     except (OSError,subprocess.SubprocessError,ValueError) as e:
         return {},f"Number OCR failed: {e}"
 
+def normalize(original):
+    original=original.convert("RGB")
+    if abs(original.width/original.height-WIDTH/HEIGHT)>.06:
+        raise ValueError("Frame aspect ratio does not match calibrated landscape layout; crop the visible game area.")
+    return original.resize((WIDTH,HEIGHT))
+
 def review(path, executable=None, previous_path=None):
     with Image.open(path) as original:
-        original=original.convert("RGB")
-        if abs(original.width/original.height-WIDTH/HEIGHT)>.06:
-            raise ValueError("Screenshot aspect ratio does not match calibrated landscape layout")
-        image=original.resize((WIDTH,HEIGHT))
+        image=normalize(original)
     previous=None
     if previous_path:
         with Image.open(previous_path) as old:
-            if abs(old.width/old.height-WIDTH/HEIGHT)>.06:
-                raise ValueError("Previous screenshot aspect ratio does not match")
-            previous=old.convert("RGB").resize((WIDTH,HEIGHT))
+            previous=normalize(old)
+    return review_image(image, executable, previous, Path(path).name)
+
+def review_image(image, executable=None, previous=None, source="frame"):
     cues=seat_evidence(image,executable,previous)
     board=[card(image,spec) for spec in BOARD]
     hole=[card(image,spec) for spec in HOLE]
@@ -168,7 +172,7 @@ def review(path, executable=None, previous_path=None):
     duplicate=len(set(known))!=len(known)
     numbers,err=read_numbers(image,executable)
     return {"layout":"Pokerist landscape, five seats, prototype",
-            "source":Path(path).name,"verified":False,
+            "source":source,"verified":False,
             "board_slots":board,"hole_slots":hole,
             "street_candidate":{0:"Preflop",3:"Flop",4:"Turn",5:"River"}.get(count) if contiguous else None,
             "quality":{"duplicate_card_candidates":duplicate,"noncontiguous_board":not contiguous,"unrecognized_visible_cards":sum(c is not None and c["candidate"] is None for c in hole+board)},

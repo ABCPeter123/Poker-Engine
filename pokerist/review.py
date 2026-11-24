@@ -73,11 +73,11 @@ HOLE_WIDE = [
 ]
 NUMBERS = {
     "pot":(745,204,790,229),
-    "hero":(704,590,766,610),
-    "left":(325,460,392,480),
-    "upper_left":(559,163,578,183),
-    "upper_right":(960,163,1017,183),
-    "right":(1169,460,1237,480)
+    "hero":(700,588,780,613),
+    "left":(325,458,405,483),
+    "upper_left":(539,163,602,184),
+    "upper_right":(956,162,1025,185),
+    "right":(1167,458,1248,483)
 }
 
 def decode(value):
@@ -141,6 +141,8 @@ def card(image, spec, *alternates):
 
 def number_text(text):
     value=re.sub(r"\s+","",text.upper()).replace("O","0").replace(",",".")
+    if re.fullmatch(r"\d+(?:\.\d+)?[KM]\.",value):
+        value=value[:-1]
     if not re.fullmatch(r"\d+(?:\.\d+)?[KM]?",value):
         return None
     unit=value[-1] if value[-1:] in ("K","M") else ""
@@ -156,7 +158,7 @@ def read_numbers(image, executable):
     canvas=Image.new("L",(500,100*len(NUMBERS)),255)
     for i,box in enumerate(NUMBERS.values()):
         a=np.asarray(image.crop(box))
-        mask=a.min(2)>150
+        mask=(a.min(2)>112)&(np.ptp(a.astype(np.int16),axis=2)<55)
         crop=Image.fromarray(np.uint8(255-255*mask))
         crop=crop.resize((crop.width*3,crop.height*3))
         canvas.paste(crop,(20,i*100+10))

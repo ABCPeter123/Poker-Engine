@@ -22,6 +22,7 @@ from frame_crop import game_bounds
 from table_observation import observe_table
 from adaptive_labels import scan_regions, select_amount
 from ocr_runtime import resolve_tesseract
+from card_geometry import gold_mask, face_bounds, corner_regions
 
 WIDTH, HEIGHT = 1536, 709
 # Coordinates are normalized to the supplied landscape layout.
@@ -102,8 +103,9 @@ def ink_masks(a):
     # The gold outline and warm face-card illustration are not rank ink.
     a=np.asarray(a,dtype=np.int16)
     r,g,b=np.moveaxis(a,-1,0)
-    red=(r-g>45)&(r-b>40)&((g-b<35)|(g<r*.55))
-    black=(a.max(2)<125)&(np.ptp(a,axis=2)<45)
+    gold=gold_mask(a)
+    red=(r>95)&(r-g>40)&(r-b>35)&~gold
+    black=(a.max(2)<125)&(np.ptp(a,axis=2)<55)&~gold
     return red,black
 
 def glyph(image, box, color=None):
@@ -138,10 +140,15 @@ def face_present(image, box):
 def card(image, spec, *alternates):
     present=False
     readings={}
-    for r,s,body in [spec]+list(alternates):
-        if not face_present(image,body):
+    regions=set()
+    for item in [spec]+list(alternates):
+        r,s,body=item
+        options=corner_regions(image,item)
+        if not options and not face_present(image,body):
             continue
         present=True
+        regions.update(options or [(r,s)])
+    for r,s in sorted(regions):
         for color,allowed in [("red","dh"),("black","cs")]:
             rank,rd=match(glyph(image,r,color),RANKS)
             suit,sd=match(glyph(image,s,color),{k:v for k,v in SUITS.items() if k[0] in allowed},.25)

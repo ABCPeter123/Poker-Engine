@@ -104,3 +104,7 @@ All 13 rank labels now have corner-glyph samples. New red K, black A, red/black 
 ### Temporary card memory
 
 In the permitted-practice view, each slot must be read directly twice before it can be held. A single missing or unreadable slot can retain its last value for at most five seconds and three missed samples if another card in that group still matches. Cached cards have an asterisk. A complete board disappearance, contradictory card, duplicate reading, source change or capture error invalidates prior memory; both missing hole cards are cleared immediately. Cached values are display-only and cannot seed or update the equity calculation. No new cards are invented. Saved-image review remains independent.
+
+### OCR startup diagnostics
+
+`py pokerist/ocr_runtime.py` checks whether the native Tesseract executable is available and can start. The worker and saved screenshot CLI discover common Windows install locations in addition to PATH, or honor the explicitly configured TESSERACT_CMD. The optional Python requirements do not install the native executable. The practice panel distinguishes unavailable, failed and waiting OCR instead of silently displaying an unsampled table. If unavailable, install Tesseract separately, or set `$env:TESSERACT_CMD = 'C:\Program Files\Tesseract-OCR\tesseract.exe'` in PowerShell before `npm start`. Restart the server after changing the environment. This diagnostic change does not improve card recognition accuracy or enable competitive real-time assistance.

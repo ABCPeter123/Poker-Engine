@@ -21,6 +21,7 @@ from seat_cues import seat_evidence
 from frame_crop import game_bounds
 from table_observation import observe_table
 from adaptive_labels import scan_regions, select_amount
+from ocr_runtime import resolve_tesseract
 
 WIDTH, HEIGHT = 1536, 709
 # Coordinates are normalized to the supplied landscape layout.
@@ -226,7 +227,8 @@ def main():
     parser.add_argument("screenshot",nargs="?")
     parser.add_argument("--output",default="pokerist-review.json")
     parser.add_argument("--previous",help="Earlier saved screenshot of the same table for visual comparison")
-    parser.add_argument("--tesseract",default=os.getenv("TESSERACT_CMD") or shutil.which("tesseract"))
+    parser.add_argument("--tesseract",default=None)
+    parser.add_argument("--no-ocr",action="store_true")
     args=parser.parse_args()
     if not args.screenshot:
         from tkinter import Tk,filedialog
@@ -235,7 +237,14 @@ def main():
         root.destroy()
         if not args.screenshot:
             return
-    result=review(args.screenshot,args.tesseract,args.previous)
+    executable=args.tesseract
+    if args.no_ocr:
+        executable=None
+    elif not executable:
+        executable,error=resolve_tesseract()
+        if error:
+            print(error,flush=True)
+    result=review(args.screenshot,executable,args.previous)
     Path(args.output).write_text(json.dumps(result,indent=2),encoding="utf-8")
     print(json.dumps(result,indent=2))
     print("Review saved to",args.output)

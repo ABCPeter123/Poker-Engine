@@ -16,3 +16,6 @@ export function captureHealth({width,height,sourceWidth,sourceHeight,renderWidth
  if(sourceWidth&&sourceHeight&&width&&height&&(width<sourceWidth*.9||height<sourceHeight*.9))lines.push('Capture below reported track resolution');
  return lines.join(' · ');
 }
+
+export function orientationDegrees(mode){return ({auto:0,left:-90,right:90,flip:180})[mode]??0;}
+export function orientedDimensions(width,height,degrees){return Math.abs(degrees%180)===90?{width:height,height:width}:{width,height};}

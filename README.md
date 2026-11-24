@@ -60,3 +60,7 @@ Saved-frame verification: after recognition, correct the card and chip fields ag
 ### Live preview quality and sizing
 
 Screen Review defaults to a 720-pixel-wide preview, constrained to 55% of the viewport height. Small, medium, large and native/fit options change only display size, never the underlying frame. Fullscreen is available. The browser requests high-resolution capture and 30 FPS detail mode (or 60 FPS smooth mode); actual capture settings depend on the browser and UxPlay source. Incoming pixel dimensions, measured FPS, and cumulative dropped-frame fraction are shown during mirroring. Preferences persist locally. If incoming resolution is low, enlarge the UxPlay window and reconnect. No live screen frames are submitted for poker recognition or recommendations.
+
+### Landscape mirroring
+
+Disable portrait orientation lock on the iPhone, open the app in landscape and use UxPlay with `-s 1920x1080 -fps 30`. Auto orientation follows the incoming video dimensions and resizes on source changes. If the captured window contains sideways video, choose Rotate left/right or 180 degrees. The rotation preference persists and applies to frozen frames and drawings too. It does not change the iPhone or UxPlay's native orientation, and does not remove black borders inside a captured window.

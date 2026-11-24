@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {orientationDegrees,orientedDimensions,previewDimensions} from '../capture-view.js';
+test('auto keeps incoming portrait and landscape dimensions',()=>{assert.deepEqual(orientedDimensions(709,1536,orientationDegrees('auto')),{width:709,height:1536});assert.deepEqual(orientedDimensions(1536,709,0),{width:1536,height:709});});
+test('manual quarter-turn swaps dimensions',()=>{for(const mode of ['left','right'])assert.deepEqual(orientedDimensions(709,1536,orientationDegrees(mode)),{width:1536,height:709});});
+test('half-turn preserves aspect and rotation fits compact preview',()=>{assert.deepEqual(orientedDimensions(1536,709,orientationDegrees('flip')),{width:1536,height:709});const d=orientedDimensions(709,1536,90);const fit=previewDimensions(d.width,d.height,720,1000,500);assert.equal(fit.width,720);assert.equal(fit.height,332);});

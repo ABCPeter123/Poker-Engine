@@ -4,8 +4,9 @@ This optional local tool reads a saved screenshot after a hand. It is separate f
 
 From the repository directory on Windows:
 
-    py -m pip install -r pokerist/requirements.txt
     py pokerist/review.py
+
+Each launch automatically runs pip install against the complete requirements.txt using the same Python interpreter. Already satisfied requirements are reused; missing dependencies are installed. If installation fails, the program stops before importing Pillow or NumPy. Tesseract is an optional external executable and is not installed by pip.
 
 Choose a saved landscape screenshot. The script prints unverified candidates and saves pokerist-review.json. You can also specify the screenshot as an argument.
 

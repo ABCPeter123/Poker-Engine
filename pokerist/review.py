@@ -11,6 +11,10 @@ import re
 import subprocess
 import tempfile
 import shutil
+if __name__ == "__main__":
+    from bootstrap import ensure_requirements
+    ensure_requirements()
+
 from PIL import Image
 import numpy as np
 from seat_cues import seat_evidence

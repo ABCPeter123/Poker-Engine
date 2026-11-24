@@ -40,7 +40,7 @@ def reconcile(primary, alternatives):
                 proposals.append((group,index,votes[0],len(votes)))
     counts=Counter(p[2] for p in proposals)
     # Conflicting recovery proposals invalidate the entire recovery pass.
-    if any(n>1 for n in counts.values()):
+    if not proposals or any(n>1 for n in counts.values()):
         return result
     for group,index,label,votes in proposals:
         result[group][index].update(candidate=label,rank_candidate=label[0],suit_candidate=label[1],

@@ -60,4 +60,36 @@ class AdaptiveLabelTests(unittest.TestCase):
     def test_search_regions_wider_than_old_crops(self):
         self.assertTrue(all(box[2]-box[0]>=160 for box in NUMBERS.values()))
 
+    def test_compact_numeric_montage_preserves_source_coordinates(self):
+        from unittest.mock import patch
+        from PIL import Image
+        from adaptive_labels import scan_regions
+        im=Image.new("RGB",(200,100))
+        entries=[("a",(10,20,90,50),"stack"),("b",(100,40,180,70),"bet")]
+        ma=np.zeros((30,80),dtype=bool)
+        mb=ma.copy()
+        ma[5:15,20:35]=True
+        mb[9:21,25:40]=True
+        def fake(canvas,exe,psm,whitelist,**kw):
+            self.assertEqual(psm,6)
+            self.assertEqual(canvas.size,(84,144))
+            return ("header\n5\t1\t1\t1\t1\t1\t12\t12\t60\t40\t95\t123\n"
+                    "5\t1\t1\t1\t1\t1\t12\t84\t60\t48\t95\t456\n")
+        with patch("adaptive_labels.recognize_tsv",side_effect=fake):
+            rows,err=scan_regions(im,"test",entries,persistent=True,prepared_masks={"a":ma,"b":mb})
+        self.assertIsNone(err)
+        self.assertEqual((rows["a"][0]["x"],rows["a"][0]["y"]),(30,25))
+        self.assertEqual((rows["b"][0]["x"],rows["b"][0]["y"]),(125,49))
+    def test_compact_rejects_cross_row_word(self):
+        from unittest.mock import patch
+        from PIL import Image
+        from adaptive_labels import scan_regions
+        im=Image.new("RGB",(100,100))
+        mask=np.ones((10,10),dtype=bool)
+        entries=[("a",(0,0,10,10),"bet"),("b",(20,20,30,30),"bet")]
+        tsv="header\n5\t1\t1\t1\t1\t1\t12\t50\t20\t30\t95\t999\n"
+        with patch("adaptive_labels.recognize_tsv",return_value=tsv):
+            rows,err=scan_regions(im,"test",entries,persistent=True,prepared_masks={"a":mask,"b":mask})
+        self.assertIsNone(err)
+        self.assertEqual(rows,{"a":[],"b":[]})
 if __name__=="__main__":unittest.main()

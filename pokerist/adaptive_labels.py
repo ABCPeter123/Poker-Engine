@@ -199,17 +199,30 @@ def scan_regions(image, executable, regions, *, unrestricted=False, cache=None,p
         return {**a,**b}, "; ".join(x for x in (ea,eb) if x) or None
     if not regions:
         return {},None
-    width=max((box[2]-box[0])*SCALE+2*PAD for _,box,_ in regions)
-    canvas=Image.new("L",(width,PITCH*len(regions)),255)
-    for i,(key,box,kind) in enumerate(regions):
+    # Compact only the numeric incremental path. A block of aligned text
+    # lines avoids sparse-page segmentation and removes huge blank margins.
+    compact=bool(persistent and numeric)
+    crops=[]
+    for key,box,kind in regions:
         mask=prepared_masks[key] if prepared_masks is not None else prepared_region_mask(image,box,kind)
+        left=top=0
+        if compact:
+            yy,xx=np.nonzero(mask)
+            if xx.size:
+                left,top=int(xx.min()),int(yy.min())
+                mask=mask[top:int(yy.max())+1,left:int(xx.max())+1]
         crop=Image.fromarray(np.uint8(255-255*mask))
         crop=crop.resize((crop.width*SCALE,crop.height*SCALE),Image.Resampling.NEAREST)
-        if crop.height+2*PAD>PITCH:
+        crops.append((crop,left,top))
+    pitch=max(crop.height for crop,_,_ in crops)+2*PAD if compact else PITCH
+    width=max(crop.width for crop,_,_ in crops)+2*PAD
+    canvas=Image.new("L",(width,pitch*len(regions)),255)
+    for i,(crop,_,_) in enumerate(crops):
+        if crop.height+2*PAD>pitch:
             raise ValueError("OCR region exceeds row height")
-        canvas.paste(crop,(PAD,i*PITCH+PAD))
+        canvas.paste(crop,(PAD,i*pitch+PAD))
     try:
-        tsv=recognize_tsv(canvas,executable,6 if unrestricted else 11,
+        tsv=recognize_tsv(canvas,executable,6 if compact or unrestricted else 11,
                           "0123456789.,KkMm" if numeric and not unrestricted else "",
                           persistent=persistent)
         rows={key:[] for key,_,_ in regions}
@@ -218,12 +231,15 @@ def scan_regions(image, executable, regions, *, unrestricted=False, cache=None,p
             if len(cols)!=12 or cols[0]!="5" or not cols[11].strip():
                 continue
             x,y,w,h=map(int,cols[6:10])
-            idx=(y+h//2)//PITCH
+            idx=(y+h//2)//pitch
             if not 0<=idx<len(regions):
                 continue
             key,box,_=regions[idx]
+            crop,left,top=crops[idx]
+            if compact and (y<idx*pitch or y+h>(idx+1)*pitch or x<0 or x+w>canvas.width):
+                continue
             rows[key].append({"text":cols[11].strip(),"confidence":float(cols[10]),
-                "x":box[0]+(x-PAD)/SCALE,"y":box[1]+(y-idx*PITCH-PAD)/SCALE,
+                "x":box[0]+left+(x-PAD)/SCALE,"y":box[1]+top+(y-idx*pitch-PAD)/SCALE,
                 "w":w/SCALE,"h":h/SCALE})
         return rows,None
     except (OSError,ValueError,subprocess.SubprocessError) as exc:

@@ -99,10 +99,56 @@ def numeric_mask(a,kind):
             mask[:,max(0,int(cols[0])-6):min(mask.shape[1],int(cols[-1])+7)]=False
     return mask
 
-def scan_regions(image, executable, regions, *, unrestricted=False):
+def prepared_region_mask(image,box,kind):
+    a=np.asarray(image.crop(box).convert("RGB"),dtype=np.int16)
+    r,g,b=np.moveaxis(a,-1,0)
+    return ((r>145)&(g>115)&(b<np.minimum(r,g)-35)) if kind=="status" else numeric_mask(a,kind)
+
+
+class RegionOCRCache:
+    """Bounded cache of exact prepared OCR masks, never approximate pixel matches."""
+    def __init__(self):
+        self.entries={}
+        self.hits=0
+        self.misses=0
+
+    def scan(self,image,exe,regions,*,unrestricted=False):
+        rows={}
+        changed=[]
+        keys={}
+        for entry in regions:
+            key,box,kind=entry
+            mask=prepared_region_mask(image,box,kind)
+            identity=(key,box,kind,unrestricted)
+            signature=(mask.shape,mask.tobytes())
+            old=self.entries.get(identity)
+            if old is not None and old[0]==signature:
+                rows[key]=old[1]
+                self.hits+=1
+            else:
+                changed.append(entry)
+                keys[key]=(identity,signature)
+                self.misses+=1
+        if changed:
+            new,error=scan_regions(image,exe,changed,unrestricted=unrestricted)
+            if error:
+                # Failed scans cannot keep previous values for changed regions.
+                for identity,_ in keys.values():
+                    self.entries.pop(identity,None)
+                return rows,error
+            for key,(identity,signature) in keys.items():
+                value=new.get(key,[])
+                self.entries[identity]=(signature,value)
+                rows[key]=value
+        return rows,None
+
+
+def scan_regions(image, executable, regions, *, unrestricted=False, cache=None):
     """One OCR pass across variable-width search regions; retain source boxes."""
     if not executable:
         return {}, "Tesseract unavailable"
+    if cache is not None:
+        return cache.scan(image,executable,regions,unrestricted=unrestricted)
     # Separate numeric and language OCR. Applying a numeric whitelist to
     # status labels would silently destroy words such as Call and All-in.
     numeric=[entry for entry in regions if entry[2]!="status"]
@@ -116,9 +162,7 @@ def scan_regions(image, executable, regions, *, unrestricted=False):
     width=max((box[2]-box[0])*SCALE+2*PAD for _,box,_ in regions)
     canvas=Image.new("L",(width,PITCH*len(regions)),255)
     for i,(_,box,kind) in enumerate(regions):
-        a=np.asarray(image.crop(box).convert("RGB"),dtype=np.int16)
-        r,g,b=np.moveaxis(a,-1,0)
-        mask=((r>145)&(g>115)&(b<np.minimum(r,g)-35)) if kind=="status" else numeric_mask(a,kind)
+        mask=prepared_region_mask(image,box,kind)
         crop=Image.fromarray(np.uint8(255-255*mask))
         crop=crop.resize((crop.width*SCALE,crop.height*SCALE),Image.Resampling.NEAREST)
         if crop.height+2*PAD>PITCH:

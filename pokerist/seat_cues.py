@@ -92,8 +92,24 @@ def allin_ocr(image, executable):
     except (OSError,ValueError,subprocess.SubprocessError) as e:
         return result,f"All-in OCR failed: {e}"
 
-def seat_evidence(image, executable=None, previous=None):
-    labels,err=allin_ocr(image,executable)
+def seat_evidence(image, executable=None, previous=None, cache=None):
+    if cache is None or not executable:
+        labels,err=allin_ocr(image,executable)
+    else:
+        # Exact warm-ink masks match allin_ocr preprocessing. No stale label
+        # may survive a changed mask or failed OCR.
+        masks=[]
+        for spec in SEATS.values():
+            a=pixels(image,spec['bet']);r,g,b=np.moveaxis(a,-1,0)
+            warm=(r>160)&(g>85)&(r>b+55)&(g>b+25)&(r>=g-12)
+            masks.append(warm.tobytes())
+        key=tuple(masks)
+        old=getattr(cache,'allin',None)
+        if old is not None and old[0]==key:
+            labels,err=old[1],None
+        else:
+            labels,err=allin_ocr(image,executable)
+            cache.allin=(key,labels) if not err else None
     evidence={}
     for name,spec in SEATS.items():
         avatar=pixels(image,spec["avatar"])

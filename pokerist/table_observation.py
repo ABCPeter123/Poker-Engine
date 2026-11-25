@@ -46,9 +46,9 @@ def status_label(text):
     labels={"ALLIN":"All-in","SATOUT":"Sat out","FOLD":"Fold","FOLDED":"Fold","CHECK":"Check","CALL":"Call","RAISE":"Raise","BET":"Bet","BIGBLIND":"Big blind","SMALLBLIND":"Small blind"}
     return labels.get(key)
 
-def scan_labels(image,exe,number_text):
+def scan_labels(image,exe,number_text,cache=None):
     entries=[((seat,kind),REGIONS[seat][kind],kind) for seat in SEAT_ORDER for kind in ("bet","status")]
-    rows,error=scan_regions(image,exe,entries)
+    rows,error=scan_regions(image,exe,entries,cache=cache)
     data={}
     for seat,kind in (entry[0] for entry in entries):
         words=rows.get((seat,kind),[])
@@ -67,8 +67,8 @@ def participation_label(action,visible,turn=False):
         return "Participation evidence"
     return "No participation detected"
 
-def observe_table(image,exe,number_text,numbers,cues,hole):
-    labels,error=scan_labels(image,exe,number_text)
+def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
+    labels,error=scan_labels(image,exe,number_text,cache=cache)
     dealer=dealer_marker(image)
     seats={}
     for seat in SEAT_ORDER:

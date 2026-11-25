@@ -236,16 +236,16 @@ def card(image, spec, *alternates, wide_ten=None):
 
 from amount_text import number_text
 
-def read_numbers(image, executable):
+def read_numbers(image, executable, cache=None):
     regions=[(key,box,"bet" if key=="pot" else "stack") for key,box in NUMBERS.items()]
-    rows,error=scan_regions(image,executable,regions)
+    rows,error=scan_regions(image,executable,regions,cache=cache)
     results={key:select_amount(rows.get(key,[]),number_text) for key in NUMBERS}
     # A whitelist can yield zero confidence on a correct digit sequence.
     # Only retry rejected nonempty stack strings, and require agreement.
     retry=[entry for entry in regions if entry[2]=="stack" and
            results[entry[0]]["raw"] and results[entry[0]]["candidate"] is None]
     if retry and executable and not error:
-        alternate,alt_error=scan_regions(image,executable,retry,unrestricted=True)
+        alternate,alt_error=scan_regions(image,executable,retry,unrestricted=True,cache=cache)
         if not alt_error:
             for key,_,_ in retry:
                 results[key]=reconcile_amount(results[key],select_amount(alternate.get(key,[]),number_text),number_text)
@@ -284,9 +284,9 @@ def read_cards(image):
                        "noncontiguous_board":not contiguous,
                        "unrecognized_visible_cards":sum(c is not None and c["candidate"] is None for c in hole+board)}}
 
-def review_image(image, executable=None, previous=None, source="frame", *, enhanced=False, deep=False):
+def review_image(image, executable=None, previous=None, source="frame", *, enhanced=False, deep=False, ocr_cache=None):
     started=time.perf_counter()
-    cues=seat_evidence(image,executable,previous)
+    cues=seat_evidence(image,executable,previous,cache=ocr_cache)
     after_cues=time.perf_counter()
     if deep:
         from saved_card_review import read_deep
@@ -298,12 +298,12 @@ def review_image(image, executable=None, previous=None, source="frame", *, enhan
         cards=read_cards(image)
     after_cards=time.perf_counter()
     hole=cards["hole_slots"]
-    numbers,err=read_numbers(image,executable)
+    numbers,err=read_numbers(image,executable,cache=ocr_cache)
     if (enhanced or deep) and executable:
         from saved_amount_review import add_saved_amount_evidence
         numbers=add_saved_amount_evidence(image,executable,NUMBERS,numbers,number_text)
     after_amounts=time.perf_counter()
-    observation=observe_table(image,executable,number_text,numbers,cues,hole)
+    observation=observe_table(image,executable,number_text,numbers,cues,hole,cache=ocr_cache)
     evidence={}
     if enhanced or deep:
         from saved_review_evidence import saved_evidence

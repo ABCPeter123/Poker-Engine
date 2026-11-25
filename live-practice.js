@@ -187,3 +187,64 @@ export function trackedBetLabel(e){
  if(!e?.observed)return '? (unobserved)';
  return (e.approximate?'≈':'')+e.value.toLocaleString('en-CA')+(e.warning?' *':'');
 }
+
+// Snapshot coverage is an inventory of available observations, never a claim
+// that the OCR readings are correct. A manual value is explicitly distinguished.
+export const SNAPSHOT_FIELDS=Object.freeze([
+ ...Array.from({length:2},(_,i)=>'hole.'+i),
+ ...Array.from({length:5},(_,i)=>'board.'+i),
+ 'dealer','turn','pot',...BET_SEATS.flatMap(id=>[id+'.stack',id+'.bet'])
+]);
+export function snapshotCoverage(result,locks={},fresh=false,numericFresh=false){
+ const fields={};
+ for(const key of SNAPSHOT_FIELDS){
+  if(Object.hasOwn(locks,key)){fields[key]='manual';continue;}
+  if(!fresh||!result){fields[key]='unknown';continue;}
+  if(key.startsWith('hole.')||key.startsWith('board.')){
+   const [group,index]=key.split('.'),slots=result[group+'_slots'];
+   const length=group==='hole'?2:5;
+   fields[key]=validSlots(slots,length)&&!result.quality?.duplicate_card_candidates&&!result.quality?.noncontiguous_board&&(slots[index]===null||validCard(slots[index]?.candidate))?'candidate':'unknown';
+   continue;
+  }
+  if(key==='dealer'||key==='turn'){
+   const v=key==='dealer'?result.table_observation?.dealer?.candidate:result.table_observation?.turn_candidate;
+   fields[key]=BET_SEATS.includes(v)?'candidate':'unknown';continue;
+  }
+  const [seat,kind]=key.split('.');
+  const c=key==='pot'?result.number_candidates?.pot?.candidate:result.table_observation?.seats?.[seat]?.[kind];
+  fields[key]=numericFresh&&c&&Number.isSafeInteger(c.value)&&c.value>=0?(c.approximate?'approximate':'candidate'):'unknown';
+ }
+ const counts={manual:0,candidate:0,approximate:0,unknown:0};
+ for(const s of Object.values(fields))counts[s]++;
+ return {fields,counts,total:SNAPSHOT_FIELDS.length,allPresent:counts.unknown===0,automaticAccuracyVerified:false};
+}
+
+// Compare adjacent independently observed snapshots only. A difference can
+// corroborate a direct reading or yield a hypothesis, never an exact value.
+// No carry across a hand/street change, ambiguous cards, missing exact
+// baselines, stack increases, or a nonconserving pot.
+export function reconcileSnapshots(previous,current,{potIncludesBets=false,maxAgeMs=1000}={}){
+ const unknown=reason=>({status:'unavailable',reason,seats:{}});
+ if(!potIncludesBets||!previous||!current)return unknown('No confirmed pot convention or adjacent sample');
+ if(!Number.isFinite(previous.at)||!Number.isFinite(current.at)||current.at<=previous.at||current.at-previous.at>maxAgeMs)return unknown('Snapshots not adjacent and fresh');
+ const a=previous.result,b=current.result,ca=candidateCards(a),cb=candidateCards(b);
+ const da=a?.table_observation?.dealer?.candidate,db=b?.table_observation?.dealer?.candidate;
+ if(!ca||!cb||ca.key!==cb.key||a.street_candidate!==b.street_candidate||!BET_SEATS.includes(da)||da!==db)return unknown('Hand or street identity uncertain');
+ const exact=c=>c&&Number.isSafeInteger(c.value)&&c.value>=0&&!c.approximate?c.value:null;
+ const pa=exact(a.number_candidates?.pot?.candidate),pb=exact(b.number_candidates?.pot?.candidate);
+ if(pa===null||pb===null||pb<pa)return unknown('Pot missing, approximate or decreased');
+ const seats={};let sum=0;
+ for(const id of BET_SEATS){
+  const x=a.table_observation?.seats?.[id],y=b.table_observation?.seats?.[id];
+  const sa=exact(x?.stack),sb=exact(y?.stack),ba=exact(x?.bet),bb=exact(y?.bet);
+  if(sa===null||sb===null||sa<sb)return unknown('Stack missing, approximate or increased');
+  const delta=sa-sb;sum+=delta;
+  if(!Number.isSafeInteger(sum))return unknown('Chip total outside safe range');
+  if(ba===null){seats[id]={status:'unknown',delta};continue;}
+  const implied=ba+delta;
+  if(!Number.isSafeInteger(implied))return unknown('Chip total outside safe range');
+  seats[id]={status:bb===null?'hypothesis':bb===implied?'consistent':'conflict',delta,implied,direct:bb};
+ }
+ if(sum!==pb-pa)return unknown('Pot change does not equal observed stack decreases');
+ return {status:Object.values(seats).some(s=>s.status==='conflict')?'conflict':'consistent',seats,automaticAccuracyVerified:false};
+}

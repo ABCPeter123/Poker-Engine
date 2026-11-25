@@ -1,5 +1,5 @@
 import {CurrentStateQueue} from './frame-queue.js';
-import {freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
+import {snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
 import {SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
@@ -8,10 +8,10 @@ export function attachPractice({video,screen,canRun,rotation}){
  let locks=loadManual({getItem:key=>localStorage.getItem(key)}),lastOcrAt=null,lastTable=null,cardMemory=null,betMemory=createBetMemory();
  let active=false,session='',epoch=0,timer=null,controller=null,equityWorker=null,reading=null,requestedKey='',lastFrame=null,resetAt=-1,lastResult=null;
  const editors=new Map(),inlineEditors=new Map(),popupEditors=new Map(),seatNodes=new Map();
- let equityResult=null,decisionTimer=null,ocrBackend='unknown',lastTimings=null,frameQueue=null,frameCallback=null,draining=false,lastPaintAt=-Infinity;
+ let equityResult=null,decisionTimer=null,ocrBackend='unknown',lastTimings=null,previousSnapshot=null,conservation=null,frameQueue=null,frameCallback=null,draining=false,lastPaintAt=-Infinity;
  const status=msg=>$('live-status').textContent=msg, metric=msg=>$('live-equity').textContent=msg;
  function clearEquity(){equityResult=null;if(equityWorker){equityWorker.terminate();equityWorker=null;}requestedKey='';metric('—');}
- function clearAuto(){lastResult=null;lastOcrAt=null;lastTable=null;cardMemory=null;reading=null;lastFrame=null;clearEquity();}
+ function clearAuto(){previousSnapshot=null;conservation=null;lastResult=null;lastOcrAt=null;lastTable=null;cardMemory=null;reading=null;lastFrame=null;clearEquity();}
  function save(){const ok=saveManual({setItem:(key,value)=>localStorage.setItem(key,value)},locks);$('manual-lock-count').textContent=Object.keys(locks).length+' locked'+(ok?' · saved locally':' · browser storage unavailable');}
  function stop(){closePopup();clearInterval(decisionTimer);decisionTimer=null;betMemory=createBetMemory();clearAuto();active=false;epoch++;clearTimeout(timer);timer=null;if(frameCallback!==null)video.cancelVideoFrameCallback?.(frameCallback);frameCallback=null;frameQueue=null;draining=false;controller?.abort();controller=null;$('live-overlay').hidden=true;$('live-start').disabled=!canRun()||!$('practice-consent').checked;$('live-stop').disabled=true;status('Recognition stopped. Manual locks retained.');paint();}
  function refresh(){panel.hidden=false;if(!canRun()&&active)stop();$('live-start').disabled=active||!canRun()||!$('practice-consent').checked;$('screen-seat-layer').hidden=!canRun();$('screen-decision').hidden=!canRun();if(!canRun())closePopup();paintDecision();}
@@ -121,6 +121,9 @@ export function attachPractice({video,screen,canRun,rotation}){
    e.note.textContent=(locked?'LOCKED · ':'Auto · ')+displayValue(key,v);
    e.input.title=(locked?'Locked':'Auto')+' · '+displayValue(key,v);
   }
+  const coverage=snapshotCoverage(lastResult,locks,observationAge(lastFrame,performance.now(),1000).fresh,age.fresh);
+  $('snapshot-coverage').textContent='Field availability: '+(coverage.total-coverage.counts.unknown)+' / '+coverage.total+' · '+coverage.counts.manual+' manual · '+coverage.counts.candidate+' candidates · '+coverage.counts.approximate+' approximate · '+coverage.counts.unknown+' unknown. Not an accuracy score.';
+  $('snapshot-reconciliation').textContent=conservation?.status==='unavailable'||!conservation?'Stack/pot reconciliation: '+(conservation?.reason||'waiting for adjacent snapshots'):'Stack/pot reconciliation: '+conservation.status+' · '+Object.entries(conservation.seats).filter(([,s])=>s.status==='conflict'||s.status==='hypothesis').map(([id,s])=>SEATS[id]+': '+s.status+' '+s.implied).join(' · ');
   const show=key=>displayValue(key,effective[key])+(isLocked(locks,key)?' [locked]':'');
   $('live-dealer').textContent=show('dealer');$('live-turn').textContent=show('turn');$('live-pot').textContent=show('pot');
   $('live-stacks').textContent=Object.keys(SEATS).map(id=>SEATS[id]+': '+show(id+'.stack')).join(' · ');
@@ -146,6 +149,9 @@ export function attachPractice({video,screen,canRun,rotation}){
   lastTimings=result.timings_ms||null;
   ocrBackend=ocrStatus?.backend||ocrBackend;
   const prior=betMemory,sampled=ocr&&ocrStatus?.state==='sampled'&&$('live-ocr').checked;
+  const currentSnapshot=sampled?{at:capturedAt,result}:null;
+  conservation=reconcileSnapshots(previousSnapshot,currentSnapshot,{potIncludesBets:$('practice-action-confirm').checked});
+  previousSnapshot=currentSnapshot;
   betMemory=updateBetMemory(betMemory,result,{capturedAt,now,ocr:sampled});
   const numeric=currentNumericSample(lastTable?{at:lastOcrAt,table:lastTable}:null,result,betMemory,prior,{capturedAt,now,sampled});
   lastTable=numeric?.table??null;lastOcrAt=numeric?.at??null;

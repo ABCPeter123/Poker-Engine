@@ -9,6 +9,8 @@ export function candidateCards(result){
  try{const hole=parseCards(h.join(' ')),cards=b.length?parseCards(b.join(' ')):[];if(hole.length!==2||new Set([...hole,...cards]).size!==hole.length+cards.length)return null;return {hole,board:cards,labels:{hole:h,board:b},key:JSON.stringify([hole,cards])};}catch{return null;}
 }
 export function stableReading(prev,candidate,now){
+ if(!Number.isFinite(now)||now<0)return {key:null,count:0,stable:null,last:null};
+ if(prev&&Number.isFinite(prev.last)&&now<=prev.last)return prev;
  if(!candidate)return {key:null,count:0,stable:null,last:now};
  const count=prev?.key===candidate.key&&now-prev.last<=6000?prev.count+1:1;
  return {key:candidate.key,count,stable:count>=2?candidate:null,last:now};
@@ -24,6 +26,8 @@ const freshSlot=()=>({value:null,count:0,confirmed:false,lastSeen:null,misses:0}
 // Display-only memory: only repeated raw readings can seed it. A carried
 // card never becomes a fresh reading or refreshes its own expiration.
 export function updateCardMemory(previous,result,now){
+ if(!Number.isFinite(now)||now<0)return null;
+ if(previous&&now<=previous.last)return previous;
  const groups=[result?.hole_slots,result?.board_slots];
  if(!Array.isArray(groups[0])||groups[0].length!==2||!Array.isArray(groups[1])||groups[1].length!==5)return null;
  const raw=groups.flat(),values=raw.map(x=>validCard(x?.candidate));
@@ -157,6 +161,6 @@ export function correctTrackedBet(state,seat,value,now){
  return {...s,last:Math.max(s.last??0,now),seats:{...s.seats,[seat]:{...blank(),value,observed:true,lastSeen:now,source:'manual',warning:'Manually corrected'}}};
 }
 export function trackedBetLabel(e){
- if(!e)return '0 (initial)';
- return (e.approximate?'≈':'')+e.value.toLocaleString('en-CA')+(e.observed?'':' (initial)')+(e.warning?' *':'');
+ if(!e?.observed)return '? (unobserved)';
+ return (e.approximate?'≈':'')+e.value.toLocaleString('en-CA')+(e.warning?' *':'');
 }

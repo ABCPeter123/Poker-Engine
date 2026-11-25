@@ -102,7 +102,8 @@ export function attachPractice({video,screen,canRun,rotation}){
   for(const id of Object.keys(SEATS)){
    const s=obs?.seats?.[id],n=num?.seats?.[id];
    a[id+'.stack']=n?.stack?.value;
-   a[id+'.bet']=betMemory.seats[id].value;
+   const bet=betMemory.seats[id];
+   a[id+'.bet']=bet.observed&&betMemory.street===a.street&&!betMemory.boundary&&observationAge(bet.lastSeen,performance.now(),5000).fresh?bet.value:undefined;
    a[id+'.status']=n?.status_candidate??s?.participation_candidate??undefined;
    a[id+'.cards']=s?.card_visible_candidate?'Visible':undefined;
    a[id+'.participation']=s?.participation_candidate??undefined;
@@ -136,11 +137,11 @@ export function attachPractice({video,screen,canRun,rotation}){
   paintDecision();
  }
  function render(result,ocr,ocrStatus,capturedAt){
-  if(capturedAt<resetAt)return;
+  if(capturedAt<resetAt||(lastFrame!==null&&capturedAt<=lastFrame))return;
   lastResult=result;
   if(ocr&&$('live-ocr').checked&&ocrStatus?.state!=='failed'){lastTable={...result.table_observation,pot:result.number_candidates?.pot?.candidate};lastOcrAt=capturedAt;}
   betMemory=updateBetMemory(betMemory,result,{capturedAt,now:performance.now(),ocr:ocr&&ocrStatus?.state!=='failed'&&$('live-ocr').checked});
-  const now=performance.now();cardMemory=updateCardMemory(cardMemory,result,now);lastFrame=capturedAt;refreshCandidate(true);paint();
+  cardMemory=updateCardMemory(cardMemory,result,capturedAt);lastFrame=capturedAt;refreshCandidate(true);paint();
   if(ocrStatus?.state==='unavailable'||ocrStatus?.state==='failed')$('live-ocr-age').textContent='OCR '+ocrStatus.state+': '+(ocrStatus.detail||'Scan failed');
   $('live-overlay').hidden=false;
  }

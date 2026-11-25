@@ -72,8 +72,16 @@ export function displayValue(key,value){
 // raw slot falsely reads the same card. An unresolved automatic conflict
 // stays unknown, and existing practice validation rejects incomplete decks.
 export function effectiveCards(result,locks){
- const hole=Array.isArray(result?.hole_slots)?result.hole_slots:Array(2).fill({candidate:null});
- const board=Array.isArray(result?.board_slots)?result.board_slots:Array(5).fill(null);
+ const slotsOf=(group,length)=>Array.from({length},(_,i)=>{
+  const slots=result?.[group];
+  if(!Array.isArray(slots)||slots.length!==length||!Object.hasOwn(slots,i))return {candidate:null,unknown:true};
+  const slot=slots[i];
+  if(slot===null)return null;
+  if(!slot||typeof slot!=='object'||!Object.hasOwn(slot,'candidate'))return {candidate:null,unknown:true};
+  if(slot.candidate!==null&&!/^[2-9TJQKA][cdhs]$/.test(slot.candidate))return {candidate:null,unknown:true};
+  return slot;
+ });
+ const hole=slotsOf('hole_slots',2),board=slotsOf('board_slots',5);
  const lockedCards=new Set(CARD_KEYS.filter(k=>isLocked(locks,k)&&locks[k]!==null).map(k=>locks[k]));
  const slots=[...hole,...board].map((slot,i)=>{
   const key=CARD_KEYS[i];
@@ -83,7 +91,7 @@ export function effectiveCards(result,locks){
  });
  const b=slots.slice(2),h=slots.slice(0,2),n=b.filter(Boolean).length;
  const contiguous=b.slice(0,n).every(Boolean)&&!b.slice(n).some(Boolean);
- const street=contiguous?({0:'Preflop',3:'Flop',4:'Turn',5:'River'})[n]||null:null;
+ const street=contiguous&&!b.some(s=>s?.unknown)?({0:'Preflop',3:'Flop',4:'Turn',5:'River'})[n]||null:null;
  const known=slots.filter(s=>s?.candidate).map(s=>s.candidate);
  const lockedStreet=isLocked(locks,'street')?locks.street:null;
  return {...result,hole_slots:h,board_slots:b,street_candidate:isLocked(locks,'street')?(lockedStreet==='Unknown'?null:lockedStreet):street,

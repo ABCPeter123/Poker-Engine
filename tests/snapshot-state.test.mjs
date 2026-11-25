@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {snapshotCoverage,reconcileSnapshots,BET_SEATS} from '../live-practice.js';
+import test from 'node:test';import assert from 'node:assert/strict';import {snapshotCoverage,reconcileSnapshots,BET_SEATS,directNumericSnapshot} from '../live-practice.js';
 const c=value=>({value,approximate:false,ocr_confidence:95});
 const card=candidate=>({candidate});
 function frame(pot=100,stack=1000,bet=20){
@@ -26,4 +26,12 @@ test('no inference with uncertain identity, pot, stack or elapsed time',()=>{
  assert.equal(reconcileSnapshots(a,b,{potIncludesBets:true}).status,'unavailable');
  b.result.number_candidates.pot.candidate.value=150;b.result.hole_slots[0]=card('Ah');
  assert.equal(reconcileSnapshots(a,b,{potIncludesBets:true}).status,'unavailable');
+});
+
+test('raw numeric evidence remains visible without round confirmation, but expires or clears on OCR error',()=>{
+ const f=frame();
+ assert.equal(directNumericSnapshot(f,'sampled',100,200).seats.hero.stack.value,1000);
+ assert.equal(directNumericSnapshot(f,'sampled',100,1101),null);
+ assert.equal(directNumericSnapshot(f,'failed',100,200),null);
+ assert.equal(directNumericSnapshot(f,'disabled',100,200),null);
 });

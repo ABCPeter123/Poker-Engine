@@ -1,5 +1,5 @@
 import {CurrentStateQueue} from './frame-queue.js';
-import {snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
+import {directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
 import {SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
@@ -8,10 +8,10 @@ export function attachPractice({video,screen,canRun,rotation}){
  let locks=loadManual({getItem:key=>localStorage.getItem(key)}),lastOcrAt=null,lastTable=null,cardMemory=null,betMemory=createBetMemory();
  let active=false,session='',epoch=0,timer=null,controller=null,equityWorker=null,reading=null,requestedKey='',lastFrame=null,resetAt=-1,lastResult=null;
  const editors=new Map(),inlineEditors=new Map(),popupEditors=new Map(),seatNodes=new Map();
- let equityResult=null,decisionTimer=null,ocrBackend='unknown',lastTimings=null,previousSnapshot=null,conservation=null,frameQueue=null,frameCallback=null,draining=false,lastPaintAt=-Infinity;
+ let equityResult=null,decisionTimer=null,ocrBackend='unknown',lastTimings=null,lastOcrState=null,previousSnapshot=null,conservation=null,frameQueue=null,frameCallback=null,draining=false,lastPaintAt=-Infinity;
  const status=msg=>$('live-status').textContent=msg, metric=msg=>$('live-equity').textContent=msg;
  function clearEquity(){equityResult=null;if(equityWorker){equityWorker.terminate();equityWorker=null;}requestedKey='';metric('—');}
- function clearAuto(){previousSnapshot=null;conservation=null;lastResult=null;lastOcrAt=null;lastTable=null;cardMemory=null;reading=null;lastFrame=null;clearEquity();}
+ function clearAuto(){lastOcrState=null;lastTimings=null;previousSnapshot=null;conservation=null;lastResult=null;lastOcrAt=null;lastTable=null;cardMemory=null;reading=null;lastFrame=null;clearEquity();}
  function save(){const ok=saveManual({setItem:(key,value)=>localStorage.setItem(key,value)},locks);$('manual-lock-count').textContent=Object.keys(locks).length+' locked'+(ok?' · saved locally':' · browser storage unavailable');}
  function stop(){closePopup();clearInterval(decisionTimer);decisionTimer=null;betMemory=createBetMemory();clearAuto();active=false;epoch++;clearTimeout(timer);timer=null;if(frameCallback!==null)video.cancelVideoFrameCallback?.(frameCallback);frameCallback=null;frameQueue=null;draining=false;controller?.abort();controller=null;$('live-overlay').hidden=true;$('live-start').disabled=!canRun()||!$('practice-consent').checked;$('live-stop').disabled=true;status('Recognition stopped. Manual locks retained.');paint();}
  function refresh(){panel.hidden=false;if(!canRun()&&active)stop();$('live-start').disabled=active||!canRun()||!$('practice-consent').checked;$('screen-seat-layer').hidden=!canRun();$('screen-decision').hidden=!canRun();if(!canRun())closePopup();paintDecision();}
@@ -113,7 +113,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   return a;
  }
  function paint(){
-  const a=autoValues(),effective=resolveManual(a,locks),obs=lastResult?.table_observation,age=observationAge(lastOcrAt,performance.now(),1000),num=age.fresh?lastTable:null;
+  const now=performance.now(),a=autoValues(),effective=resolveManual(a,locks),age=observationAge(lastOcrAt,now,1000),direct=directNumericSnapshot(lastResult,lastOcrState?.state,lastFrame,now);
   for(const map of [editors,inlineEditors,popupEditors])for(const [key,e] of map){
    const locked=isLocked(locks,key),v=effective[key];
    e.box.classList.toggle('manual-locked',locked);e.auto.disabled=!locked;e.lock.textContent=locked?'Update':'Lock';
@@ -121,18 +121,18 @@ export function attachPractice({video,screen,canRun,rotation}){
    e.note.textContent=(locked?'LOCKED · ':'Auto · ')+displayValue(key,v);
    e.input.title=(locked?'Locked':'Auto')+' · '+displayValue(key,v);
   }
-  const coverage=snapshotCoverage(lastResult,locks,observationAge(lastFrame,performance.now(),1000).fresh,age.fresh);
+  const coverage=snapshotCoverage(lastResult,locks,observationAge(lastFrame,now,1000).fresh,!!direct);
   $('snapshot-coverage').textContent='Field availability: '+(coverage.total-coverage.counts.unknown)+' / '+coverage.total+' · '+coverage.counts.manual+' manual · '+coverage.counts.candidate+' candidates · '+coverage.counts.approximate+' approximate · '+coverage.counts.unknown+' unknown. Not an accuracy score.';
-  $('snapshot-reconciliation').textContent=conservation?.status==='unavailable'||!conservation?'Stack/pot reconciliation: '+(conservation?.reason||'waiting for adjacent snapshots'):'Stack/pot reconciliation: '+conservation.status+' · '+Object.entries(conservation.seats).filter(([,s])=>s.status==='conflict'||s.status==='hypothesis').map(([id,s])=>SEATS[id]+': '+s.status+' '+s.implied).join(' · ');
+  $('snapshot-reconciliation').textContent=!observationAge(lastFrame,now,1000).fresh?'Stack/pot reconciliation: no fresh snapshot':conservation?.status==='unavailable'||!conservation?'Stack/pot reconciliation: '+(conservation?.reason||'waiting for adjacent snapshots'):'Stack/pot reconciliation: '+conservation.status+' · '+Object.entries(conservation.seats).filter(([,s])=>s.status==='conflict'||s.status==='hypothesis').map(([id,s])=>SEATS[id]+': '+s.status+' '+s.implied).join(' · ');
   const show=key=>displayValue(key,effective[key])+(isLocked(locks,key)?' [locked]':'');
   $('live-dealer').textContent=show('dealer');$('live-turn').textContent=show('turn');$('live-pot').textContent=show('pot');
   $('live-stacks').textContent=Object.keys(SEATS).map(id=>SEATS[id]+': '+show(id+'.stack')).join(' · ');
-  $('live-bet-state').textContent=betMemory.status;$('live-ocr-age').textContent=age.fresh?'Captured '+(age.ageMs/1000).toFixed(1)+' s ago':age.ageMs===null?'Not sampled':'Stale ('+(age.ageMs/1000).toFixed(1)+' s old)';
+  $('live-bet-state').textContent=betMemory.status;$('live-ocr-age').textContent=lastOcrState?.state==='failed'||lastOcrState?.state==='unavailable'?'OCR '+lastOcrState.state+': '+(lastOcrState.detail||'No reading'):direct?'Latest capture '+((now-lastFrame)/1000).toFixed(1)+' s ago'+(!age.fresh?' · awaiting round confirmation':''):'No fresh OCR sample';
   const body=$('live-table-body');body.replaceChildren();
   for(const [id,label] of Object.entries(SEATS)){
-   const n=num?.seats?.[id]||{},row=document.createElement('tr');if(effective.turn===id)row.className='active-observation';
-   const values=[label,effective.dealer===id?'D':'—',effective.turn===id?'Turn cue':'—',show(id+'.stack'),n.bet?.display??'?',isLocked(locks,id+'.bet')?show(id+'.bet'):effective[id+'.bet']===undefined?'? (unconfirmed or stale)':trackedBetLabel(betMemory.seats[id]),show(id+'.status'),show(id+'.cards'),show(id+'.participation'),[n.stack_raw,n.bet_raw,n.status_raw].filter(Boolean).join(' / ')||'—'];
-   values.forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i===5)td.title=isLocked(locks,id+'.bet')?'Manual lock':betMemory.seats[id].warning||betMemory.seats[id].source;row.append(td);});body.append(row);
+   const n=direct?.seats?.[id]||{},row=document.createElement('tr');if(effective.turn===id)row.className='active-observation';
+   const values=[label,effective.dealer===id?'D':'—',effective.turn===id?'Turn cue':'—',show(id+'.stack'),n.stack?.display??'?',n.bet?.display??'?',isLocked(locks,id+'.bet')?show(id+'.bet'):effective[id+'.bet']===undefined?'? (unconfirmed or stale)':trackedBetLabel(betMemory.seats[id]),show(id+'.status'),show(id+'.cards'),show(id+'.participation'),[n.stack_raw,n.bet_raw,n.status_raw].filter(Boolean).join(' / ')||'—'];
+   values.forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i===6)td.title=isLocked(locks,id+'.bet')?'Manual lock':betMemory.seats[id].warning||betMemory.seats[id].source;row.append(td);});body.append(row);
   }
   const cardLabel=key=>{const v=effective[key];return (v===null?'·':v??'?')+(isLocked(locks,key)?' [L]':'');};
   $('manual-effective-cards').textContent=CARD_KEYS.slice(0,2).map(cardLabel).join(' ')+' | '+CARD_KEYS.slice(2).map(cardLabel).join(' ');
@@ -147,16 +147,16 @@ export function attachPractice({video,screen,canRun,rotation}){
   if(!observationAge(capturedAt,now,1000).fresh){clearAuto();betMemory=interruptBetMemory(betMemory);paint();return;}
   lastResult=result;
   lastTimings=result.timings_ms||null;
+  lastOcrState=$('live-ocr').checked?ocrStatus:{state:'disabled'};
   ocrBackend=ocrStatus?.backend||ocrBackend;
   const prior=betMemory,sampled=ocr&&ocrStatus?.state==='sampled'&&$('live-ocr').checked;
   const currentSnapshot=sampled?{at:capturedAt,result}:null;
   conservation=reconcileSnapshots(previousSnapshot,currentSnapshot,{potIncludesBets:$('practice-action-confirm').checked});
   previousSnapshot=currentSnapshot;
   betMemory=updateBetMemory(betMemory,result,{capturedAt,now,ocr:sampled});
-  const numeric=currentNumericSample(lastTable?{at:lastOcrAt,table:lastTable}:null,result,betMemory,prior,{capturedAt,now,sampled});
+  const numeric=sampled?currentNumericSample(null,result,betMemory,prior,{capturedAt,now,sampled}):null;
   lastTable=numeric?.table??null;lastOcrAt=numeric?.at??null;
   cardMemory=updateCardMemory(cardMemory,result,capturedAt);lastFrame=capturedAt;refreshCandidate(true);if(now-lastPaintAt>=125){lastPaintAt=now;paint();}
-  if(ocrStatus?.state==='unavailable'||ocrStatus?.state==='failed')$('live-ocr-age').textContent='OCR '+ocrStatus.state+': '+(ocrStatus.detail||'Scan failed');
   $('live-overlay').hidden=false;
  }
  function reportQueue(q){const r=q.report(performance.now()),age=r.lastSnapshotAgeMs;$('frame-telemetry').textContent='Snapshots '+r.processed+'/'+r.captured+' · deliberately sampled out '+r.intentionalSkips+' · source gaps '+r.sourceMissed+' · presented '+(r.sourceFps===null?'—':r.sourceFps.toFixed(1))+' FPS · callbacks '+(r.callbackFps===null?'—':r.callbackFps.toFixed(1))+' FPS · snapshots '+r.processingFps.toFixed(1)+'/s · snapshot age '+(age===null?'—':(age/1000).toFixed(2)+' s')+' · in flight '+(r.oldestAgeMs/1000).toFixed(2)+' s · OCR '+ocrBackend+(lastTimings?' · recognition '+lastTimings.total.toFixed(1)+' ms':'');if(age===null)status('Acquiring first table snapshot.');else if(age>1000)status('Snapshot stale: full table refresh exceeded one second.');else status('Current-state recognition running · snapshot age '+(age/1000).toFixed(2)+' s · automatic values remain candidates.');}
@@ -199,7 +199,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  $('live-reset-bets').onclick=()=>{betMemory={...createBetMemory(),last:performance.now()};paint();};
  $('manual-new-hand').onclick=()=>{if(!confirm('Clear all manual locks and automatic observations for a new hand?'))return;closePopup();locks={};resetAt=performance.now();betMemory=createBetMemory();clearAuto();for(const map of [editors,inlineEditors])for(const e of map.values()){e.dirty=false;e.input.value='';e.input.setCustomValidity('');}save();paint();};
  $('live-opponents').onchange=()=>{clearEquity();if(active&&reading?.stable&&observationAge(lastFrame,performance.now(),1000).fresh)evaluate(reading.stable);paintDecision();};
- $('live-ocr').onchange=()=>{lastOcrAt=null;lastTable=null;betMemory=createBetMemory();paint();};
+ $('live-ocr').onchange=()=>{lastOcrState=null;previousSnapshot=null;conservation=null;lastOcrAt=null;lastTable=null;betMemory=createBetMemory();paint();};
  save();paint();refresh();
  return {stop,refresh,reset:()=>{if(active){stop();refresh();status('Source geometry changed. Restart recognition when aligned. Manual locks retained.');}}};
 }

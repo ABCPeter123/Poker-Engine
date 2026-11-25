@@ -248,3 +248,10 @@ export function reconcileSnapshots(previous,current,{potIncludesBets=false,maxAg
  if(sum!==pb-pa)return unknown('Pot change does not equal observed stack decreases');
  return {status:Object.values(seats).some(s=>s.status==='conflict')?'conflict':'consistent',seats,automaticAccuracyVerified:false};
 }
+
+// Diagnostic observations belong to exactly one capture. A failed or stale
+// OCR result must not make older readings look current.
+export function directNumericSnapshot(result,status,capturedAt,now){
+ if(status!=='sampled'||!observationAge(capturedAt,now,1000).fresh||!result?.table_observation?.seats)return null;
+ return {...result.table_observation,pot:result.number_candidates?.pot?.candidate};
+}

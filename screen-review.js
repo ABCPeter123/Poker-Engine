@@ -1,10 +1,11 @@
+import {assertFrameProvenance,digestFrame,savedFrameTime} from './review-provenance.js';
 import {attachPractice} from './live-practice-view.js';
 import {reviewEquityInput} from './review-equity.js';
 import {previewDimensions,captureOptions,captureHealth,orientationDegrees,orientedDimensions,shareOptions,shareError,shareTrackState} from './capture-view.js';
 import {validateReview,reviewSlotDefaults,selectReviewComponent} from './review-validation.js';
 const $=id=>document.getElementById(id),video=$('video'),frame=$('frame'),ink=$('ink'),ctx=ink.getContext('2d');
 let stream=null,url=null,source='none',frozen=false,drawing=false,point=null,revision=0,reviewPending=false,frameVersion=0,lastReview=null;
-let reviewWorker=null;
+let reviewWorker=null,frozenTime=null;
 let verifiedReview=null,sourceWidth=0,sourceHeight=0,qualityTimer=null,lastSample=null,frames=0,frameCallback=null;
 const screen=$('screen');
 let practice=null,selecting=false,shareAttempt=0,shareSurface='',lastVideoFrame=null,shareState='ended',startedAt=0;
@@ -22,7 +23,7 @@ function cancelReviewEquity(){if(reviewWorker){reviewWorker.terminate();reviewWo
 function resetReview(){cancelReviewEquity();frameVersion++;lastReview=null;verifiedReview=null;$('verify-panel').hidden=true;$('export-verified').disabled=true;$('export-review').disabled=true;$('review-overlay').hidden=true;$('review-result').hidden=true;}
 function status(msg){$('status').textContent=msg;}
 function controls(){practice?.refresh();$('share').disabled=selecting;$('share-mode').disabled=selecting;$('recording-controls').hidden=source!=='recording';$('timeline').disabled=source!=='recording'||!Number.isFinite(video.duration);$('recognize').disabled=!frozen||!['image','recording'].includes(source)||reviewPending;$('stop').disabled=source==='none';$('freeze').disabled=frozen||source==='none'||!video.videoWidth;$('resume').disabled=!frozen||source==='image';$('clear').disabled=!frozen;video.hidden=source==='none'||frozen;frame.hidden=!frozen;ink.hidden=!frozen;$('empty').hidden=source!=='none';}
-function stop(){practice?.stop();shareAttempt++;selecting=false;shareSurface='';shareState='ended';$('share-source').textContent='';$('share-recovery').hidden=true;revision++;stopStats();sourceWidth=sourceHeight=0;$('capture-health').textContent='No capture';resetReview();if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.pause();video.srcObject=null;video.removeAttribute('src');video.load();if(url)URL.revokeObjectURL(url);url=null;source='none';frozen=false;drawing=false;point=null;controls();fitPreview();}
+function stop(){practice?.stop();shareAttempt++;selecting=false;shareSurface='';shareState='ended';$('share-source').textContent='';$('share-recovery').hidden=true;revision++;stopStats();sourceWidth=sourceHeight=0;$('capture-health').textContent='No capture';resetReview();if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.pause();video.srcObject=null;video.removeAttribute('src');video.load();if(url)URL.revokeObjectURL(url);url=null;source='none';frozen=false;frozenTime=null;drawing=false;point=null;controls();fitPreview();}
 function size(w,h){if(w!==sourceWidth||h!==sourceHeight)practice?.reset();resetReview();sourceWidth=w;sourceHeight=h;const dims=orientedDimensions(w,h,rotation);frame.width=ink.width=dims.width;frame.height=ink.height=dims.height;fitPreview();}
 function drawRotated(target,sourceImage,degrees,w,h){const c=target.getContext('2d');c.save();c.translate(target.width/2,target.height/2);c.rotate(degrees*Math.PI/180);c.drawImage(sourceImage,-w/2,-h/2,w,h);c.restore();}
 $('orientation').onchange=()=>{const next=orientationDegrees($('orientation').value),delta=next-rotation;if(next===rotation)return;let old=null,oldInk=null;if(frozen){old=document.createElement('canvas');oldInk=document.createElement('canvas');old.width=oldInk.width=frame.width;old.height=oldInk.height=frame.height;old.getContext('2d').drawImage(frame,0,0);oldInk.getContext('2d').drawImage(ink,0,0);}practice?.reset();rotation=next;preferences();if(old){size(sourceWidth,sourceHeight);drawRotated(frame,old,delta,old.width,old.height);drawRotated(ink,oldInk,delta,oldInk.width,oldInk.height);}else fitPreview();controls();};
@@ -59,9 +60,9 @@ video.ontimeupdate=updateTime;
 video.addEventListener('resize',()=>{if(source==='share'&&!frozen&&video.videoWidth&&video.videoHeight){size(video.videoWidth,video.videoHeight);measure();}});
 video.onloadedmetadata=()=>{updateTime();if(source==='none')return;if(video.videoWidth)size(video.videoWidth,video.videoHeight);controls();};
 $('file').onchange=async()=>{const file=$('file').files[0];if(!file)return;stop();const id=revision;url=URL.createObjectURL(file);try{if(file.type.startsWith('image/')){const image=new Image();image.src=url;await image.decode();if(id!==revision)return;source='image';size(image.naturalWidth,image.naturalHeight);drawRotated(frame,image,rotation,sourceWidth,sourceHeight);frozen=true;status('Saved image ready for annotation.');}else{source='recording';video.src=url;await video.play();if(id!==revision)return;status('Saved recording playing locally.');}controls();}catch(e){if(id===revision){stop();status(e.message);}}finally{$('file').value='';}};
-function freezeFrame(){practice?.stop();if(!video.videoWidth||source==='none')return;size(video.videoWidth,video.videoHeight);drawRotated(frame,video,rotation,sourceWidth,sourceHeight);if(source==='recording')video.pause();frozen=true;status('Frozen frame. Draw or analyze a saved recording.');controls();}
+function freezeFrame(){practice?.stop();if(!video.videoWidth||source==='none'||video.seeking)return;if(source==='recording')video.pause();size(video.videoWidth,video.videoHeight);drawRotated(frame,video,rotation,sourceWidth,sourceHeight);frozenTime=savedFrameTime(source,video.currentTime);frozen=true;status('Frozen frame. Draw or analyze a saved recording.');controls();}
 $('freeze').onclick=freezeFrame;
-function seek(t){if(source!=='recording'||!Number.isFinite(video.duration))return;video.pause();resetReview();const target=Math.max(0,Math.min(video.duration,t));if(Math.abs(target-video.currentTime)<.001){freezeFrame();return;}video.currentTime=target;}
+function seek(t){if(source!=='recording'||!Number.isFinite(video.duration))return;video.pause();resetReview();const target=Math.max(0,Math.min(video.duration,t));if(Math.abs(target-video.currentTime)<.001&&!video.seeking){freezeFrame();return;}frozen=false;frozenTime=null;controls();video.currentTime=target;}
 video.onseeked=()=>{if(source==='recording'){freezeFrame();updateTime();}};
 $('timeline').onchange=()=>seek(Number($('timeline').value));$('back-frame').onclick=()=>seek(video.currentTime-1);$('forward-frame').onclick=()=>seek(video.currentTime+1);
 $('resume').onclick=()=>{if(source==='image')return;resetReview();frozen=false;drawing=false;point=null;if(video.videoWidth&&video.videoHeight)size(video.videoWidth,video.videoHeight);video.play().catch(e=>status(e.message));status('Preview resumed.');controls();};
@@ -72,22 +73,25 @@ ink.onpointermove=e=>{if(!drawing||!point)return;const p=xy(e);ctx.strokeStyle='
 ink.onpointerup=ink.onpointercancel=ink.onlostpointercapture=()=>{drawing=false;point=null;};
 practice=attachPractice({video,screen,canRun:()=>source==='share'&&!frozen&&!!stream&&shareSurface==='window'&&shareState==='ready',rotation:()=>rotation});window.addEventListener('pagehide',stop);controls();fitPreview();
 $('recognize').onclick=async()=>{
- if(!frozen||!['image','recording'].includes(source)||reviewPending)return;
- const version=frameVersion;reviewPending=true;controls();status('Running local screenshot recognition. First launch may install dependencies.');
+ if(!frozen||!['image','recording'].includes(source)||reviewPending||video.seeking)return;
+ const version=frameVersion,time=frozenTime,width=frame.width,height=frame.height;reviewPending=true;controls();status('Running local screenshot recognition. First launch may install dependencies.');
  try{
   const blob=await new Promise(resolve=>frame.toBlob(resolve,'image/png'));
   if(!blob)throw Error('Could not encode saved frame.');
   if(version!==frameVersion)return;
+  const provenance=await digestFrame(blob,width,height);
+  if(version!==frameVersion)return;
   const response=await fetch('/api/review-frame',{method:'POST',headers:{'Content-Type':'image/png'},body:blob});
   const result=await response.json();if(version!==frameVersion)return;
   if(!response.ok)throw Error(result.error||'Review failed.');
+  assertFrameProvenance(result.input_provenance,provenance);
   const text=slots=>slots.map(c=>c?.candidate??(c?'?':'–')).join(' ');
   const overlay=$('review-overlay');overlay.replaceChildren();
   for(const value of ['UNVERIFIED REVIEW', 'Hand: '+text(result.hole_slots), 'Board: '+text(result.board_slots),'Street: '+(result.street_candidate||'?'),'Pot: '+(result.number_candidates?.pot?.candidate?.display||'?')]){
    const line=document.createElement('div');line.textContent=value;overlay.append(line);
   }
   if(result.quality?.duplicate_card_candidates||result.quality?.noncontiguous_board){const line=document.createElement('div');line.textContent='Conflicting candidates: verify cards';overlay.append(line);}
-  lastReview={...result,recording_time_seconds:source==='recording'?video.currentTime:null};populateVerification(lastReview);$('export-review').disabled=false;overlay.hidden=false;$('review-result').textContent=JSON.stringify(lastReview,(key,value)=>key==='png_base64'?'[crop image available in downloaded JSON]':value,2);$('review-result').hidden=false;
+  lastReview={...result,recording_time_seconds:time};populateVerification(lastReview);$('export-review').disabled=false;overlay.hidden=false;$('review-result').textContent=JSON.stringify(lastReview,(key,value)=>key==='png_base64'?'[crop image available in downloaded JSON]':value,2);$('review-result').hidden=false;
   status('Candidate recognition complete. Confirm all readings manually.');
  }catch(e){if(version===frameVersion)status(e.message);}
  finally{reviewPending=false;controls();}

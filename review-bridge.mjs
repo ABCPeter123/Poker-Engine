@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
@@ -27,7 +28,9 @@ export async function reviewFrame(req,res,port){
   const script=fileURLToPath(new URL('./pokerist/review.py',import.meta.url));
   const python=process.env.POKER_PYTHON||(process.platform==='win32'?'py':'python3');
   await run(python,[script,input,'--output',output,'--enhanced','--quiet'],{timeout:180000,maxBuffer:512*1024,windowsHide:true});
-  const result=JSON.parse(await readFile(output,'utf8'));reply(res,200,result);
+  const result=JSON.parse(await readFile(output,'utf8'));
+  const input_provenance={sha256:createHash('sha256').update(data).digest('hex'),bytes:data.length,width:w,height:h,format:'image/png'};
+  reply(res,200,{...result,input_provenance});
  }catch(e){reply(res,400,{error:'Review failed: '+String(e.stderr||e.message||e).slice(-900)});}
  finally{if(dir)await rm(dir,{recursive:true,force:true}).catch(()=>{});busy=false;}
 }

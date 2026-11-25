@@ -106,3 +106,12 @@
 @media(max-width:600px){.console-page .shell{padding:14px 9px 24px}.console-page .panel,.console-page .hero{padding:10px}.console-page .toolbar{gap:5px}.console-page .deck{gap:3px}.console-page .deck .card{font-size:10px;min-height:32px}.console-page .steps span{font-size:10px}.console-page .metrics>div{padding:7px}.console-page .source-tools>label{max-width:100%}.console-page #verify-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.console-page .manual-grid{grid-template-columns:repeat(auto-fit,minmax(116px,1fr))}.console-page .workspace-meta{font-size:9px}}
 @media(max-width:380px){.console-page #verify-fields{grid-template-columns:1fr}.console-page .deck{grid-template-columns:repeat(7,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.console-page *, .console-page *:before,.console-page *:after{animation:none!important;transition:none!important}}
+
+/* Match the existing table's mobile stacking order at the same breakpoint. */
+@media(min-width:901px) and (max-width:1000px){.console-page .desk-grid .stack{display:grid}.console-page .desk-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.console-page .screen-seat .manual-locked{box-shadow:inset 2px 0 0 var(--mint)}
+.console-page .screen-seat-active .screen-seat-title{color:var(--gold)}
+.console-page .table-workspace>.heading{padding-bottom:8px;border-bottom:1px solid var(--line)}
+.console-page .hand-overview>.heading{padding-bottom:8px;border-bottom:1px solid var(--line)}
+.console-page .deck button.card:disabled{opacity:.52}
+.console-page .deck button.card.in-hole,.console-page .deck button.card.in-board{opacity:1}

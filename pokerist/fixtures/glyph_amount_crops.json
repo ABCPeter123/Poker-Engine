@@ -1,0 +1,383 @@
+{
+  "description": "Manually localized amount labels from four existing calibration screenshots. Originals stay local. Ground truth guides segmentation for diagnosis, not inference.",
+  "lines": [
+    {
+      "file": "image(20261124-222353).png",
+      "group": "222353",
+      "name": "hero",
+      "label": "19950",
+      "frame_crop": [
+        86,
+        25,
+        802,
+        356
+      ],
+      "box": [
+        704,
+        590,
+        764,
+        612
+      ]
+    },
+    {
+      "file": "image(20261124-222353).png",
+      "group": "222353",
+      "name": "left",
+      "label": "450",
+      "frame_crop": [
+        86,
+        25,
+        802,
+        356
+      ],
+      "box": [
+        338,
+        460,
+        374,
+        480
+      ]
+    },
+    {
+      "file": "image(20261124-222353).png",
+      "group": "222353",
+      "name": "upper_left",
+      "label": "15500",
+      "frame_crop": [
+        86,
+        25,
+        802,
+        356
+      ],
+      "box": [
+        538,
+        164,
+        592,
+        183
+      ]
+    },
+    {
+      "file": "image(20261124-222353).png",
+      "group": "222353",
+      "name": "upper_right",
+      "label": "76791",
+      "frame_crop": [
+        86,
+        25,
+        802,
+        356
+      ],
+      "box": [
+        959,
+        164,
+        1008,
+        183
+      ]
+    },
+    {
+      "file": "image(20261124-222353).png",
+      "group": "222353",
+      "name": "right",
+      "label": "197779",
+      "frame_crop": [
+        86,
+        25,
+        802,
+        356
+      ],
+      "box": [
+        1168,
+        460,
+        1234,
+        480
+      ]
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "group": "222415",
+      "name": "pot",
+      "label": "4.5K",
+      "frame_crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "box": [
+        746,
+        204,
+        787,
+        227
+      ]
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "group": "222415",
+      "name": "hero",
+      "label": "19000",
+      "frame_crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "box": [
+        703,
+        590,
+        766,
+        612
+      ]
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "group": "222415",
+      "name": "left",
+      "label": "0",
+      "frame_crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "box": [
+        348,
+        460,
+        363,
+        480
+      ]
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "group": "222415",
+      "name": "upper_left",
+      "label": "14500",
+      "frame_crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "box": [
+        538,
+        164,
+        592,
+        183
+      ]
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "group": "222415",
+      "name": "upper_right",
+      "label": "75816",
+      "frame_crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "box": [
+        959,
+        164,
+        1009,
+        183
+      ]
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "group": "222415",
+      "name": "right",
+      "label": "196829",
+      "frame_crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "box": [
+        1166,
+        460,
+        1237,
+        480
+      ]
+    },
+    {
+      "file": "image(20261124-223533).png",
+      "group": "223533",
+      "name": "hero",
+      "label": "0",
+      "frame_crop": [
+        87,
+        27,
+        803,
+        358
+      ],
+      "box": [
+        726,
+        590,
+        742,
+        612
+      ]
+    },
+    {
+      "file": "image(20261124-223533).png",
+      "group": "223533",
+      "name": "left",
+      "label": "0",
+      "frame_crop": [
+        87,
+        27,
+        803,
+        358
+      ],
+      "box": [
+        348,
+        460,
+        363,
+        480
+      ]
+    },
+    {
+      "file": "image(20261124-223533).png",
+      "group": "223533",
+      "name": "upper_left",
+      "label": "19950",
+      "frame_crop": [
+        87,
+        27,
+        803,
+        358
+      ],
+      "box": [
+        538,
+        164,
+        592,
+        183
+      ]
+    },
+    {
+      "file": "image(20261124-223533).png",
+      "group": "223533",
+      "name": "upper_right",
+      "label": "2000",
+      "frame_crop": [
+        87,
+        27,
+        803,
+        358
+      ],
+      "box": [
+        960,
+        164,
+        1008,
+        183
+      ]
+    },
+    {
+      "file": "image(20261124-223533).png",
+      "group": "223533",
+      "name": "right",
+      "label": "84400",
+      "frame_crop": [
+        87,
+        27,
+        803,
+        358
+      ],
+      "box": [
+        1168,
+        460,
+        1234,
+        480
+      ]
+    },
+    {
+      "file": "image(20261124-223659).png",
+      "group": "223659",
+      "name": "pot",
+      "label": "150",
+      "frame_crop": [
+        88,
+        21,
+        804,
+        352
+      ],
+      "box": [
+        747,
+        204,
+        779,
+        227
+      ]
+    },
+    {
+      "file": "image(20261124-223659).png",
+      "group": "223659",
+      "name": "left",
+      "label": "0",
+      "frame_crop": [
+        88,
+        21,
+        804,
+        352
+      ],
+      "box": [
+        348,
+        460,
+        363,
+        480
+      ]
+    },
+    {
+      "file": "image(20261124-223659).png",
+      "group": "223659",
+      "name": "upper_left",
+      "label": "19850",
+      "frame_crop": [
+        88,
+        21,
+        804,
+        352
+      ],
+      "box": [
+        538,
+        164,
+        592,
+        183
+      ]
+    },
+    {
+      "file": "image(20261124-223659).png",
+      "group": "223659",
+      "name": "upper_right",
+      "label": "450",
+      "frame_crop": [
+        88,
+        21,
+        804,
+        352
+      ],
+      "box": [
+        966,
+        164,
+        1000,
+        183
+      ]
+    },
+    {
+      "file": "image(20261124-223659).png",
+      "group": "223659",
+      "name": "right",
+      "label": "106550",
+      "frame_crop": [
+        88,
+        21,
+        804,
+        352
+      ],
+      "box": [
+        1166,
+        460,
+        1238,
+        480
+      ]
+    }
+  ]
+}

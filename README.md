@@ -218,3 +218,12 @@ The bottom-bar tool preserves the original crop and two raw OCR readings. Adjust
 ### Numeric benchmark acceptance audit
 
 Saved-corpus reports now distinguish raw text accuracy for each OCR method from the accepted candidate accuracy. Disputed fields blanked by the review interface count as missing, even when the retained raw candidate happens to be correct. Abbreviated amounts are compared against their labelled displayed magnitude, not an inferred exact balance. OCR failures prevent the quality gate passing. Numeric labels must be valid nonnegative whole chip amounts, and comparisons pair identical input bytes, crops and expected labels. Older reports without crop metadata may need regenerating. The current calibration manifest has 21 labelled numeric fields over four images. No live capture, action interpretation, or recommendation changes.
+
+### Character recognition study (saved-image only)
+
+The new glyph audit separates segmentation failures from character matching failures, comparing binary and grayscale normalized glyphs with aspect ratio retained. Its input consists of manually localized, labelled saved-image crops. Entire image groups are held out of training. Ground truth selects a segmentation with the correct character count, so the results are optimistic diagnostics, not a usable automatic reader. The four-image calibration experiment found 18/21 segmented lines, 65/69 correct characters in those lines, and 15/21 correct full labels for both feature modes. The held-out K and decimal classes have no training exemplars in other images. This prototype is not connected to capture or the engine. The same audit can evaluate independently labelled rank/suit patches by specifying dark_ink for dark characters on light card stock; no card-specific accuracy improvement is claimed. Run:
+
+```powershell
+py pokerist/glyph_audit.py "E:\Poker-Screenshots" pokerist/fixtures/glyph_amount_crops.json
+```
+

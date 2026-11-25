@@ -12,7 +12,10 @@ def gold_mask(a):
 
 def face_bounds(image,box):
     a=np.asarray(image.crop(box).convert("RGB"),dtype=np.int16)
-    neutral=(a.min(2)>170)&(np.ptp(a,axis=2)<45)&~gold_mask(a)
+    r,g,b=np.moveaxis(a,-1,0)
+    lo=np.minimum(np.minimum(r,g),b)
+    hi=np.maximum(np.maximum(r,g),b)
+    neutral=(lo>170)&(hi-lo<45)&~gold_mask(a)
     h,w=neutral.shape
     if h<20 or w<8:
         return None

@@ -20,7 +20,9 @@ def pixels(image,box):
 
 def colors(a):
     r,g,b=np.moveaxis(a,-1,0)
-    bright=(a.max(-1)>165)&((a.max(-1)-a.min(-1))>75)
+    hi=np.maximum(np.maximum(r,g),b)
+    lo=np.minimum(np.minimum(r,g),b)
+    bright=(hi>165)&(hi-lo>75)
     return {
         "red":bright&(r>g+35)&(r>b+35),
         "green":bright&(g>r+25)&(g>b+20),

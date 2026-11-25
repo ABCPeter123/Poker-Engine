@@ -25,9 +25,9 @@ def dealer_marker(image):
     matches=[]
     for seat,(x,y) in ANCHORS.items():
         windows=sliding_window_view(a[y-22:y+23,x-30:x+31],(13,13))
-        distances=np.abs(windows-D).mean(axis=(-2,-1))
+        distances=np.abs(windows-D).sum(axis=(-2,-1),dtype=np.int32)
         dy,dx=np.unravel_index(distances.argmin(),distances.shape)
-        matches.append((float(distances[dy,dx]),seat,[int((x-30+dx+6)*2),int((y-22+dy+6)*2)]))
+        matches.append((float(distances[dy,dx])/D.size,seat,[int((x-30+dx+6)*2),int((y-22+dy+6)*2)]))
     matches.sort()
     score,seat,center=matches[0]
     return {"candidate":seat if score<=15 and matches[1][0]-score>=6 else None,

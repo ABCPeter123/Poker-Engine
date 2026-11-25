@@ -136,7 +136,9 @@ def ink_masks(a):
     r,g,b=np.moveaxis(a,-1,0)
     gold=gold_mask(a)
     red=(r>95)&(r-g>40)&(r-b>35)&~gold&((g-b<35)|(g<r*.55))
-    black=(a.max(2)<125)&(np.ptp(a,axis=2)<55)&~gold
+    lo=np.minimum(np.minimum(r,g),b)
+    hi=np.maximum(np.maximum(r,g),b)
+    black=(hi<125)&(hi-lo<55)&~gold
     return red,black
 
 def glyph(image, box, color=None):
@@ -176,7 +178,10 @@ def match(m, templates, threshold=.18):
 def face_present(image, box):
     a=np.asarray(image.crop(box),dtype=np.int16)
     # Require sustained bright neutral card stock, not pale lettering on blue felt.
-    light=(a.min(2)>180)&(np.ptp(a,axis=2)<32)
+    r,g,b=np.moveaxis(a,-1,0)
+    lo=np.minimum(np.minimum(r,g),b)
+    hi=np.maximum(np.maximum(r,g),b)
+    light=(lo>180)&(hi-lo<32)
     return float(light.mean())>=.20 and float((light.mean(axis=1)>=.15).mean())>=.60
 
 def card(image, spec, *alternates, wide_ten=None):

@@ -58,7 +58,10 @@ def stack_line_mask(a):
     # Isolate the dense amount stripe before inspecting the leading emblem.
     # Preserve full horizontal width for large amounts.
     a=np.asarray(a,dtype=np.int16)
-    mask=(a.min(2)>140)&(np.ptp(a,axis=2)<55)
+    r,g,b=np.moveaxis(a,-1,0)
+    lo=np.minimum(np.minimum(r,g),b)
+    hi=np.maximum(np.maximum(r,g),b)
+    mask=(lo>140)&(hi-lo<55)
     h,w=mask.shape
     density=mask[:,w//5:w-w//5].sum(1)
     bands=np.flatnonzero(np.diff(np.r_[False,density>=3,False])).reshape(-1,2)
@@ -72,7 +75,11 @@ def stack_line_mask(a):
 def numeric_mask(a,kind):
     """Separate white digit ink from chip artwork. All readings stay candidates."""
     a=np.asarray(a,dtype=np.int16)
-    mask=(a.min(2)>112)&(np.ptp(a,axis=2)<45)
+    r,g,b=np.moveaxis(a,-1,0)
+    lo=np.minimum(np.minimum(r,g),b)
+    hi=np.maximum(np.maximum(r,g),b)
+    spread=hi-lo
+    mask=(lo>112)&(spread<45)
     if kind=="stack":
         mask=stack_line_mask(a)
         # Stack labels have a leading chip emblem. Remove a separated,
@@ -86,7 +93,7 @@ def numeric_mask(a,kind):
     elif kind=="bet":
         # Colored chips have saturated bodies and white markings.
         # Remove their full horizontal span, not just the colored pixels.
-        sat=(np.ptp(a,axis=2)>85)&(a.max(2)>145)
+        sat=(spread>85)&(hi>145)
         cols=np.flatnonzero(sat.sum(0)>=5)
         if 8<=len(cols)<=36 and cols[-1]-cols[0]<=40:
             mask[:,max(0,int(cols[0])-6):min(mask.shape[1],int(cols[-1])+7)]=False

@@ -61,3 +61,7 @@ Coverage losses are not recovered frames. Temporal observations reset at the nex
 The incremental worker tries the installed Tesseract shared library first (persistent initialized handle), with CLI stdin fallback. The frame telemetry identifies the OCR backend. Set `POKER_OCR_CLI=1` before starting the server to force the compatibility path. Native OCR uses the same language and whitelist but output can differ from CLI; saved review keeps CLI recognition. Empty prepared masks bypass OCR without inventing chip values.
 
 The saved-recording benchmark now reports decode/hash, normalization and recognition latency separately (median and p95), and identifies the actual OCR backend. Dealer matching reuses exact unchanged search-window results; changed windows are matched again. OCR misses reuse the prepared bitmap rather than running preprocessing twice.
+
+### Controlled synthetic throughput diagnostic
+
+Run `py pokerist/benchmark_synthetic.py --frames 180 --change-every 12` to measure offline processing with known numeric text that changes regularly and background pixels that change every frame. Use `--change-every 1` for a stress case. The report separates median/p95/max latency, OCR errors and synthetic numeric accuracy. This test is not a real Pokerist image accuracy test or a live capture benchmark.

@@ -1,4 +1,4 @@
-import {FrameQueue} from './frame-queue.js';
+import {CurrentStateQueue} from './frame-queue.js';
 import {freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
 import {SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
@@ -68,7 +68,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  function refreshCandidate(sample){
   if(!active)return;
   const now=performance.now(),complete=CARD_KEYS.every(key=>isLocked(locks,key));
-  const fresh=observationAge(lastFrame,now,5000).fresh;
+  const fresh=observationAge(lastFrame,now,1000).fresh;
   const candidate=complete||fresh?candidateCards(effectiveCards(lastResult,locks)):null;
   if(complete&&candidate)reading={key:candidate.key,count:2,stable:candidate,last:now};
   else if(sample)reading=stableReading(reading,candidate,lastFrame??now);
@@ -81,29 +81,31 @@ export function attachPractice({video,screen,canRun,rotation}){
   if(!canRun()){show('Waiting for authorized practice window','Select a supported shared window.');return;}
   if(!$('practice-consent').checked){show('Practice permission required','Only enable recognition where real-time analysis is explicitly permitted.');return;}
   if(!active){show('Recognition stopped','Use Start recognition to begin.');return;}
-  const now=performance.now(),fresh=observationAge(lastFrame,now,5000).fresh;
-  if(!fresh){show('Waiting for fresh screen data','No recent successful recognition frame. Check the recognition status.');return;}
+  const now=performance.now(),fresh=observationAge(lastFrame,now,1000).fresh;
+  if(!fresh){show('Waiting for fresh screen data','No successful recognition snapshot within one second. Check the recognition status.');return;}
   const a=resolveManual(autoValues(),locks),exact=new Set(Object.keys(locks));
-  if(observationAge(lastOcrAt,now,5000).fresh){
+  if(observationAge(lastOcrAt,now,1000).fresh){
    if(lastTable?.pot&&!lastTable.pot.approximate)exact.add('pot');
    if(lastTable?.seats?.hero?.stack&&!lastTable.seats.hero.stack.approximate)exact.add('hero.stack');
   }
   if(betMemory.street===a.street&&!betMemory.boundary&&!betMemory.uncertain){
-   for(const id of Object.keys(SEATS)){const b=betMemory.seats[id];if(b.observed&&!b.approximate&&!b.warning&&observationAge(b.lastSeen,now,5000).fresh)exact.add(id+'.bet');}
+   for(const id of Object.keys(SEATS)){const b=betMemory.seats[id];if(b.observed&&!b.approximate&&!b.warning&&observationAge(b.lastSeen,now,1000).fresh)exact.add(id+'.bet');}
   }
   const input=decisionInputs(a,exact,{confirmed:$('practice-action-confirm').checked,opponents:Number($('live-opponents').value)});
   const rec=decisionFromEquity(input,equityResult);
   show(rec.action||rec.reason,rec.action?'Check/call/fold model · equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'%':rec.reason==='Waiting for card equity'?'Check card recognition and simulation status.':'Review the required practice inputs.');
  }
  function autoValues(){
-  const now=performance.now(),result=observationAge(lastFrame,now,5000).fresh?lastResult:null,obs=result?.table_observation,age=observationAge(lastOcrAt,now,5000),num=age.fresh?lastTable:null;
+  const now=performance.now(),result=observationAge(lastFrame,now,1000).fresh?lastResult:null,obs=result?.table_observation,age=observationAge(lastOcrAt,now,1000),num=age.fresh?lastTable:null;
   const a={street:result?.street_candidate??(result?cardMemory?.displayStreet:undefined),pot:num?.pot?.value,dealer:obs?.dealer?.candidate??undefined,turn:obs?.turn_candidate??undefined};
   const groups=[result&&(cardMemory?.displayHole||result.hole_slots),result&&(cardMemory?.displayBoard||result.board_slots)];
   CARD_KEYS.forEach((key,i)=>{const slot=i<2?groups[0]?.[i]:groups[1]?.[i-2];a[key]=slot===null?null:slot?.candidate??undefined;});
   for(const id of Object.keys(SEATS)){
    const s=obs?.seats?.[id],n=num?.seats?.[id];
    a[id+'.stack']=n?.stack?.value;
-   a[id+'.bet']=result?freshBetValue(betMemory,id,a.street,now):undefined;
+   const tracked=betMemory.seats[id];
+   const direct=n?.bet;
+   a[id+'.bet']=result&&direct&&tracked?.observed&&tracked.value===direct.value&&!tracked.warning&&observationAge(tracked.lastSeen,now,1000).fresh?freshBetValue(betMemory,id,a.street,now):undefined;
    a[id+'.status']=n?.status_candidate??s?.participation_candidate??undefined;
    a[id+'.cards']=s?.card_visible_candidate?'Visible':undefined;
    a[id+'.participation']=s?.participation_candidate??undefined;
@@ -111,7 +113,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   return a;
  }
  function paint(){
-  const a=autoValues(),effective=resolveManual(a,locks),obs=lastResult?.table_observation,age=observationAge(lastOcrAt,performance.now(),5000),num=age.fresh?lastTable:null;
+  const a=autoValues(),effective=resolveManual(a,locks),obs=lastResult?.table_observation,age=observationAge(lastOcrAt,performance.now(),1000),num=age.fresh?lastTable:null;
   for(const map of [editors,inlineEditors,popupEditors])for(const [key,e] of map){
    const locked=isLocked(locks,key),v=effective[key];
    e.box.classList.toggle('manual-locked',locked);e.auto.disabled=!locked;e.lock.textContent=locked?'Update':'Lock';
@@ -139,7 +141,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  function render(result,ocr,ocrStatus,capturedAt){
   if(capturedAt<resetAt||(lastFrame!==null&&capturedAt<=lastFrame))return;
   const now=performance.now();
-  if(!observationAge(capturedAt,now,5000).fresh){clearAuto();betMemory=interruptBetMemory(betMemory);paint();return;}
+  if(!observationAge(capturedAt,now,1000).fresh){clearAuto();betMemory=interruptBetMemory(betMemory);paint();return;}
   lastResult=result;
   lastTimings=result.timings_ms||null;
   ocrBackend=ocrStatus?.backend||ocrBackend;
@@ -151,7 +153,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   if(ocrStatus?.state==='unavailable'||ocrStatus?.state==='failed')$('live-ocr-age').textContent='OCR '+ocrStatus.state+': '+(ocrStatus.detail||'Scan failed');
   $('live-overlay').hidden=false;
  }
- function reportQueue(q){const r=q.report(performance.now());$('frame-telemetry').textContent='Captured '+r.captured+' · processed '+r.processed+' · queued '+r.queued+' / '+q.limit+' · source gaps '+r.sourceMissed+' · overload skips '+r.queueMissed+' · presented '+(r.sourceFps===null?'—':r.sourceFps.toFixed(1))+' FPS · callbacks '+(r.callbackFps===null?'—':r.callbackFps.toFixed(1))+' FPS · processing '+r.processingFps.toFixed(1)+' FPS · backlog '+(r.oldestAgeMs/1000).toFixed(2)+' s';if(r.recovering)status('Processing backlog; temporarily limiting new frames. Coverage incomplete.');else if(!r.coverageIntact)status('Recognition running · incomplete frame coverage · rebuilding observations after gaps.');else status('Recognition running · no observed frame gaps.');}
+ function reportQueue(q){const r=q.report(performance.now()),age=r.lastSnapshotAgeMs;$('frame-telemetry').textContent='Snapshots '+r.processed+'/'+r.captured+' · deliberately sampled out '+r.intentionalSkips+' · source gaps '+r.sourceMissed+' · presented '+(r.sourceFps===null?'—':r.sourceFps.toFixed(1))+' FPS · callbacks '+(r.callbackFps===null?'—':r.callbackFps.toFixed(1))+' FPS · snapshots '+r.processingFps.toFixed(1)+'/s · snapshot age '+(age===null?'—':(age/1000).toFixed(2)+' s')+' · in flight '+(r.oldestAgeMs/1000).toFixed(2)+' s · OCR '+ocrBackend+(lastTimings?' · recognition '+lastTimings.total.toFixed(1)+' ms':'');if(age===null)status('Acquiring first table snapshot.');else if(age>1000)status('Snapshot stale: full table refresh exceeded one second.');else status('Current-state recognition running · snapshot age '+(age/1000).toFixed(2)+' s · automatic values remain candidates.');}
  function failQueue(q,error){reportQueue(q);stop();status('Frame coverage failed: '+String(error.message||error)+'. Restart after resolving the bottleneck.');}
  async function drain(current,q){
   if(draining||!active||epoch!==current||q!==frameQueue)return;
@@ -168,7 +170,6 @@ export function attachPractice({video,screen,canRun,rotation}){
     if(data.sequence!==item.id)throw Error('Backend sequence mismatch');
     q.complete(item.id);
     if(item.capturedAt>=resetAt){
-     if(item.gapBefore){clearAuto();betMemory=createBetMemory();}
      render(data.result,data.ocr_sampled,data.ocr_status,item.capturedAt);
     }
    }
@@ -187,11 +188,11 @@ export function attachPractice({video,screen,canRun,rotation}){
   });
  }
  $('practice-consent').onchange=()=>{if(!$('practice-consent').checked)stop();refresh();};
- $('live-start').onclick=async()=>{if(!canRun()||!$('practice-consent').checked)return;if(!video.requestVideoFrameCallback){status('Frame accounting requires a browser with video frame callbacks.');return;}stop();active=true;epoch++;session=crypto.randomUUID();$('live-start').disabled=true;$('live-stop').disabled=false;status('Preparing Python recognizer before capture…');$('frame-telemetry').textContent='Preparing backend. Frame counting starts when ready.';const current=epoch;controller=new AbortController();try{const response=await fetch('/api/practice-ready',{method:'POST',headers:{'X-Practice-Consent':'yes','X-Frame-Session':session},signal:controller.signal});const data=await response.json();if(!active||epoch!==current)return;if(!response.ok||!data.ready)throw Error(data.error||'Backend not ready');if($('live-ocr').checked&&!data.ocr)throw Error(data.ocr_error||'OCR unavailable');controller=null;ocrBackend=data.ocr_backend||'unknown';status('Backend ready. Tracking source frames.');frameQueue=new FrameQueue(120);const q=frameQueue;decisionTimer=setInterval(()=>{paint();if(frameQueue===q)reportQueue(q);},125);captureNext(current,q);}catch(e){if(active&&epoch===current){stop();status('Recognition startup failed: '+e.message);}}};
+ $('live-start').onclick=async()=>{if(!canRun()||!$('practice-consent').checked)return;if(!video.requestVideoFrameCallback){status('Frame accounting requires a browser with video frame callbacks.');return;}stop();active=true;epoch++;session=crypto.randomUUID();$('live-start').disabled=true;$('live-stop').disabled=false;status('Preparing Python recognizer before capture…');$('frame-telemetry').textContent='Preparing backend. Frame counting starts when ready.';const current=epoch;controller=new AbortController();try{const response=await fetch('/api/practice-ready',{method:'POST',headers:{'X-Practice-Consent':'yes','X-Frame-Session':session},signal:controller.signal});const data=await response.json();if(!active||epoch!==current)return;if(!response.ok||!data.ready)throw Error(data.error||'Backend not ready');if($('live-ocr').checked&&!data.ocr)throw Error(data.ocr_error||'OCR unavailable');controller=null;ocrBackend=data.ocr_backend||'unknown';status('Backend ready. Tracking source frames.');frameQueue=new CurrentStateQueue(100);const q=frameQueue;decisionTimer=setInterval(()=>{paint();if(frameQueue===q)reportQueue(q);},125);captureNext(current,q);}catch(e){if(active&&epoch===current){stop();status('Recognition startup failed: '+e.message);}}};
  $('live-stop').onclick=stop;
  $('live-reset-bets').onclick=()=>{betMemory={...createBetMemory(),last:performance.now()};paint();};
  $('manual-new-hand').onclick=()=>{if(!confirm('Clear all manual locks and automatic observations for a new hand?'))return;closePopup();locks={};resetAt=performance.now();betMemory=createBetMemory();clearAuto();for(const map of [editors,inlineEditors])for(const e of map.values()){e.dirty=false;e.input.value='';e.input.setCustomValidity('');}save();paint();};
- $('live-opponents').onchange=()=>{clearEquity();if(active&&reading?.stable&&observationAge(lastFrame,performance.now(),5000).fresh)evaluate(reading.stable);paintDecision();};
+ $('live-opponents').onchange=()=>{clearEquity();if(active&&reading?.stable&&observationAge(lastFrame,performance.now(),1000).fresh)evaluate(reading.stable);paintDecision();};
  $('live-ocr').onchange=()=>{lastOcrAt=null;lastTable=null;betMemory=createBetMemory();paint();};
  save();paint();refresh();
  return {stop,refresh,reset:()=>{if(active){stop();refresh();status('Source geometry changed. Restart recognition when aligned. Manual locks retained.');}}};

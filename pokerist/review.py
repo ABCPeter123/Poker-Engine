@@ -298,6 +298,10 @@ def review_image(image, executable=None, previous=None, source="frame", *, enhan
         numbers=add_saved_amount_evidence(image,executable,NUMBERS,numbers,number_text)
     after_amounts=time.perf_counter()
     observation=observe_table(image,executable,number_text,numbers,cues,hole)
+    evidence={}
+    if enhanced or deep:
+        from saved_review_evidence import saved_evidence
+        evidence=saved_evidence(image,cards)
     finished=time.perf_counter()
     timings={"seat_cues":round(1000*(after_cues-started),3),"cards":round(1000*(after_cards-after_cues),3),
              "amounts":round(1000*(after_amounts-after_cards),3),"table_observation":round(1000*(finished-after_amounts),3),
@@ -307,6 +311,7 @@ def review_image(image, executable=None, previous=None, source="frame", *, enhan
             "capture_crop":image.info.get("capture_crop"),
             "timings_ms":timings,
             **cards,
+            **({"saved_field_evidence":evidence} if enhanced or deep else {}),
             "number_candidates":numbers,"number_ocr_error":err,
             "dealer":None,"active_player":None,"bets":None,"actions":None,
             "table_observation":observation,

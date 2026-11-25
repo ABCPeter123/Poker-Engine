@@ -116,10 +116,20 @@ function populateVerification(result){
  fields.push({key:'dealer',label:'Dealer',value:obs.dealer?.candidate||'',options:Object.keys(names)},
              {key:'turn',label:'Turn cue',value:obs.turn_candidate||'',options:Object.keys(names)});
  for(const f of fields){
-  const wrap=document.createElement('label'),input=document.createElement(f.options?'select':'input');
-  wrap.textContent=f.label;input.dataset.field=f.key;input.autocomplete='off';
+  const wrap=document.createElement('div'),label=document.createElement('label'),input=document.createElement(f.options?'select':'input');
+  wrap.className='saved-review-field';label.textContent=f.label;input.dataset.field=f.key;input.autocomplete='off';
   if(f.options)for(const v of ['',...f.options]){const option=document.createElement('option');option.value=v;option.textContent=v||'Unknown';input.append(option);}
-  input.value=f.value;input.addEventListener('input',invalidate);wrap.append(input);
+  input.value=f.value;input.addEventListener('input',invalidate);label.append(input);wrap.append(label);
+  const evidence=result.saved_field_evidence?.[f.key];
+  if(evidence?.png_base64&&typeof evidence.png_base64==='string'&&evidence.png_base64.length<500000&&/^[A-Za-z0-9+/]+={0,2}$/.test(evidence.png_base64)){
+   const im=document.createElement('img');im.className='saved-evidence-crop';im.alt='Source crop for '+f.label;im.src='data:image/png;base64,'+evidence.png_base64;im.loading='lazy';wrap.append(im);
+  }
+  if(evidence?.components){
+   for(const kind of ['rank','suit']){
+    const options=evidence.components[kind]||[];if(!options.length)continue;
+    const line=document.createElement('small');line.className='hint';line.textContent=(kind==='rank'?'Rank':'Suit')+' evidence: '+options.map(o=>o.label+' (distance '+o.distance+')').join(', ');wrap.append(line);
+   }
+  }
   if(f.detail){const detail=document.createElement('small');detail.className='hint';detail.textContent=f.detail;wrap.append(detail);}
   if(f.choices?.length){
    const list=document.createElement('div');list.className='review-candidate-choices';
@@ -129,7 +139,7 @@ function populateVerification(result){
     const btn=document.createElement('button');btn.type='button';btn.textContent=choice.value;btn.title=choice.description;
     btn.onclick=()=>{input.value=choice.value;invalidate();};list.append(btn);
    }
-   const label=document.createElement('small');label.className='hint';label.textContent='Candidate alternatives (select, then confirm against image)';wrap.append(label,list);
+   const caption=document.createElement('small');caption.className='hint';caption.textContent='Candidate alternatives (select, then confirm against image)';wrap.append(caption,list);
   }
   area.append(wrap);
  }

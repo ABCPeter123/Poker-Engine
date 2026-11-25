@@ -31,6 +31,10 @@ class SavedPipelineTests(unittest.TestCase):
                 with self.subTest(flags=flags):
                     result=review(path,None,**flags)
                     self.assertEqual(result["board_slots"],[None]*5)
+                    if flags:
+                        self.assertEqual(len(result["saved_field_evidence"]),18)
+                    else:
+                        self.assertNotIn("saved_field_evidence",result)
                     timings=result["timings_ms"]
                     self.assertEqual(set(timings),{"seat_cues","cards","amounts","table_observation","total"})
                     self.assertTrue(all(v>=0 for v in timings.values()))

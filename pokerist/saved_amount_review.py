@@ -60,14 +60,8 @@ def scan_line(image,executable,box,kind,threshold):
         return {"threshold":threshold,"raw":"","confidence":None,"error":str(exc)[:300]}
 
 def strict_amount(text,parse):
-    # No guessing O/0, omitted digits, or malformed digit grouping.
-    value=str(text).strip().upper()
-    if not re.fullmatch(r"(?:[0-9]+(?:\.[0-9]+)?[KM]|[0-9]+|[0-9]{1,3}(?: +[0-9]{3})+)",value):
-        return None
-    candidate=parse(value)
-    if not candidate or not math.isfinite(candidate["value"]) or candidate["value"]>2**53-1:
-        return None
-    return candidate
+    # One shared grammar across the original reader and alternate evidence.
+    return parse(text)
 
 def add_evidence(primary,passes,parse):
     result=deepcopy(primary)
@@ -78,7 +72,7 @@ def add_evidence(primary,passes,parse):
     result["saved_line_evidence"]=observations
     valid=[o for o in observations if o["candidate"] is not None]
     def identity(c):
-        return c["value"],bool(c.get("approximate"))
+        return c["value"],bool(c.get("approximate")),c.get("display_step")
     choices={identity(o["candidate"]) for o in valid}
     base=strict_amount(primary.get("raw",""),parse)
     existing=primary.get("candidate")
@@ -105,10 +99,13 @@ def add_saved_amount_evidence(image,executable,regions,numbers,parse):
     if not executable:
         return numbers
     # Bound work: only six fields, three passes each, with per-process timeout.
+    from contrast_amounts import scan_contrast_regions
+    contrast=[scan_contrast_regions(image,executable,regions,mode) for mode in ('stretch','soft')]
     results={}
     for key,box in regions.items():
         primary=numbers.get(key,{})
         kind="pot" if key=="pot" else "stack"
         passes=[scan_line(image,executable,box,kind,t) for t in THRESHOLDS]
+        passes.extend(scan[key] for scan in contrast)
         results[key]=add_evidence(primary,passes,parse)
     return results

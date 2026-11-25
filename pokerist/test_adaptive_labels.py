@@ -30,6 +30,12 @@ class AdaptiveLabelTests(unittest.TestCase):
         self.assertIsNone(select_amount([],number_text)["candidate"])
     def test_rounded_amount(self):
         self.assertEqual(select_amount([w("8.6K",10)],number_text)["candidate"]["value"],8600)
+    def test_split_compact_suffix(self):
+        for value,suffix,expected in (("4","k",4000),("200","K",200000),("4.5","K",4500)):
+            r=select_amount([w(value,10),w(suffix,50)],number_text)
+            self.assertEqual(r["candidate"]["value"],expected)
+            self.assertTrue(r["candidate"]["approximate"])
+        self.assertIsNone(select_amount([w("4",10),w("5",35),w("K",50)],number_text)["candidate"])
     def test_stack_icon_preprocessing(self):
         a=np.full((22,60,3),60,dtype=np.uint8)
         a[3:17,3:16]=235

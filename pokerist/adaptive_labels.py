@@ -35,13 +35,7 @@ def select_amount(words, parse, threshold=75):
     plausible=[]
     for line in lines:
         tokens=[w["text"].strip() for w in line]
-        # Grouped integer labels can be split at thousands separators.
-        # Reject unexpected extra numeric fragments instead of concatenating.
-        if len(tokens)>1 and not (re.fullmatch(r"\d{1,3}",tokens[0]) and
-                                  all(re.fullmatch(r"\d{3}",t) for t in tokens[1:])):
-            continue
-        if not re.fullmatch(r"\d+(?:[.,]\d+)?[KMkm]?\.?",tokens[0]):
-            continue
+        # Parse the complete line, including a detached K/M suffix.
         candidate=parse(" ".join(tokens))
         if not candidate:
             continue
@@ -128,7 +122,7 @@ def scan_regions(image, executable, regions, *, unrestricted=False):
             p=Path(temp)/"labels.png";canvas.save(p)
             command=[executable,str(p),"stdout","--psm","6" if unrestricted else "11"]
             if numeric and not unrestricted:
-                command+=["-c","tessedit_char_whitelist=0123456789.KM"]
+                command+=["-c","tessedit_char_whitelist=0123456789.,KkMm"]
             proc=subprocess.run(command+["tsv"],capture_output=True,text=True,timeout=10,check=True)
         rows={key:[] for key,_,_ in regions}
         for line in proc.stdout.splitlines()[1:]:
@@ -154,11 +148,10 @@ def reconcile_amount(primary, alternate, parse):
     result=dict(primary)
     result["alternate_raw"]=alternate.get("raw","")
     result["alternate_confidence"]=alternate.get("ocr_confidence")
-    # Compare the complete numeric string after removing spaces only.
-    # Do not repair a letter, chip icon, or missing leading digit by guessing.
-    a=re.sub(r"\s+","",primary.get("raw","").upper())
-    b=re.sub(r"\s+","",alternate.get("raw","").upper())
-    if a!=b or not re.fullmatch(r"\d+(?:\.\d+)?[KM]?",a):
+    # Require both entire strings to parse to the same amount and precision.
+    a=parse(primary.get("raw",""))
+    b=parse(alternate.get("raw",""))
+    if not a or not b or (a["value"],a.get("approximate"),a.get("display_step"))!=(b["value"],b.get("approximate"),b.get("display_step")):
         return result
     if alternate.get("candidate") is not None:
         result["candidate"]=dict(alternate["candidate"],confirmed_by_two_passes=True)

@@ -229,17 +229,7 @@ def card(image, spec, *alternates, wide_ten=None):
     return {"candidate":rank+suit,"rank_candidate":rank,"suit_candidate":suit,
             "rank_distance":rd,"suit_distance":sd,"verified":False}
 
-def number_text(text):
-    value=re.sub(r"\s+","",text.upper()).replace("O","0").replace(",",".")
-    if re.fullmatch(r"\d+(?:\.\d+)?[KM]\.",value):
-        value=value[:-1]
-    if not re.fullmatch(r"\d+(?:\.\d+)?[KM]?",value):
-        return None
-    unit=value[-1] if value[-1:] in ("K","M") else ""
-    if not unit and "." in value:
-        return None
-    return {"display":text,"value":float(value[:-1])*({"K":1000,"M":1000000}[unit])
-            if unit else int(value),"approximate":bool(unit),"verified":False}
+from amount_text import number_text
 
 def read_numbers(image, executable):
     regions=[(key,box,"bet" if key=="pot" else "stack") for key,box in NUMBERS.items()]

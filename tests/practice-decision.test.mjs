@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {overlayPosition,decisionInputs,decisionFromEquity,inputValue} from '../practice-decision.js';
+import {setManual,resolveManual,releaseManual} from '../manual-observations.js';
+const a={turn:'hero',pot:600,'hero.stack':1000,'hero.bet':50,'left.bet':150,'upper_left.participation':'Empty seat','upper_right.status':'Fold','right.status':'Sat out'};
+const exact=new Set(['pot','hero.stack','hero.bet','left.bet']);
+const flags={confirmed:true,opponents:1};
+test('geometry respects capture crop',()=>{assert.deepEqual(overlayPosition([50,0],{bounds:[0,40,1000,500],input_size:[1000,500]}),[50,8]);assert.deepEqual(overlayPosition([50,0],{bounds:[0,40,1100,500],input_size:[1000,500]}),[50,0]);});
+test('input displays auto amount and explicit zero without locking',()=>{assert.equal(inputValue(19500,{type:'amount'}),'19500');assert.equal(inputValue(0,{type:'amount'}),'0');assert.equal(inputValue(undefined,{type:'amount'}),'');assert.equal(inputValue(null,{type:'card'}),'-');assert.equal(inputValue('Bad',{type:'choice',choices:['Good']}),'');});
+test('ordinary automatic field remains auto until manual edit',()=>{let l={};assert.equal(resolveManual({'hero.bet':50},l)['hero.bet'],50);l=setManual(l,'hero.bet',0);assert.equal(resolveManual({'hero.bet':100},l)['hero.bet'],0);l=releaseManual(l,'hero.bet');assert.equal(resolveManual({'hero.bet':100},l)['hero.bet'],100);});
+test('practice inputs use difference between current wagers',()=>{assert.deepEqual(decisionInputs(a,exact,flags),{pot:600,stack:1000,call:100});});
+test('model chooses fold or call from simple pot odds',()=>{const i=decisionInputs(a,exact,flags);assert.equal(decisionFromEquity(i,.05).action,'Fold');assert.equal(decisionFromEquity(i,.50).action,'Call 100');assert.equal(decisionFromEquity({...i,call:0},.20).action,'Check');});
+test('manual amount supersedes automatic wager in decision',()=>{const locked=setManual({},'hero.bet',100);assert.equal(decisionInputs(resolveManual(a,locked),exact,flags).call,50);});
+test('unconfirmed, unknown and invalid pot inputs suppress model',()=>{assert.ok(decisionInputs(a,exact,{...flags,confirmed:false}).reason);assert.ok(decisionInputs({...a,turn:'left'},exact,flags).reason);assert.ok(decisionInputs({...a,pot:10},exact,flags).reason);assert.ok(decisionInputs(a,new Set(),flags).reason);assert.ok(decisionInputs(a,exact,{...flags,opponents:2}).reason);});
+test('short all-in and missing equity suppress model',()=>{assert.ok(decisionInputs({...a,'hero.stack':20},exact,flags).reason);assert.ok(decisionFromEquity(decisionInputs(a,exact,flags),null).reason);});

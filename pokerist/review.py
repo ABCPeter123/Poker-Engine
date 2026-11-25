@@ -325,6 +325,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("screenshot",nargs="?")
     parser.add_argument("--output",default="pokerist-review.json")
+    parser.add_argument("--quiet",action="store_true",help="Write JSON to output without echoing the full report")
     parser.add_argument("--previous",help="Earlier saved screenshot of the same table for visual comparison")
     parser.add_argument("--tesseract",default=None)
     parser.add_argument("--no-ocr",action="store_true")
@@ -347,7 +348,8 @@ def main():
             print(error,flush=True)
     result=review(args.screenshot,executable,args.previous,enhanced=args.enhanced,deep=args.deep)
     Path(args.output).write_text(json.dumps(result,indent=2),encoding="utf-8")
-    print(json.dumps(result,indent=2))
+    if not args.quiet:
+        print(json.dumps(result,indent=2))
     print("Review saved to",args.output)
 
 if __name__=="__main__":

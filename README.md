@@ -244,3 +244,5 @@ Enhanced saved-image review now presents parseable numeric alternatives as indiv
 ### Saved-review visual field evidence
 
 Enhanced/deep completed-image reviews now return lossless PNG crops from the normalized source image for each card, stack, pot and visible bet. The review editor displays these alongside the corresponding input. For visible unreadable cards, separately accepted rank and suit matches are retained with template distances and crop coordinates; they are never joined into an automatically verified card. This avoids discarding useful partial evidence while keeping uncertain components explicit. The baseline and live recognition modes do not generate these crops or component evidence. The output JSON for a saved review is larger because it contains local crop pixels; treat it like the original screenshot. No automatic accuracy improvement is claimed.
+
+The local saved-frame bridge requests quiet CLI output so embedded crops cannot overflow the subprocess stdout buffer. On-page JSON hides the base64 strings for readability; exported raw review JSON retains them.

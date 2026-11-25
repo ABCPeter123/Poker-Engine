@@ -26,7 +26,7 @@ export async function reviewFrame(req,res,port){
   await writeFile(input,data);
   const script=fileURLToPath(new URL('./pokerist/review.py',import.meta.url));
   const python=process.env.POKER_PYTHON||(process.platform==='win32'?'py':'python3');
-  await run(python,[script,input,'--output',output,'--enhanced'],{timeout:180000,maxBuffer:512*1024,windowsHide:true});
+  await run(python,[script,input,'--output',output,'--enhanced','--quiet'],{timeout:180000,maxBuffer:512*1024,windowsHide:true});
   const result=JSON.parse(await readFile(output,'utf8'));reply(res,200,result);
  }catch(e){reply(res,400,{error:'Review failed: '+String(e.stderr||e.message||e).slice(-900)});}
  finally{if(dir)await rm(dir,{recursive:true,force:true}).catch(()=>{});busy=false;}

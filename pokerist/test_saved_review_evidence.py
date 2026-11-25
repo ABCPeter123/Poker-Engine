@@ -1,4 +1,10 @@
 import unittest
+from unittest.mock import patch
+from contextlib import redirect_stdout
+from io import StringIO
+from tempfile import TemporaryDirectory
+from pathlib import Path
+import json
 from base64 import b64decode
 from io import BytesIO
 from PIL import Image
@@ -31,6 +37,16 @@ class SavedEvidenceTests(unittest.TestCase):
         r=component_choices(Image.new("RGB",(30,30)),[((0,0,10,10),(0,10,10,20),True)],
                             recognize,{"A":"x","T":"x"},{"h":"x","s":"x"})
         self.assertEqual(r["rank"],[])
+    def test_quiet_cli_writes_full_report_without_echoing_image_data(self):
+        from review import main
+        sample={"saved_field_evidence":{"pot":{"png_base64":"AA"*300000}}}
+        with TemporaryDirectory() as d:
+            output=Path(d)/"review.json"
+            stream=StringIO()
+            with patch("sys.argv",["review.py","sample.png","--output",str(output),"--no-ocr","--quiet"]),patch("review.review",return_value=sample),redirect_stdout(stream):
+                main()
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8")),sample)
+            self.assertLess(len(stream.getvalue()),1000)
     def test_complete_review_has_all_expected_crop_keys(self):
         im=Image.new("RGB",(1536,709),(30,60,80))
         evidence=saved_evidence(im,{"hole_slots":[None]*2,"board_slots":[None]*5})

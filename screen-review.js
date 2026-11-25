@@ -87,7 +87,7 @@ $('recognize').onclick=async()=>{
    const line=document.createElement('div');line.textContent=value;overlay.append(line);
   }
   if(result.quality?.duplicate_card_candidates||result.quality?.noncontiguous_board){const line=document.createElement('div');line.textContent='Conflicting candidates: verify cards';overlay.append(line);}
-  lastReview={...result,recording_time_seconds:source==='recording'?video.currentTime:null};populateVerification(lastReview);$('export-review').disabled=false;overlay.hidden=false;$('review-result').textContent=JSON.stringify(lastReview,null,2);$('review-result').hidden=false;
+  lastReview={...result,recording_time_seconds:source==='recording'?video.currentTime:null};populateVerification(lastReview);$('export-review').disabled=false;overlay.hidden=false;$('review-result').textContent=JSON.stringify(lastReview,(key,value)=>key==='png_base64'?'[crop image available in downloaded JSON]':value,2);$('review-result').hidden=false;
   status('Candidate recognition complete. Confirm all readings manually.');
  }catch(e){if(version===frameVersion)status(e.message);}
  finally{reviewPending=false;controls();}

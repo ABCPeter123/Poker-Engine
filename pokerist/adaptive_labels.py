@@ -4,6 +4,7 @@ Coordinates define search areas, not exact digit locations. Never turn an
 unreadable or ambiguous label into zero. All returned amounts are candidates.
 """
 import re
+from native_ocr import recognize_tsv
 import subprocess
 import tempfile
 from pathlib import Path
@@ -125,12 +126,16 @@ class RegionOCRCache:
             if old is not None and old[0]==signature:
                 rows[key]=old[1]
                 self.hits+=1
+            elif not mask.any():
+                rows[key]=[]
+                self.entries[identity]=(signature,[])
+                self.hits+=1
             else:
                 changed.append(entry)
                 keys[key]=(identity,signature)
                 self.misses+=1
         if changed:
-            new,error=scan_regions(image,exe,changed,unrestricted=unrestricted)
+            new,error=scan_regions(image,exe,changed,unrestricted=unrestricted,persistent=True)
             if error:
                 # Failed scans cannot keep previous values for changed regions.
                 for identity,_ in keys.values():
@@ -143,7 +148,7 @@ class RegionOCRCache:
         return rows,None
 
 
-def scan_regions(image, executable, regions, *, unrestricted=False, cache=None):
+def scan_regions(image, executable, regions, *, unrestricted=False, cache=None,persistent=False):
     """One OCR pass across variable-width search regions; retain source boxes."""
     if not executable:
         return {}, "Tesseract unavailable"
@@ -154,8 +159,8 @@ def scan_regions(image, executable, regions, *, unrestricted=False, cache=None):
     numeric=[entry for entry in regions if entry[2]!="status"]
     status=[entry for entry in regions if entry[2]=="status"]
     if numeric and status:
-        a,ea=scan_regions(image,executable,numeric,unrestricted=unrestricted)
-        b,eb=scan_regions(image,executable,status,unrestricted=unrestricted)
+        a,ea=scan_regions(image,executable,numeric,unrestricted=unrestricted,persistent=persistent)
+        b,eb=scan_regions(image,executable,status,unrestricted=unrestricted,persistent=persistent)
         return {**a,**b}, "; ".join(x for x in (ea,eb) if x) or None
     if not regions:
         return {},None
@@ -169,14 +174,11 @@ def scan_regions(image, executable, regions, *, unrestricted=False, cache=None):
             raise ValueError("OCR region exceeds row height")
         canvas.paste(crop,(PAD,i*PITCH+PAD))
     try:
-        with tempfile.TemporaryDirectory() as temp:
-            p=Path(temp)/"labels.png";canvas.save(p)
-            command=[executable,str(p),"stdout","--psm","6" if unrestricted else "11"]
-            if numeric and not unrestricted:
-                command+=["-c","tessedit_char_whitelist=0123456789.,KkMm"]
-            proc=subprocess.run(command+["tsv"],capture_output=True,text=True,timeout=10,check=True)
+        tsv=recognize_tsv(canvas,executable,6 if unrestricted else 11,
+                          "0123456789.,KkMm" if numeric and not unrestricted else "",
+                          persistent=persistent)
         rows={key:[] for key,_,_ in regions}
-        for line in proc.stdout.splitlines()[1:]:
+        for line in tsv.splitlines()[1:]:
             cols=line.split("\t",11)
             if len(cols)!=12 or cols[0]!="5" or not cols[11].strip():
                 continue

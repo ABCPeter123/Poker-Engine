@@ -72,7 +72,7 @@ export async function preparePractice(req,res,port){
   const info=await start();
   if(owner!==token)return;
   preparedSession=session;lastSequence=0;
-  reply(res,200,{ready:true,ocr:info.ocr,ocr_error:info.ocr_error});
+  reply(res,200,{ready:true,ocr:info.ocr,ocr_error:info.ocr_error,ocr_backend:info.ocr_backend});
  }catch(e){if(owner===token)reply(res,503,{error:String(e.message||e).slice(-1800)});}
  finally{release(token);}
 }

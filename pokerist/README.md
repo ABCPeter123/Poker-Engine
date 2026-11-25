@@ -57,3 +57,5 @@ This measures completed-recording decoding and recognition using exact OCR-mask 
 Recognition startup now prepares the local Python worker before starting frame accounting. Stop/restart cancels abandoned requests. A replacement session has its own sequence counter. The initial preparation time is not included in capture throughput; the displayed counters start when the worker is ready. This does not guarantee 60 FPS source capture or OCR throughput.
 
 Coverage losses are not recovered frames. Temporal observations reset at the next accepted frame after a gap; stale results are not shown as fresh. A degraded run cannot establish complete 60 FPS coverage.
+
+The incremental worker tries the installed Tesseract shared library first (persistent initialized handle), with CLI stdin fallback. The frame telemetry identifies the OCR backend. Set `POKER_OCR_CLI=1` before starting the server to force the compatibility path. Native OCR uses the same language and whitelist but output can differ from CLI; saved review keeps CLI recognition. Empty prepared masks bypass OCR without inventing chip values.

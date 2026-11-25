@@ -1,5 +1,6 @@
 """Experimental visual evidence for saved Pokerist screenshots, not a live tracker."""
 import re
+from native_ocr import recognize_tsv
 import subprocess
 import tempfile
 from pathlib import Path
@@ -50,7 +51,7 @@ def label_candidate(raw):
     normalized=re.sub(r"[^A-Z]","",raw.upper())
     return normalized=="ALLIN"
 
-def allin_ocr(image, executable):
+def allin_ocr(image, executable, *, persistent=False):
     result={seat:{"candidate":None,"raw":"","verified":False} for seat in SEATS}
     if not executable:
         return result,"All-in OCR unavailable without Tesseract"
@@ -70,13 +71,11 @@ def allin_ocr(image, executable):
         crop=crop.resize((crop.width*scale,crop.height*scale))
         canvas.paste(crop,(pad,i*pitch+pad))
     try:
-        with tempfile.TemporaryDirectory() as tmp:
-            path=Path(tmp)/"allin.png"
-            canvas.save(path)
-            p=subprocess.run([executable,str(path),"stdout","--psm","11","tsv"],
-                             capture_output=True,text=True,timeout=20,check=True)
+        if not any(item.get("warm_pixels") for item in result.values()):
+            return result,None
+        tsv=recognize_tsv(canvas,executable,persistent=persistent)
         rows={i:[] for i in range(len(SEATS))}
-        for line in p.stdout.splitlines()[1:]:
+        for line in tsv.splitlines()[1:]:
             cols=line.split("\t",11)
             if len(cols)!=12 or cols[0]!="5" or not cols[11].strip():
                 continue
@@ -108,7 +107,7 @@ def seat_evidence(image, executable=None, previous=None, cache=None):
         if old is not None and old[0]==key:
             labels,err=old[1],None
         else:
-            labels,err=allin_ocr(image,executable)
+            labels,err=allin_ocr(image,executable,persistent=True)
             cache.allin=(key,labels) if not err else None
     evidence={}
     for name,spec in SEATS.items():

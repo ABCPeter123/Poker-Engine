@@ -1,3 +1,4 @@
+import {FrameQueue} from './frame-queue.js';
 import {freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
 import {SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
@@ -7,12 +8,12 @@ export function attachPractice({video,screen,canRun,rotation}){
  let locks=loadManual({getItem:key=>localStorage.getItem(key)}),lastOcrAt=null,lastTable=null,cardMemory=null,betMemory=createBetMemory();
  let active=false,session='',epoch=0,timer=null,controller=null,equityWorker=null,reading=null,requestedKey='',lastFrame=null,resetAt=-1,lastResult=null;
  const editors=new Map(),inlineEditors=new Map(),popupEditors=new Map(),seatNodes=new Map();
- let equityResult=null,decisionTimer=null;
+ let equityResult=null,decisionTimer=null,frameQueue=null,frameCallback=null,draining=false,lastPaintAt=-Infinity;
  const status=msg=>$('live-status').textContent=msg, metric=msg=>$('live-equity').textContent=msg;
  function clearEquity(){equityResult=null;if(equityWorker){equityWorker.terminate();equityWorker=null;}requestedKey='';metric('—');}
  function clearAuto(){lastResult=null;lastOcrAt=null;lastTable=null;cardMemory=null;reading=null;lastFrame=null;clearEquity();}
  function save(){const ok=saveManual({setItem:(key,value)=>localStorage.setItem(key,value)},locks);$('manual-lock-count').textContent=Object.keys(locks).length+' locked'+(ok?' · saved locally':' · browser storage unavailable');}
- function stop(){closePopup();clearInterval(decisionTimer);decisionTimer=null;betMemory=createBetMemory();clearAuto();active=false;epoch++;clearTimeout(timer);timer=null;controller?.abort();controller=null;$('live-overlay').hidden=true;$('live-start').disabled=!canRun()||!$('practice-consent').checked;$('live-stop').disabled=true;status('Recognition stopped. Manual locks retained.');paint();}
+ function stop(){closePopup();clearInterval(decisionTimer);decisionTimer=null;betMemory=createBetMemory();clearAuto();active=false;epoch++;clearTimeout(timer);timer=null;if(frameCallback!==null)video.cancelVideoFrameCallback?.(frameCallback);frameCallback=null;frameQueue=null;draining=false;controller?.abort();controller=null;$('live-overlay').hidden=true;$('live-start').disabled=!canRun()||!$('practice-consent').checked;$('live-stop').disabled=true;status('Recognition stopped. Manual locks retained.');paint();}
  function refresh(){panel.hidden=false;if(!canRun()&&active)stop();$('live-start').disabled=active||!canRun()||!$('practice-consent').checked;$('screen-seat-layer').hidden=!canRun();$('screen-decision').hidden=!canRun();if(!canRun())closePopup();paintDecision();}
  function snapshot(){const w=video.videoWidth,h=video.videoHeight,deg=rotation(),swap=Math.abs(deg%180)===90;if(!w||!h)throw Error('Waiting for video dimensions');const scale=Math.min(1,1920/Math.max(w,h));canvas.width=Math.round((swap?h:w)*scale);canvas.height=Math.round((swap?w:h)*scale);const c=canvas.getContext('2d');c.translate(canvas.width/2,canvas.height/2);c.rotate(deg*Math.PI/180);c.drawImage(video,-w*scale/2,-h*scale/2,w*scale,h*scale);return new Promise(resolve=>canvas.toBlob(resolve,'image/png'));}
  function evaluate(candidate){const opponents=Number($('live-opponents').value);if(!active||!canRun()||!$('practice-consent').checked||!candidate||!opponents){clearEquity();return;}const key=candidate.key+'|'+opponents;if(key===requestedKey)return;clearEquity();requestedKey=key;const current=epoch,worker=new Worker('./worker.js',{type:'module'});equityWorker=worker;metric('Calculating…');worker.onmessage=({data})=>{if(epoch===current&&equityWorker===worker&&requestedKey===key){metric(data.error?'Unavailable':(data.result.equity*100).toFixed(1)+'%');equityResult=data.error?null:data.result.equity;equityWorker=null;if(data.error)requestedKey='';paintDecision();}worker.terminate();};worker.onerror=()=>{if(equityWorker===worker){metric('Unavailable');equityWorker=null;requestedKey='';paintDecision();}worker.terminate();};worker.postMessage({id:current,input:practiceInput(candidate,opponents)});}
@@ -144,13 +145,46 @@ export function attachPractice({video,screen,canRun,rotation}){
   betMemory=updateBetMemory(betMemory,result,{capturedAt,now,ocr:sampled});
   const numeric=currentNumericSample(lastTable?{at:lastOcrAt,table:lastTable}:null,result,betMemory,prior,{capturedAt,now,sampled});
   lastTable=numeric?.table??null;lastOcrAt=numeric?.at??null;
-  cardMemory=updateCardMemory(cardMemory,result,capturedAt);lastFrame=capturedAt;refreshCandidate(true);paint();
+  cardMemory=updateCardMemory(cardMemory,result,capturedAt);lastFrame=capturedAt;refreshCandidate(true);if(now-lastPaintAt>=125){lastPaintAt=now;paint();}
   if(ocrStatus?.state==='unavailable'||ocrStatus?.state==='failed')$('live-ocr-age').textContent='OCR '+ocrStatus.state+': '+(ocrStatus.detail||'Scan failed');
   $('live-overlay').hidden=false;
  }
- async function tick(current){if(!active||epoch!==current||!canRun())return;try{const capturedAt=performance.now();const blob=await snapshot();if(!active||epoch!==current)return;if(!blob)throw Error('Cannot encode frame');controller=new AbortController();const response=await fetch('/api/practice-frame',{method:'POST',headers:{'Content-Type':'image/png','X-Practice-Consent':'yes','X-Frame-Session':session,'X-Frame-OCR':$('live-ocr').checked?'yes':'no'},body:blob,signal:controller.signal});const data=await response.json();if(!active||epoch!==current)return;if(!response.ok)throw Error(data.error||'Recognition failed');if(capturedAt>=resetAt){render(data.result,data.ocr_sampled,data.ocr_status,capturedAt);const crop=data.result?.capture_crop;status('Frame processed in '+((performance.now()-capturedAt)/1000).toFixed(1)+' s · candidates from captured frame'+(crop?' · game area '+crop.visible_size.join(' × '):''));}}catch(e){if(!active||epoch!==current)return;clearAuto();betMemory=interruptBetMemory(betMemory);paint();$('live-overlay').hidden=true;status(e.message);}finally{if(active&&epoch===current){controller=null;timer=setTimeout(()=>tick(current),800);}}}
+ function reportQueue(q){const r=q.report(performance.now());$('frame-telemetry').textContent='Captured '+r.captured+' · processed '+r.processed+' · queued '+r.queued+' / '+q.limit+' · source gaps '+r.sourceMissed+' · source '+(r.sourceFps===null?'—':r.sourceFps.toFixed(1))+' FPS · processing '+r.processingFps.toFixed(1)+' FPS · backlog '+(r.oldestAgeMs/1000).toFixed(2)+' s';}
+ function failQueue(q,error){reportQueue(q);stop();status('Frame coverage failed: '+String(error.message||error)+'. Restart after resolving the bottleneck.');}
+ async function drain(current,q){
+  if(draining||!active||epoch!==current||q!==frameQueue)return;
+  draining=true;
+  try{
+   while(active&&epoch===current&&q===frameQueue&&q.front()){
+    const item=q.front(),encoded=await item.encoded;
+    if(!active||epoch!==current||q!==frameQueue)return;
+    if(encoded.error||!encoded.blob)throw Error('Frame '+item.id+' encoding failed');
+    controller=new AbortController();
+    const response=await fetch('/api/practice-frame',{method:'POST',headers:{'Content-Type':'image/png','X-Practice-Consent':'yes','X-Frame-Session':session,'X-Frame-OCR':$('live-ocr').checked?'yes':'no','X-Frame-Sequence':String(item.id)},body:encoded.blob,signal:controller.signal});
+    const data=await response.json();if(!active||epoch!==current||q!==frameQueue)return;
+    if(!response.ok)throw Error(data.error||'Recognition failed');
+    if(data.sequence!==item.id)throw Error('Backend sequence mismatch');
+    q.complete(item.id);
+    if(item.capturedAt>=resetAt)render(data.result,data.ocr_sampled,data.ocr_status,item.capturedAt);
+    reportQueue(q);
+    if(performance.now()-item.capturedAt>5000)throw Error('Recognition backlog exceeded 5 seconds');
+   }
+  }catch(e){if(active&&epoch===current&&q===frameQueue)failQueue(q,e);}
+  finally{if(epoch===current){draining=false;controller=null;}}
+ }
+ function captureNext(current,q){
+  if(!active||epoch!==current||!canRun()||q!==frameQueue)return;
+  frameCallback=video.requestVideoFrameCallback((now,meta)=>{
+   frameCallback=null;
+   if(!active||epoch!==current||q!==frameQueue||!canRun())return;
+   try{
+    q.enqueue({presentedFrames:meta.presentedFrames,capturedAt:now},snapshot);
+    captureNext(current,q);void drain(current,q);
+   }catch(e){failQueue(q,e);}
+  });
+ }
  $('practice-consent').onchange=()=>{if(!$('practice-consent').checked)stop();refresh();};
- $('live-start').onclick=()=>{if(!canRun()||!$('practice-consent').checked)return;stop();active=true;epoch++;session=crypto.randomUUID();$('live-start').disabled=true;$('live-stop').disabled=false;status('Starting Python recognizer…');decisionTimer=setInterval(paint,500);tick(epoch);};
+ $('live-start').onclick=()=>{if(!canRun()||!$('practice-consent').checked)return;if(!video.requestVideoFrameCallback){status('Frame accounting requires a browser with video frame callbacks.');return;}stop();active=true;epoch++;session=crypto.randomUUID();$('live-start').disabled=true;$('live-stop').disabled=false;status('Starting Python recognizer…');frameQueue=new FrameQueue(120);const q=frameQueue;decisionTimer=setInterval(()=>{paint();if(frameQueue===q)reportQueue(q);},125);captureNext(epoch,q);};
  $('live-stop').onclick=stop;
  $('live-reset-bets').onclick=()=>{betMemory={...createBetMemory(),last:performance.now()};paint();};
  $('manual-new-hand').onclick=()=>{if(!confirm('Clear all manual locks and automatic observations for a new hand?'))return;closePopup();locks={};resetAt=performance.now();betMemory=createBetMemory();clearAuto();for(const map of [editors,inlineEditors])for(const e of map.values()){e.dirty=false;e.input.value='';e.input.setCustomValidity('');}save();paint();};

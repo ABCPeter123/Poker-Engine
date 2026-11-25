@@ -38,6 +38,8 @@ export async function practiceFrame(req,res,port){
  const allowed=new Set(['http://127.0.0.1:'+port,'http://localhost:'+port]);
  if(req.method!=='POST'||!allowed.has(req.headers.origin)||!allowed.has('http://'+req.headers.host)||req.headers['content-type']!=='image/png'||req.headers['x-practice-consent']!=='yes'){reply(res,403,{error:'Local authorized practice frames only.'});return;}
  const session=req.headers['x-frame-session'];if(typeof session!=='string'||!/^[a-zA-Z0-9-]{8,80}$/.test(session)){reply(res,400,{error:'Invalid frame session'});return;}
+ const seqText=req.headers['x-frame-sequence'];const sequence=typeof seqText==='string'&&/^[1-9][0-9]*$/.test(seqText)?Number(seqText):null;
+ if(!Number.isSafeInteger(sequence)){reply(res,400,{error:'Invalid frame sequence'});return;}
  if(busy){reply(res,429,{error:'Recognition busy'});return;}
  const length=Number(req.headers['content-length']);if(!Number.isSafeInteger(length)||length<24||length>maxBytes){reply(res,413,{error:'Frame exceeds 8 MB limit'});return;}
  busy=true;
@@ -45,7 +47,7 @@ export async function practiceFrame(req,res,port){
   let count=0;const parts=[];for await(const part of req){count+=part.length;if(count>length||count>maxBytes)throw Error('Frame exceeds limit');parts.push(part);}
   const png=Buffer.concat(parts);if(count!==length||!png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||png.toString('ascii',12,16)!=='IHDR')throw Error('Invalid PNG');
   const w=png.readUInt32BE(16),h=png.readUInt32BE(20);if(!w||!h||w>4096||h>4096||w*h>12000000)throw Error('Frame dimensions exceed limit');
-  reply(res,200,await recognize(png,session,req.headers['x-frame-ocr']==='yes'));
+  reply(res,200,{...await recognize(png,session,req.headers['x-frame-ocr']==='yes'),sequence});
  }catch(e){reply(res,400,{error:String(e.message||e).slice(-1800)});}
  finally{busy=false;idleTimer=setTimeout(()=>shutdown(),30000);idleTimer.unref?.();}
 }

@@ -29,3 +29,11 @@ Darkened avatars can correspond to nonactive, folded, or obscured players. A lar
 Run synthetic cue tests:
 
     py -m unittest discover -s pokerist -p "test_*.py"
+
+## Full saved-video throughput diagnostic
+
+Install FFmpeg and FFprobe on PATH. Record a completed local practice session at 60 FPS, then run:
+
+    py pokerist/benchmark_video.py "C:\\path\\to\\recording.mp4"
+
+The report includes decoded/processed counts, source timestamp gaps, measured wall-clock FPS, median/p95/worst per-frame latency, and OCR errors. The default includes OCR; `--no-ocr` is a visual-only diagnostic and cannot pass the full command's exit gate. A throughput pass does not establish field accuracy. Use the labelled saved-frame and field-coverage audits separately. The benchmark does not connect to a live game or feed advice. No 60 FPS result is claimed without measurement.

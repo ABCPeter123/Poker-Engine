@@ -247,10 +247,11 @@ def read_numbers(image, executable):
     return results,error
 
 def normalize(original):
-    original=original.convert("RGB")
+    original=original if original.mode=="RGB" else original.convert("RGB")
     bounds=game_bounds(original)
-    visible=original.crop(bounds)
-    image=visible.resize((WIDTH,HEIGHT))
+    visible=original if bounds==(0,0,*original.size) else original.crop(bounds)
+    # Preserve caller metadata and ownership, even for an already normalized image.
+    image=visible.copy() if visible.size==(WIDTH,HEIGHT) else visible.resize((WIDTH,HEIGHT))
     image.info["capture_crop"]={"input_size":list(original.size),"bounds":list(bounds),"visible_size":list(visible.size),"cropped":bounds!=(0,0,*original.size)}
     return image
 

@@ -10,12 +10,13 @@ def aligned(w, h):
 
 
 def game_bounds(image):
-    a = np.asarray(image.convert('RGB'), dtype=np.int16)
+    a = np.asarray(image if image.mode == 'RGB' else image.convert('RGB'))
     h, w = a.shape[:2]
     if min(h, w) < 100:
         raise ValueError('Frame too small for review.')
     # Strip only near-black, nearly uniform outer padding. Keep dark game content.
-    dark = a.max(axis=2) <= 16
+    r, g, b = np.moveaxis(a, -1, 0)
+    dark = (r <= 16) & (g <= 16) & (b <= 16)
     rows = dark.mean(axis=1) >= .985
     cols = dark.mean(axis=0) >= .985
     def limits(mask):
@@ -30,8 +31,11 @@ def game_bounds(image):
     # consistent with the calibrated layout after cropping.
     sub = a[y0:y1, x0:x1]
     hh, ww = sub.shape[:2]
-    middle = sub[:, int(ww*.08):int(ww*.92)]
-    light = ((middle.min(axis=2) >= 165) & (np.ptp(middle, axis=2) <= 32)).mean(axis=1) >= .80
+    middle = sub[:min(hh, max(4, int(hh*.15)+3)), int(ww*.08):int(ww*.92)]
+    r, g, b = np.moveaxis(middle, -1, 0)
+    lo = np.minimum(np.minimum(r, g), b)
+    hi = np.maximum(np.maximum(r, g), b)
+    light = ((lo >= 165) & (hi-lo <= 32)).mean(axis=1) >= .80
     header = 0
     for start in range(min(4, hh)):
         if not light[start]:

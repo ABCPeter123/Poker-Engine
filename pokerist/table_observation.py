@@ -20,14 +20,25 @@ REGIONS={
 ANCHORS={"upper_left":(350,95),"upper_right":(418,95),"left":(241,175),"right":(527,175),"hero":(405,205)}
 D=np.array([142,144,145,146,151,157,156,148,141,139,140,140,139,144,142,144,168,197,207,207,202,180,152,138,137,138,140,148,182,208,212,212,215,219,218,199,164,139,139,145,183,215,210,136,105,104,105,164,216,199,160,138,155,207,226,194,100,129,165,120,112,182,225,184,138,160,210,227,178,104,183,243,195,112,150,234,194,142,160,210,226,164,104,187,245,204,117,148,232,193,144,153,206,220,148,93,149,183,139,108,167,225,188,141,143,190,211,154,115,126,133,120,143,198,208,166,138,134,149,188,189,182,183,186,191,208,209,168,136,140,135,118,141,175,190,197,197,193,185,161,129,128,141,139,132,117,114,124,132,133,129,117,112,124,141,142,140,141,139,126,107,98,98,103,115,131,140,141,141],dtype=np.int16).reshape(13,13)
 
-def dealer_marker(image):
+def dealer_marker(image,cache=None):
     a=np.asarray(image.resize((768,355)).convert("L"),dtype=np.int16)
     matches=[]
+    if cache is not None and not hasattr(cache,"dealer_regions"):
+        cache.dealer_regions={}
     for seat,(x,y) in ANCHORS.items():
-        windows=sliding_window_view(a[y-22:y+23,x-30:x+31],(13,13))
+        region=a[y-22:y+23,x-30:x+31]
+        signature=region.tobytes() if cache is not None else None
+        prior=cache.dealer_regions.get(seat) if cache is not None else None
+        if prior is not None and prior[0]==signature:
+            matches.append(prior[1])
+            continue
+        windows=sliding_window_view(region,(13,13))
         distances=np.abs(windows-D).sum(axis=(-2,-1),dtype=np.int32)
         dy,dx=np.unravel_index(distances.argmin(),distances.shape)
-        matches.append((float(distances[dy,dx])/D.size,seat,[int((x-30+dx+6)*2),int((y-22+dy+6)*2)]))
+        reading=(float(distances[dy,dx])/D.size,seat,[int((x-30+dx+6)*2),int((y-22+dy+6)*2)])
+        if cache is not None:
+            cache.dealer_regions[seat]=(signature,reading)
+        matches.append(reading)
     matches.sort()
     score,seat,center=matches[0]
     return {"candidate":seat if score<=15 and matches[1][0]-score>=6 else None,
@@ -69,7 +80,7 @@ def participation_label(action,visible,turn=False):
 
 def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
     labels,error=scan_labels(image,exe,number_text,cache=cache)
-    dealer=dealer_marker(image)
+    dealer=dealer_marker(image,cache=cache)
     seats={}
     for seat in SEAT_ORDER:
         bet=labels.get((seat,"bet"),{})

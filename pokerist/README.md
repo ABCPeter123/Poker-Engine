@@ -59,3 +59,5 @@ Recognition startup now prepares the local Python worker before starting frame a
 Coverage losses are not recovered frames. Temporal observations reset at the next accepted frame after a gap; stale results are not shown as fresh. A degraded run cannot establish complete 60 FPS coverage.
 
 The incremental worker tries the installed Tesseract shared library first (persistent initialized handle), with CLI stdin fallback. The frame telemetry identifies the OCR backend. Set `POKER_OCR_CLI=1` before starting the server to force the compatibility path. Native OCR uses the same language and whitelist but output can differ from CLI; saved review keeps CLI recognition. Empty prepared masks bypass OCR without inventing chip values.
+
+The saved-recording benchmark now reports decode/hash, normalization and recognition latency separately (median and p95), and identifies the actual OCR backend. Dealer matching reuses exact unchanged search-window results; changed windows are matched again. OCR misses reuse the prepared bitmap rather than running preprocessing twice.

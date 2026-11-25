@@ -47,6 +47,7 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60, 
     from review import normalize, review_image
     from ocr_runtime import resolve_tesseract
     from adaptive_labels import RegionOCRCache
+    from native_ocr import backend_name
     path=Path(path).resolve(strict=True)
     if not path.is_file():
         raise ValueError("A completed local recording is required")
@@ -74,6 +75,7 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60, 
     cache=RegionOCRCache() if incremental else None
     durations=[]; errors=[]; stages={}
     previous_digest=None; consecutive_identical=0; sequence=hashlib.sha256()
+    overhead={name:[] for name in ("decode_and_hash","normalize","recognition")}
     start=time.perf_counter()
     proc=subprocess.Popen([ffmpeg,"-v","error","-nostdin","-noautorotate","-i",str(path),
         "-map","0:v:0","-an","-sn","-dn","-vsync","0","-pix_fmt","rgb24","-f","rawvideo","pipe:1"],
@@ -87,7 +89,9 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60, 
             consecutive_identical+=int(digest==previous_digest)
             previous_digest=digest
             sequence.update(digest)
+            decoded=time.perf_counter()
             image=normalize(Image.frombytes("RGB",(w,h),raw))
+            normalized=time.perf_counter()
             comparable=previous if previous is not None and previous.info.get("capture_crop")==image.info.get("capture_crop") else None
             if previous is not None and comparable is None and incremental:
                 cache=RegionOCRCache()
@@ -96,7 +100,11 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60, 
                 errors.append({"frame":len(durations),"error":"OCR error"})
             for name,ms in result.get("timings_ms",{}).items():
                 stages.setdefault(name,[]).append(ms)
-            durations.append((time.perf_counter()-t)*1000)
+            finished=time.perf_counter()
+            overhead["decode_and_hash"].append((decoded-t)*1000)
+            overhead["normalize"].append((normalized-decoded)*1000)
+            overhead["recognition"].append((finished-normalized)*1000)
+            durations.append((finished-t)*1000)
             previous=image
         if proc.wait()!=0: errors.append({"error":"FFmpeg decode failed"})
     except Exception as exc:
@@ -109,6 +117,9 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60, 
     report=summarize(len(stamps),durations,time.perf_counter()-start,source_ok,ocr,errors,target)
     report["source_fps"]=source_fps
     report["incremental_exact_region_cache"]=incremental
+    report["ocr_backend"]=backend_name(exe) if incremental and exe else "CLI" if exe else "disabled"
+    report["median_pipeline_ms"]={name:statistics.median(values) for name,values in overhead.items() if values}
+    report["p95_pipeline_ms"]={name:sorted(values)[math.ceil(.95*len(values))-1] for name,values in overhead.items() if values}
     report["decoded_frame_sequence_sha256"]=sequence.hexdigest()
     report["consecutive_identical_pixel_frames"]=consecutive_identical
     report["source_geometry"]=[w,h]

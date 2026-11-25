@@ -17,4 +17,18 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(status_label("Small blind"),"Small blind")
         self.assertEqual(status_label("Sat out"),"Sat out")
         self.assertIsNone(status_label("Guest"))
+    def test_exact_dealer_cache_matches_uncached_on_changed_regions(self):
+        from adaptive_labels import RegionOCRCache
+        from unittest.mock import patch
+        cache=RegionOCRCache()
+        a=np.full((355,768),140,dtype=np.uint8)
+        a[89:102,412:425]=D.astype(np.uint8)
+        im=Image.fromarray(a).convert("RGB").resize((1536,709))
+        expected=dealer_marker(im)
+        self.assertEqual(dealer_marker(im,cache),expected)
+        with patch("table_observation.sliding_window_view",side_effect=AssertionError("unchanged dealer region rescanned")):
+            self.assertEqual(dealer_marker(im,cache),expected)
+        a[89:102,412:425]=140
+        changed=Image.fromarray(a).convert("RGB").resize((1536,709))
+        self.assertEqual(dealer_marker(changed,cache),dealer_marker(changed))
 if __name__=="__main__":unittest.main()

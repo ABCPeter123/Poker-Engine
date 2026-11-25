@@ -120,6 +120,7 @@ class RegionOCRCache:
         rows={}
         changed=[]
         keys={}
+        masks={}
         for entry in regions:
             key,box,kind=entry
             mask=prepared_region_mask(image,box,kind)
@@ -142,10 +143,11 @@ class RegionOCRCache:
                 self.hits+=1
             else:
                 changed.append(entry)
+                masks[key]=mask
                 keys[key]=(identity,signature)
                 self.misses+=1
         if changed:
-            new,error=scan_regions(image,exe,changed,unrestricted=unrestricted,persistent=True)
+            new,error=scan_regions(image,exe,changed,unrestricted=unrestricted,persistent=True,prepared_masks=masks)
             if error:
                 # Failed scans cannot keep previous values for changed regions.
                 for identity,_ in keys.values():
@@ -164,7 +166,7 @@ class RegionOCRCache:
         return rows,None
 
 
-def scan_regions(image, executable, regions, *, unrestricted=False, cache=None,persistent=False):
+def scan_regions(image, executable, regions, *, unrestricted=False, cache=None,persistent=False,prepared_masks=None):
     """One OCR pass across variable-width search regions; retain source boxes."""
     if not executable:
         return {}, "Tesseract unavailable"
@@ -175,15 +177,15 @@ def scan_regions(image, executable, regions, *, unrestricted=False, cache=None,p
     numeric=[entry for entry in regions if entry[2]!="status"]
     status=[entry for entry in regions if entry[2]=="status"]
     if numeric and status:
-        a,ea=scan_regions(image,executable,numeric,unrestricted=unrestricted,persistent=persistent)
-        b,eb=scan_regions(image,executable,status,unrestricted=unrestricted,persistent=persistent)
+        a,ea=scan_regions(image,executable,numeric,unrestricted=unrestricted,persistent=persistent,prepared_masks=prepared_masks)
+        b,eb=scan_regions(image,executable,status,unrestricted=unrestricted,persistent=persistent,prepared_masks=prepared_masks)
         return {**a,**b}, "; ".join(x for x in (ea,eb) if x) or None
     if not regions:
         return {},None
     width=max((box[2]-box[0])*SCALE+2*PAD for _,box,_ in regions)
     canvas=Image.new("L",(width,PITCH*len(regions)),255)
-    for i,(_,box,kind) in enumerate(regions):
-        mask=prepared_region_mask(image,box,kind)
+    for i,(key,box,kind) in enumerate(regions):
+        mask=prepared_masks[key] if prepared_masks is not None else prepared_region_mask(image,box,kind)
         crop=Image.fromarray(np.uint8(255-255*mask))
         crop=crop.resize((crop.width*SCALE,crop.height*SCALE),Image.Resampling.NEAREST)
         if crop.height+2*PAD>PITCH:

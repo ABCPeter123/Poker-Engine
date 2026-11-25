@@ -10,4 +10,5 @@ class SyntheticBenchmarkTests(unittest.TestCase):
         self.assertEqual(a,b)
         self.assertNotEqual(first.tobytes(),second.tobytes())
         self.assertNotEqual(a,c)
-        self.assertEqual(len(a),6)
+        self.assertEqual(len(a),11)
+        self.assertEqual(sum(key.startswith('bet:') for key in a),5)

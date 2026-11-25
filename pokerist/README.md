@@ -65,3 +65,5 @@ The saved-recording benchmark now reports decode/hash, normalization and recogni
 ### Controlled synthetic throughput diagnostic
 
 Run `py pokerist/benchmark_synthetic.py --frames 180 --change-every 12` to measure offline processing with known numeric text that changes regularly and background pixels that change every frame. Use `--change-every 1` for a stress case. The report separates median/p95/max latency, OCR errors and synthetic numeric accuracy. This test is not a real Pokerist image accuracy test or a live capture benchmark.
+
+The Offline recognition performance workflow runs both regular changes and every-frame changes with installed Tesseract on Linux. Its reports include correct/incorrect/unknown counts for all five stacks, five bets and the pot, plus exact raw-region cache hits. These controlled synthetic results are diagnostic only, not real capture throughput or real screenshot accuracy. The raw RGB crop shortcut reuses a reading only when the crop bytes and OCR configuration are identical; changed crops still undergo the existing mask checks.

@@ -101,8 +101,9 @@ def numeric_mask(a,kind):
             mask[:,max(0,int(cols[0])-6):min(mask.shape[1],int(cols[-1])+7)]=False
     return mask
 
-def prepared_region_mask(image,box,kind):
-    a=np.asarray(image.crop(box).convert("RGB"),dtype=np.int16)
+def prepared_region_mask(image,box,kind,*,crop=None):
+    crop=image.crop(box) if crop is None else crop
+    a=np.asarray(crop if crop.mode=="RGB" else crop.convert("RGB"),dtype=np.int16)
     r,g,b=np.moveaxis(a,-1,0)
     return ((r>145)&(g>115)&(b<np.minimum(r,g)-35)) if kind=="status" else numeric_mask(a,kind)
 
@@ -115,20 +116,31 @@ class RegionOCRCache:
         self.misses=0
         self.history=OrderedDict()
         self.history_limit=256
+        self.raw_entries={}
+        self.raw_hits=0
 
     def scan(self,image,exe,regions,*,unrestricted=False):
         rows={}
         changed=[]
         keys={}
         masks={}
+        raw_keys={}
         for entry in regions:
             key,box,kind=entry
-            mask=prepared_region_mask(image,box,kind)
-            identity=(key,box,kind,unrestricted)
-            signature=(mask.shape,mask.tobytes())
+            identity=(key,box,kind,unrestricted,exe)
+            crop=image.crop(box)
+            raw=(crop.mode,crop.size,crop.tobytes())
             old=self.entries.get(identity)
+            if old is not None and self.raw_entries.get(identity)==raw:
+                rows[key]=old[1]
+                self.hits+=1
+                self.raw_hits+=1
+                continue
+            mask=prepared_region_mask(image,box,kind,crop=crop)
+            signature=(mask.shape,mask.tobytes())
             if old is not None and old[0]==signature:
                 rows[key]=old[1]
+                self.raw_entries[identity]=raw
                 self.hits+=1
             elif (identity,signature) in self.history:
                 history_key=(identity,signature)
@@ -136,15 +148,18 @@ class RegionOCRCache:
                 self.history.move_to_end(history_key)
                 self.entries[identity]=(signature,value)
                 rows[key]=value
+                self.raw_entries[identity]=raw
                 self.hits+=1
             elif not mask.any():
                 rows[key]=[]
                 self.entries[identity]=(signature,[])
+                self.raw_entries[identity]=raw
                 self.hits+=1
             else:
                 changed.append(entry)
                 masks[key]=mask
                 keys[key]=(identity,signature)
+                raw_keys[key]=raw
                 self.misses+=1
         if changed:
             new,error=scan_regions(image,exe,changed,unrestricted=unrestricted,persistent=True,prepared_masks=masks)
@@ -152,10 +167,12 @@ class RegionOCRCache:
                 # Failed scans cannot keep previous values for changed regions.
                 for identity,_ in keys.values():
                     self.entries.pop(identity,None)
+                    self.raw_entries.pop(identity,None)
                 return rows,error
             for key,(identity,signature) in keys.items():
                 value=new.get(key,[])
                 self.entries[identity]=(signature,value)
+                self.raw_entries[identity]=raw_keys[key]
                 rows[key]=value
                 if value:
                     history_key=(identity,signature)

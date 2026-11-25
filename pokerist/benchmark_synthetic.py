@@ -31,7 +31,9 @@ def synthetic_frame(index,change_every=12):
         draw.text((box[0]+25,box[1]+3),value,font=font,fill=(250,250,250))
     for pos,seat in enumerate(SEAT_ORDER):
         box=REGIONS[seat]["bet"]
-        draw.text((box[0]+35,box[1]+3),str(100+pos*20+epoch%100),font=font,fill=(250,250,250))
+        value=100+pos*20+epoch%100
+        expected["bet:"+seat]=value
+        draw.text((box[0]+35,box[1]+3),str(value),font=font,fill=(250,250,250))
     # Every frame contains changing pixels away from calibrated text boxes.
     draw.rectangle((40,40,80,65),fill=(index%256,50,100))
     return image,expected
@@ -44,6 +46,8 @@ def measure(exe,frames=180,change_every=12):
     field_count=0
     correct=0
     stages={}
+    per_field={}
+    backend=backend_name(exe)
     start=time.perf_counter()
     for i in range(frames):
         image,expected=synthetic_frame(i,change_every)
@@ -54,21 +58,26 @@ def measure(exe,frames=180,change_every=12):
         previous=image
         errors+=bool(result.get("number_ocr_error") or result["table_observation"].get("ocr_warning") or result["seat_evidence"].get("ocr_warning"))
         for key,value in expected.items():
-            candidate=result["number_candidates"][key].get("candidate")
+            candidate=(result["table_observation"]["seats"][key.split(":",1)[1]].get("bet") if key.startswith("bet:") else result["number_candidates"][key].get("candidate"))
             field_count+=1
-            correct+=bool(candidate and candidate.get("value")==value and not candidate.get("approximate"))
+            passed=bool(candidate and candidate.get("value")==value and not candidate.get("approximate"))
+            correct+=passed
+            entry=per_field.setdefault(key,{"correct":0,"incorrect":0,"unknown":0})
+            entry["correct" if passed else "incorrect" if candidate is not None else "unknown"]+=1
         for key,value in result["timings_ms"].items():
             stages.setdefault(key,[]).append(value)
     wall=time.perf_counter()-start
     return {
         "frames":frames,"change_every_frames":change_every,"ocr_backend":backend_name(exe),
+        "initial_ocr_backend":backend,
+        "exact_raw_cache_hits":cache.raw_hits,"ocr_cache_hits":cache.hits,"ocr_cache_misses":cache.misses,
         "recognition_plus_normalization_fps":frames*1000/sum(times),
         "wall_fps_including_synthetic_generation":frames/wall,
         "median_frame_ms":statistics.median(times),
         "p95_frame_ms":sorted(times)[math.ceil(.95*frames)-1],
         "max_frame_ms":max(times),"frames_over_16_67_ms":sum(x>1000/60 for x in times),
         "ocr_error_frames":errors,"synthetic_number_fields":field_count,
-        "synthetic_number_fields_correct":correct,
+        "synthetic_number_fields_correct":correct,"synthetic_fields_by_name":per_field,
         "median_stage_ms":{k:statistics.median(v) for k,v in stages.items()},
         "real_frame_accuracy_verified":False,"live_throughput_verified":False
     }

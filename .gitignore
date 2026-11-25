@@ -5,3 +5,6 @@ node_modules/
 # Private saved images and local quality reports
 saved-benchmark.json
 pokerist/fixtures/local-images/
+
+local-amount-glyphs.json
+amount-glyph-validation.json

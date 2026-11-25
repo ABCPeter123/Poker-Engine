@@ -27,5 +27,17 @@ class RegionCacheTests(unittest.TestCase):
             ImageDraw.Draw(image).rectangle((5,5,12,14),fill="white")
             self.assertEqual(cache.scan(image,"test",entries),({},"error"))
             self.assertEqual(cache.scan(image,"test",entries),({"hero":[2]},None))
+    def test_reappearing_exact_mask_reuses_previous_ocr(self):
+        cache=RegionOCRCache()
+        first=Image.new("RGB",(50,30))
+        ImageDraw.Draw(first).rectangle((20,5,25,14),fill="white")
+        second=first.copy()
+        ImageDraw.Draw(second).rectangle((5,5,12,14),fill="white")
+        entries=[("hero",(0,0,50,30),"bet")]
+        with patch("adaptive_labels.scan_regions",side_effect=[({"hero":[1]},None),({"hero":[2]},None)]) as scan:
+            self.assertEqual(cache.scan(first,"test",entries)[0],{"hero":[1]})
+            self.assertEqual(cache.scan(second,"test",entries)[0],{"hero":[2]})
+            self.assertEqual(cache.scan(first,"test",entries)[0],{"hero":[1]})
+            self.assertEqual(scan.call_count,2)
 if __name__=="__main__":
     unittest.main()

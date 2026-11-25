@@ -8,7 +8,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  let locks=loadManual({getItem:key=>localStorage.getItem(key)}),lastOcrAt=null,lastTable=null,cardMemory=null,betMemory=createBetMemory();
  let active=false,session='',epoch=0,timer=null,controller=null,equityWorker=null,reading=null,requestedKey='',lastFrame=null,resetAt=-1,lastResult=null;
  const editors=new Map(),inlineEditors=new Map(),popupEditors=new Map(),seatNodes=new Map();
- let equityResult=null,decisionTimer=null,ocrBackend='unknown',frameQueue=null,frameCallback=null,draining=false,lastPaintAt=-Infinity;
+ let equityResult=null,decisionTimer=null,ocrBackend='unknown',lastTimings=null,frameQueue=null,frameCallback=null,draining=false,lastPaintAt=-Infinity;
  const status=msg=>$('live-status').textContent=msg, metric=msg=>$('live-equity').textContent=msg;
  function clearEquity(){equityResult=null;if(equityWorker){equityWorker.terminate();equityWorker=null;}requestedKey='';metric('—');}
  function clearAuto(){lastResult=null;lastOcrAt=null;lastTable=null;cardMemory=null;reading=null;lastFrame=null;clearEquity();}
@@ -141,6 +141,8 @@ export function attachPractice({video,screen,canRun,rotation}){
   const now=performance.now();
   if(!observationAge(capturedAt,now,5000).fresh){clearAuto();betMemory=interruptBetMemory(betMemory);paint();return;}
   lastResult=result;
+  lastTimings=result.timings_ms||null;
+  ocrBackend=ocrStatus?.backend||ocrBackend;
   const prior=betMemory,sampled=ocr&&ocrStatus?.state==='sampled'&&$('live-ocr').checked;
   betMemory=updateBetMemory(betMemory,result,{capturedAt,now,ocr:sampled});
   const numeric=currentNumericSample(lastTable?{at:lastOcrAt,table:lastTable}:null,result,betMemory,prior,{capturedAt,now,sampled});

@@ -4,6 +4,7 @@ Coordinates define search areas, not exact digit locations. Never turn an
 unreadable or ambiguous label into zero. All returned amounts are candidates.
 """
 import re
+from collections import OrderedDict
 from native_ocr import recognize_tsv
 import subprocess
 import tempfile
@@ -112,6 +113,8 @@ class RegionOCRCache:
         self.entries={}
         self.hits=0
         self.misses=0
+        self.history=OrderedDict()
+        self.history_limit=256
 
     def scan(self,image,exe,regions,*,unrestricted=False):
         rows={}
@@ -125,6 +128,13 @@ class RegionOCRCache:
             old=self.entries.get(identity)
             if old is not None and old[0]==signature:
                 rows[key]=old[1]
+                self.hits+=1
+            elif (identity,signature) in self.history:
+                history_key=(identity,signature)
+                value=self.history[history_key]
+                self.history.move_to_end(history_key)
+                self.entries[identity]=(signature,value)
+                rows[key]=value
                 self.hits+=1
             elif not mask.any():
                 rows[key]=[]
@@ -145,6 +155,12 @@ class RegionOCRCache:
                 value=new.get(key,[])
                 self.entries[identity]=(signature,value)
                 rows[key]=value
+                if value:
+                    history_key=(identity,signature)
+                    self.history[history_key]=value
+                    self.history.move_to_end(history_key)
+                    while len(self.history)>self.history_limit:
+                        self.history.popitem(last=False)
         return rows,None
 
 

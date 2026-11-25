@@ -14,6 +14,8 @@ from numeric_review_metrics import numeric_evidence, summarize_numeric
 
 VARIANTS=("original","downscale","jpeg")
 CARD_GROUPS=("hole_slots","board_slots")
+SEATS={"hero","left","upper_left","upper_right","right"}
+STATUS_LABELS={"All-in","Sat out","Fold","Check","Call","Raise","Bet","Big blind","Small blind"}
 
 
 def validate_manifest(data):
@@ -31,6 +33,19 @@ def validate_manifest(data):
         expected=case.get("expected")
         if not isinstance(expected,dict):
             raise ValueError(f"{name}: missing expected observations")
+        unknown=set(expected)-{"hole_slots","board_slots","amounts","bets","dealer","turn","statuses"}
+        if unknown:
+            raise ValueError(f"{name}: unrecognized expected fields: {sorted(unknown)}")
+        for key in ("dealer","turn"):
+            if key in expected and (not isinstance(expected[key],str) or expected[key] not in SEATS):
+                raise ValueError(f"{name}: invalid {key} label; omit unknown markers")
+        statuses=expected.get("statuses",{})
+        if not isinstance(statuses,dict) or any(k not in SEATS or not isinstance(v,str) or v not in STATUS_LABELS for k,v in statuses.items()):
+            raise ValueError(f"{name}: invalid status labels")
+        if "crop" in case:
+            crop=case["crop"]
+            if not isinstance(crop,list) or len(crop)!=4 or any(type(v) is not int for v in crop) or not 0<=crop[0]<crop[2] or not 0<=crop[1]<crop[3]:
+                raise ValueError(f"{name}: invalid crop")
         for key,length in (("hole_slots",2),("board_slots",5)):
             cards=expected.get(key)
             if not isinstance(cards,list) or len(cards)!=length:
@@ -90,7 +105,7 @@ def evaluate_case(case,root,variants,ocr,enhanced=False,deep=False):
         if not 0<=l<r<=image.width or not 0<=t<b<=image.height:
             raise ValueError("Saved screenshot crop outside image.")
         image=image.crop((l,t,r,b))
-    expected=case["expected"] if ocr else {k:case["expected"][k] for k in CARD_GROUPS}
+    expected=case["expected"] if ocr else {k:case["expected"][k] for k in (*CARD_GROUPS,"dealer","turn") if k in case["expected"]}
     digest=hashlib.sha256(data).hexdigest()
     crop=case.get("crop")
     results=[]
@@ -107,10 +122,16 @@ def evaluate_case(case,root,variants,ocr,enhanced=False,deep=False):
             result=read_enhanced(normalized,read_cards)
         else:
             result=read_cards(normalized)
+        if not ocr and any(k in expected for k in ("dealer","turn")):
+            from seat_cues import seat_evidence
+            from table_observation import dealer_marker
+            cues=seat_evidence(normalized)
+            result["table_observation"]={"dealer":dealer_marker(normalized),"turn_candidate":cues.get("active_band_candidate")}
+        errors=[result.get("number_ocr_error"),result.get("table_observation",{}).get("ocr_warning"),result.get("seat_evidence",{}).get("ocr_warning")] if ocr else []
         results.append({"file":case["file"],"sha256":digest,"variant":variant,"elapsed_ms":round((time.perf_counter()-t)*1000,1),
                         "fields":field_results(result,expected),"stage_ms":result.get("timings_ms"),
                         "crop":crop,"numeric_evidence":numeric_evidence(result,expected),
-                        "ocr_error":result.get("number_ocr_error") if ocr else None})
+                        "ocr_error":"; ".join(str(e) for e in errors if e) or None})
     return results
 
 

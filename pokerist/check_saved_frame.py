@@ -1,14 +1,20 @@
 """Compare a saved review image with explicitly labelled expected observations."""
 import argparse
 import json
+import re
 from pathlib import Path
+
+
+def chip_value(candidate):
+    value=candidate.get("value") if isinstance(candidate,dict) else None
+    return value if type(value) is int and 0<=value<=2**53-1 else None
 
 
 def field_results(result, expected):
     rows = []
     def add(field, actual, wanted, missing=False):
         rows.append({"field": field, "expected": wanted, "actual": actual,
-                     "status": "missing" if missing else "match" if actual == wanted else "missing" if actual is None else "incorrect"})
+                     "status": "missing" if missing else "match" if type(actual) is type(wanted) and actual == wanted else "missing" if actual is None else "incorrect"})
     for group in ("hole_slots", "board_slots"):
         if group in expected:
             slots = result.get(group)
@@ -22,6 +28,8 @@ def field_results(result, expected):
                     continue
                 actual = slot.get("candidate") if isinstance(slot, dict) else None
                 # A visible but unreadable face is not an empty slot.
+                if actual is not None and (not isinstance(actual,str) or not re.fullmatch(r"[2-9TJQKA][cdhs]",actual)):
+                    actual = "invalid-card"
                 if isinstance(slot, dict) and actual is None and wanted is None:
                     actual = "visible-unreadable"
                 add(f"{group}[{i}]", actual, wanted)
@@ -31,15 +39,17 @@ def field_results(result, expected):
         # The saved review UI blanks disputed numeric fields. Score what is
         # actually available for confirmation, not the rejected raw value.
         conflict = observation.get("saved_line_status") == "conflicting readings"
-        add(f"amount.{key}", None if conflict else candidate.get("value"), wanted, missing=conflict)
+        add(f"amount.{key}", None if conflict else chip_value(candidate), wanted, missing=conflict)
     observation = result.get("table_observation") or {}
     for seat, wanted in expected.get("bets", {}).items():
         candidate = (observation.get("seats", {}).get(seat) or {}).get("bet") or {}
-        add(f"bet.{seat}", candidate.get("value"), wanted)
+        add(f"bet.{seat}", chip_value(candidate), wanted)
     if "dealer" in expected:
-        add("dealer", (observation.get("dealer") or {}).get("candidate"), expected["dealer"])
+        actual=(observation.get("dealer") or {}).get("candidate")
+        add("dealer",actual,expected["dealer"],missing=actual is None)
     if "turn" in expected:
-        add("turn", observation.get("turn_candidate"), expected["turn"])
+        actual=observation.get("turn_candidate")
+        add("turn",actual,expected["turn"],missing=actual is None)
     for seat, wanted in expected.get("statuses", {}).items():
         add(f"status.{seat}", (observation.get("seats", {}).get(seat) or {}).get("status_candidate"), wanted)
     return rows

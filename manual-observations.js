@@ -78,7 +78,7 @@ export function effectiveCards(result,locks){
   const slot=slots[i];
   if(slot===null)return null;
   if(!slot||typeof slot!=='object'||!Object.hasOwn(slot,'candidate'))return {candidate:null,unknown:true};
-  if(slot.candidate!==null&&!/^[2-9TJQKA][cdhs]$/.test(slot.candidate))return {candidate:null,unknown:true};
+  if(slot.candidate!==null&&(typeof slot.candidate!=='string'||!/^[2-9TJQKA][cdhs]$/.test(slot.candidate)))return {candidate:null,unknown:true};
   return slot;
  });
  const hole=slotsOf('hole_slots',2),board=slotsOf('board_slots',5);

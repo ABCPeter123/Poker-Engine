@@ -52,6 +52,11 @@ class CorpusTests(unittest.TestCase):
         for name in ("../x.png","..\\x.png","/x.png",".."):
             with self.assertRaises(ValueError):
                 validate_manifest({"cases":[{"file":name,"expected":{}}]})
+    def test_invalid_marker_status_and_crop_labels(self):
+        base={"hole_slots":[None]*2,"board_slots":[None]*5}
+        for invalid in ({"turn":"bad"},{"dealer":None},{"statuses":{"hero":"Fake"}},{"bet":{"hero":0}}):
+            with self.assertRaises(ValueError):validate_manifest({"cases":[{"file":"a.png","expected":{**base,**invalid}}]})
+        with self.assertRaises(ValueError):validate_manifest({"cases":[{"file":"a.png","expected":base,"crop":[0,0,False,10]}]})
     def test_fixture_manifest_valid(self):
         import json
         data=json.loads((Path(__file__).with_name("fixtures")/"saved_corpus.json").read_text(encoding="utf-8"))

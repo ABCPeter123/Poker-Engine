@@ -18,5 +18,11 @@ class SavedFrameTests(unittest.TestCase):
     def test_zero_not_missing(self):
         self.assertEqual(field_results({'number_candidates':{'left':{'candidate':{'value':0}}}},{'amounts':{'left':0}})[0]['status'],'match')
 
+    def test_malformed_amount_is_not_zero_or_one(self):
+        for v in (False,True,0.0,1.0,"0",-1,2**53):
+            self.assertEqual(field_results({"number_candidates":{"hero":{"candidate":{"value":v}}}},{"amounts":{"hero":0}})[0]["status"],"missing")
+    def test_unknown_marker_is_not_confirmed_absence(self):
+        self.assertEqual(field_results({},{"turn":None})[0]["status"],"missing")
+
 if __name__=="__main__":
     unittest.main()

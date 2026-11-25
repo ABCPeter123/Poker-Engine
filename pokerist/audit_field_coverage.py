@@ -38,6 +38,11 @@ def audit(report):
                 continue
             if field in rows or row["status"] not in STATUSES[:3]:
                 raise ValueError("Duplicate field or invalid status")
+            if "expected" not in row or "actual" not in row:
+                raise ValueError("Field row lacks expected or actual evidence")
+            a,e=row["actual"],row["expected"]
+            if row["status"]=="match" and (type(a) is not type(e) or a!=e):
+                raise ValueError("Field marked match despite conflicting evidence")
             rows[field]=row["status"]
         for f in FIELDS:
             v["fields"][f][rows.get(f,"untested")]+=1

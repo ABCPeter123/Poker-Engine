@@ -1,6 +1,7 @@
 """Offline OCR evaluation: measure transcription, acceptance and uncertainty separately."""
 from collections import Counter
 from amount_text import number_text
+from check_saved_frame import chip_value
 
 def numeric_evidence(result, expected):
     rows=[]
@@ -22,7 +23,7 @@ def numeric_evidence(result, expected):
         for item in observation.get("saved_line_evidence",[]):
             method=item.get("method") or "threshold_"+str(item.get("threshold","unknown"))
             readings.append(reading(method,item.get("raw",""),item.get("confidence")))
-        accepted=candidate.get("value") if isinstance(candidate,dict) and not conflict else None
+        accepted=chip_value(candidate) if not conflict else None
         rows.append({"field":field,"expected_display_value":wanted,"accepted":accepted,
                      "accepted_status":classify(accepted),"conflict":conflict,
                      "accepted_approximate":bool(candidate.get("approximate")) if accepted is not None else None,

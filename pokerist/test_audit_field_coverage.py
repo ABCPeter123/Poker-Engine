@@ -5,7 +5,7 @@ def frame(rows,elapsed=20):
     return {"file":"a.png","variant":"original","fields":rows,"elapsed_ms":elapsed}
 
 def row(field,status="match"):
-    return {"field":field,"status":status}
+    return {"field":field,"status":status,"expected":"sample","actual":"sample" if status=="match" else None if status=="missing" else "other"}
 
 class FieldCoverageTests(unittest.TestCase):
     def test_required_fields(self):
@@ -34,6 +34,11 @@ class FieldCoverageTests(unittest.TestCase):
             audit({"details":[frame([row("turn"),row("turn")])]})
     def test_unprocessed_expected_frame_fails(self):
         self.assertFalse(audit({"details":[frame([row(f) for f in FIELDS])],"expected_frames":2})["complete_validation"])
+    def test_unsubstantiated_match_rejected(self):
+        with self.assertRaises(ValueError):
+            audit({"details":[frame([{"field":"amount.hero","status":"match","expected":0,"actual":False}])]})
+        with self.assertRaises(ValueError):
+            audit({"details":[frame([{"field":"amount.hero","status":"match"}])]})
     def test_empty_report_fails(self):
         self.assertFalse(audit({"details":[],"expected_frames":0})["complete_validation"])
 

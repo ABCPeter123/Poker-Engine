@@ -35,7 +35,9 @@ class EnhancementTests(unittest.TestCase):
         self.assertIsNone(reconcile(raw,[result(c("As"),c("As"))]*4)["hole_slots"][0]["candidate"])
     def test_duplicate_proposals_not_added(self):
         raw=result(c(None),c(None))
-        self.assertEqual(reconcile(raw,[result(c("As"),c("As"))]*4),raw)
+        out=reconcile(raw,[result(c("As"),c("As"))]*4)
+        self.assertEqual([s["candidate"] for s in out["hole_slots"]],[None,None])
+        self.assertTrue(all(s["saved_card_choices"] for s in out["hole_slots"]))
     def test_no_extra_pass_for_complete_reading(self):
         reader=Mock(return_value=result(c("As"),c("Kd")))
         read_enhanced(Image.new("RGB",(1536,709)),reader)
@@ -63,7 +65,10 @@ class EnhancementTests(unittest.TestCase):
     def test_deep_rejects_conflicting_votes(self):
         raw=result(c(None),c("Kd"))
         reader=Mock(side_effect=[raw]*5+[result(c("As"),c("Kd"))]*3+[result(c("Ad"),c("Kd"))]+[raw]*4)
-        self.assertEqual(read_deep(Image.new("RGB",(20,20)),reader),raw)
+        out=read_deep(Image.new("RGB",(20,20)),reader)
+        self.assertIsNone(out["hole_slots"][0]["candidate"])
+        self.assertEqual({c["candidate"] for c in out["hole_slots"][0]["saved_card_choices"]},{"As","Ad"})
+        self.assertEqual(out["hole_slots"][1],raw["hole_slots"][1])
     def test_deep_skips_alignment_if_enhancement_finishes(self):
         raw=result(c(None),c("Kd"))
         reader=Mock(side_effect=[raw]+[result(c("As"),c("Kd"))]*4)

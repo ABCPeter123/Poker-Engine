@@ -1,5 +1,6 @@
 """Exercise the actual saved-image pipeline, with synthetic (non-private) frames."""
 import unittest
+from unittest.mock import patch
 import tempfile
 import json
 from pathlib import Path
@@ -50,6 +51,19 @@ class SavedPipelineTests(unittest.TestCase):
         self.assertEqual(result["board_slots"][3:],[None,None])
         rows=field_results(result,{"board_slots":[None]*5})
         self.assertEqual(sum(r["status"]=="incorrect" for r in rows),3)
+    def test_saved_conflict_is_not_used_as_stack_candidate(self):
+        from saved_amount_review import add_evidence
+        from review import review_image, number_text
+        raw={"raw":"186550","candidate":number_text("186550")}
+        disputed=add_evidence(raw,[{"method":"stretch","raw":"106550","confidence":80}],number_text)
+        with patch("review.read_numbers",return_value=({"right":raw},None)),patch(
+                "saved_amount_review.add_saved_amount_evidence",return_value={"right":disputed}),patch(
+                "review.seat_evidence",return_value={"seats":{},"active_band_candidate":None}),patch(
+                "table_observation.scan_labels",return_value=({},None)):
+            result=review_image(self.image(),"mock-tesseract",enhanced=True)
+        self.assertIsNone(result["number_candidates"]["right"]["candidate"])
+        self.assertIsNone(result["table_observation"]["seats"]["right"]["stack"])
+        self.assertEqual(result["number_candidates"]["right"]["original_candidate"]["value"],186550)
     def test_noncontiguous_board_is_not_a_valid_street(self):
         im=self.image()
         d=ImageDraw.Draw(im)

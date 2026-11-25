@@ -116,8 +116,10 @@ def measure(samples,exe,vision=None):
         initial=consensus(readers)
         if vision is not None:run("vision",lambda:vision(patch))
         final=consensus(readers)
+        # Counterfactual selective fallback: skip vision on existing agreement.
+        selective=initial if initial["candidate"] is not None else final
         rows.append({"group":group,"name":name,"expected":label,"readers":readers,
-            "timings_ms":timings,"errors":errors,"two_reader":initial,"ensemble":final})
+            "timings_ms":timings,"errors":errors,"two_reader":initial,"ensemble":final,"selective":selective})
     def score(get):
         counts=Counter()
         for row in rows:
@@ -128,10 +130,13 @@ def measure(samples,exe,vision=None):
     scores={name:score(lambda row,n=name:identity(row["readers"].get(n))) for name in names}
     scores["two_reader"]=score(lambda row:row["two_reader"]["candidate"])
     scores["ensemble"]=score(lambda row:row["ensemble"]["candidate"])
+    scores["selective"]=score(lambda row:row["selective"]["candidate"])
     return {"scope":"Completed-image manually localized crops; group-held-out glyph training; no live performance claim",
         "samples":len(rows),"groups":len(groups),"scores":scores,
         "median_reader_ms":{n:statistics.median(row["timings_ms"][n] for row in rows) for n in names},
         "vision_calls":len(rows) if vision is not None else 0,
+        "selective_vision_calls":sum(row["two_reader"]["candidate"] is None for row in rows) if vision is not None else 0,
+        "selective_vision_note":"Counterfactual from the same offline predictions; skips vision when two readers already agree.",
         "automatic_accuracy_verified":False,"details":rows}
 
 def main():

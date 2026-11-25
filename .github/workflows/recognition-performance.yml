@@ -27,11 +27,15 @@ jobs:
         run: python pokerist/benchmark_synthetic.py --frames 120 --change-every 12 --output regular-throughput.json
       - name: Every-frame change stress
         run: python pokerist/benchmark_synthetic.py --frames 60 --change-every 1 --output stress-throughput.json
+      - name: Held-out synthetic hybrid text audit
+        run: python pokerist/benchmark_hybrid.py
       - name: Publish measured results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: synthetic-recognition-throughput
-          path: '*-throughput.json'
+          path: |
+            *-throughput.json
+            synthetic-hybrid-validation.json
           if-no-files-found: warn
           retention-days: 14

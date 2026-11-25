@@ -24,3 +24,5 @@ class HybridAmountTests(unittest.TestCase):
         self.assertEqual(report["scores"]["two_reader"],{"correct":1,"incorrect":1,"unknown":0})
         self.assertEqual(report["scores"]["ensemble"]["unknown"],2)
         self.assertEqual(report["vision_calls"],2)
+        self.assertEqual(report["selective_vision_calls"],0)
+        self.assertEqual(report["scores"]["selective"],report["scores"]["two_reader"])

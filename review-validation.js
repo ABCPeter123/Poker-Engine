@@ -5,7 +5,9 @@ function card(text){
  const s=normalize(text);
  if(!s||s==='?')return {state:'unknown',card:null};
  if(s==='-')return {state:'empty',card:null};
- if(!/^[2-9TJQKA][CDHS]$/.test(s))throw Error('Use card shorthand, e.g. As, ? for unknown or - for empty.');
+ if(/^[2-9TJQKA]\?$/.test(s))return {state:'partial',card:null,rank:s[0],suit:null};
+ if(/^\?[CDHS]$/.test(s))return {state:'partial',card:null,rank:null,suit:s[1].toLowerCase()};
+ if(!/^[2-9TJQKA][CDHS]$/.test(s))throw Error('Use As, A? (rank only), ?s (suit only), ? (unknown) or - (empty).');
  return {state:'known',card:s[0]+s[1].toLowerCase()};
 }
 function parseGroup(text,count,counts){
@@ -34,6 +36,15 @@ export function parseReviewAmount(value){
  }
  if(!Number.isSafeInteger(amount)||amount<0)throw Error('Chip amount is too large.');
  return {display,value:amount,approximate:!!compact};
+}
+// Choosing a component is an explicit human edit. Unknown components
+// stay unknown, and existing known components are not silently discarded.
+export function selectReviewComponent(value,kind,label){
+ const s=normalize(value),m=s.match(/^([2-9TJQKA?])([CDHS?])$/);
+ const rank=m?.[1]||'?',suit=m?.[2]||'?';
+ if(kind==='rank'&&/^[2-9TJQKA]$/.test(label))return label+(suit==='?'?'?':suit.toLowerCase());
+ if(kind==='suit'&&/^[cdhs]$/.test(label))return rank+label;
+ throw Error('Invalid card component.');
 }
 export function reviewSlotDefaults(result){
  const values={};
@@ -67,7 +78,7 @@ export function validateReview(values){
  if(street&&inferred&&street!==inferred)throw Error('Street conflicts with the confirmed board.');
  if(slotsMode&&street){
   const count=({Preflop:0,Flop:3,Turn:4,River:5})[street];
-  if(slotData.board_slots.some((s,i)=>i<count?s.state==='empty':s.state==='known'))throw Error('Card slots conflict with the selected street.');
+  if(slotData.board_slots.some((s,i)=>i<count?s.state==='empty':s.state==='known'||s.state==='partial'))throw Error('Card slots conflict with the selected street.');
  }
  const stacks={},bets={};
  for(const seat of seats){stacks[seat]=parseReviewAmount(values[seat]);bets[seat]=parseReviewAmount(values['bet.'+seat]);}

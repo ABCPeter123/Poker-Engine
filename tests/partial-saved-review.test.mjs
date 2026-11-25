@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateReview,parseReviewAmount,reviewSlotDefaults} from '../review-validation.js';
+import {validateReview,parseReviewAmount,reviewSlotDefaults,selectReviewComponent} from '../review-validation.js';
 test('partial slots preserved without collapsing positions',()=>{
  const r=validateReview({'hole.0':'As','hole.1':'?','board.0':'4h','board.1':'?','board.2':'5d','board.3':'-','board.4':'-',street:'Flop',pot:'4.5K'});
  assert.equal(r.hole,null);assert.equal(r.board,null);assert.equal(r.street,'Flop');
@@ -30,4 +30,21 @@ test('bet and stack zero retained independently',()=>{
 test('prefill distinguishes empty from unknown and preserves slots',()=>{
  const v=reviewSlotDefaults({hole_slots:[{candidate:'As'},null],board_slots:[{candidate:null},null,{candidate:'2h'}]});
  assert.equal(v['hole.0'],'As');assert.equal(v['hole.1'],'-');assert.equal(v['board.0'],'?');assert.equal(v['board.2'],'2h');assert.equal(v['board.4'],'?');
+});
+
+test('confirmed partial rank or suit is retained without inventing a complete card',()=>{
+ const r=validateReview({'hole.0':'A?','hole.1':'?s','board.0':'4h','board.1':'?d','board.2':'5d','board.3':'-','board.4':'-',street:'Flop'});
+ assert.deepEqual(r.hole_slots[0],{state:'partial',card:null,rank:'A',suit:null});
+ assert.deepEqual(r.hole_slots[1],{state:'partial',card:null,rank:null,suit:'s'});
+ assert.equal(r.hole,null);assert.equal(r.board,null);assert.equal(r.street,'Flop');
+});
+test('partial visible card cannot occupy a post-street empty slot',()=>{
+ assert.throws(()=>validateReview({'board.0':'A?',street:'Preflop'}));
+});
+test('component edits preserve the other selected component',()=>{
+ assert.equal(selectReviewComponent('?','rank','A'),'A?');
+ assert.equal(selectReviewComponent('A?','suit','s'),'As');
+ assert.equal(selectReviewComponent('As','rank','K'),'Ks');
+ assert.equal(selectReviewComponent('-','suit','h'),'?h');
+ assert.throws(()=>selectReviewComponent('?','rank','1'));
 });

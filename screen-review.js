@@ -1,7 +1,7 @@
 import {attachPractice} from './live-practice-view.js';
 import {reviewEquityInput} from './review-equity.js';
 import {previewDimensions,captureOptions,captureHealth,orientationDegrees,orientedDimensions,shareOptions,shareError,shareTrackState} from './capture-view.js';
-import {validateReview,reviewSlotDefaults} from './review-validation.js';
+import {validateReview,reviewSlotDefaults,selectReviewComponent} from './review-validation.js';
 const $=id=>document.getElementById(id),video=$('video'),frame=$('frame'),ink=$('ink'),ctx=ink.getContext('2d');
 let stream=null,url=null,source='none',frozen=false,drawing=false,point=null,revision=0,reviewPending=false,frameVersion=0,lastReview=null;
 let reviewWorker=null;
@@ -127,7 +127,9 @@ function populateVerification(result){
   if(evidence?.components){
    for(const kind of ['rank','suit']){
     const options=evidence.components[kind]||[];if(!options.length)continue;
-    const line=document.createElement('small');line.className='hint';line.textContent=(kind==='rank'?'Rank':'Suit')+' evidence: '+options.map(o=>o.label+' (distance '+o.distance+')').join(', ');wrap.append(line);
+    const line=document.createElement('small');line.className='hint';line.textContent=(kind==='rank'?'Rank':'Suit')+' evidence (select only after checking crop)';wrap.append(line);
+    const buttons=document.createElement('div');buttons.className='review-candidate-choices';
+    for(const option of options){const button=document.createElement('button');button.type='button';button.textContent=option.label;button.title='Template distance '+option.distance;button.onclick=()=>{try{input.value=selectReviewComponent(input.value,kind,option.label);invalidate();}catch(e){$('verify-status').textContent=e.message;}};buttons.append(button);}wrap.append(buttons);
    }
   }
   if(f.detail){const detail=document.createElement('small');detail.className='hint';detail.textContent=f.detail;wrap.append(detail);}
@@ -143,7 +145,7 @@ function populateVerification(result){
   }
   area.append(wrap);
  }
- $('verify-status').textContent='Confirm the visible fields. Use ? for unreadable cards, - for empty slots. Partial readings can be exported.';$('verify-panel').hidden=false;
+ $('verify-status').textContent='Confirm the visible fields. Use A? or ?s for partial cards, ? for unreadable cards, - for empty slots. Partial readings can be exported.';$('verify-panel').hidden=false;
 }
 $('confirm-review').onclick=()=>{try{const values=Object.fromEntries([...$('verify-fields').querySelectorAll('[data-field]')].map(e=>[e.dataset.field,e.value]));verifiedReview={source:'saved frame',recording_time_seconds:lastReview?.recording_time_seconds??null,corrected:validateReview(values),raw:lastReview};$('verify-status').textContent='Corrected readings confirmed. Blank fields remain unknown.';$('export-verified').disabled=false;cancelReviewEquity();$('review-equity').hidden=!(verifiedReview.corrected.hole&&verifiedReview.corrected.board);$('review-opponents').value='';}catch(e){verifiedReview=null;$('export-verified').disabled=true;$('verify-status').textContent=e.message;}};
 $('export-verified').onclick=()=>{if(!verifiedReview)return;const url=URL.createObjectURL(new Blob([JSON.stringify(verifiedReview,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='pokerist-verified-review.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};

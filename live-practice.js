@@ -1,7 +1,28 @@
 import {parseCards} from './quick-input.js';
+// Null is an explicitly empty slot. Missing, sparse and malformed slots are not empty.
+export function validSlots(slots,length){
+ return Array.isArray(slots)&&slots.length===length&&Array.from({length},(_,i)=>{
+  if(!Object.hasOwn(slots,i))return false;
+  const s=slots[i];
+  return s===null||!!(s&&typeof s==='object'&&!Array.isArray(s)&&Object.hasOwn(s,'candidate')&&(s.candidate===null||typeof s.candidate==='string'&&/^[2-9TJQKA][cdhs]$/.test(s.candidate)));
+ }).every(Boolean);
+}
+export function freshBetValue(state,seat,street,now){
+ const b=state?.seats?.[seat];
+ return b?.observed&&state.street===street&&!state.boundary&&!state.uncertain&&observationAge(b.lastSeen,now,5000).fresh?b.value:undefined;
+}
+export function currentNumericSample(previous,result,state,priorState,{capturedAt,now,sampled=false}={}){
+ if(!observationAge(capturedAt,now,5000).fresh)return null;
+ // A street or hand transition invalidates all earlier OCR, even if recent.
+ if(!state?.street||state.boundary||state.uncertain||state.street!==result?.street_candidate)return null;
+ const changed=state.generation!==priorState?.generation;
+ if(sampled)return {at:capturedAt,table:{...result.table_observation,pot:result.number_candidates?.pot?.candidate}};
+ return changed?null:previous&&observationAge(previous.at,now,5000).fresh?previous:null;
+}
+
 export function candidateCards(result){
  const holes=result?.hole_slots,board=result?.board_slots;
- if(!Array.isArray(holes)||holes.length!==2||!Array.isArray(board)||board.length!==5||!result?.street_candidate||result.quality?.duplicate_card_candidates||result.quality?.noncontiguous_board||result.quality?.unrecognized_visible_cards)return null;
+ if(!validSlots(holes,2)||!validSlots(board,5)||!result?.street_candidate||result.quality?.duplicate_card_candidates||result.quality?.noncontiguous_board||result.quality?.unrecognized_visible_cards)return null;
  const h=holes.map(x=>x?.candidate),b=board.filter(Boolean).map(x=>x?.candidate);
  if(h.some(x=>!x)||b.some(x=>!x)||![0,3,4,5].includes(b.length))return null;
  if(board.slice(0,b.length).some(x=>!x)||board.slice(b.length).some(Boolean))return null;
@@ -29,7 +50,7 @@ export function updateCardMemory(previous,result,now){
  if(!Number.isFinite(now)||now<0)return null;
  if(previous&&now<=previous.last)return previous;
  const groups=[result?.hole_slots,result?.board_slots];
- if(!Array.isArray(groups[0])||groups[0].length!==2||!Array.isArray(groups[1])||groups[1].length!==5)return null;
+ if(!validSlots(groups[0],2)||!validSlots(groups[1],5))return null;
  const raw=groups.flat(),values=raw.map(x=>validCard(x?.candidate));
  const observed=values.filter(Boolean);
  const duplicate=new Set(observed).size!==observed.length||!!result.quality?.duplicate_card_candidates;
@@ -80,16 +101,16 @@ export const BET_SEATS=Object.freeze(['hero','left','upper_left','upper_right','
 const streets=['Preflop','Flop','Turn','River'];
 const blank=()=>({value:0,observed:false,approximate:false,pending:null,warning:null,lastSeen:null,stack:null,source:'initial'});
 const seats=()=>Object.fromEntries(BET_SEATS.map(s=>[s,blank()]));
-export function createBetMemory(){return {street:null,hole:null,dealer:null,boundary:null,last:null,seats:seats(),status:'Waiting for round confirmation'};}
+export function createBetMemory(){return {street:null,hole:null,dealer:null,boundary:null,last:null,generation:0,uncertain:true,seats:seats(),status:'Waiting for round confirmation'};}
 function streetOf(r){
  const b=r?.board_slots;
- if(!Array.isArray(b)||b.length!==5||r.quality?.duplicate_card_candidates||r.quality?.noncontiguous_board)return null;
+ if(!validSlots(b,5)||r.quality?.duplicate_card_candidates||r.quality?.noncontiguous_board)return null;
  const n=b.filter(Boolean).length,s=({0:'Preflop',3:'Flop',4:'Turn',5:'River'})[n];
  return s===r.street_candidate&&b.slice(0,n).every(Boolean)&&!b.slice(n).some(Boolean)?s:null;
 }
 function holeOf(r){
  const h=r?.hole_slots;
- if(!Array.isArray(h)||h.length!==2)return null;
+ if(!validSlots(h,2))return null;
  const a=h.map(c=>c?.candidate);
  return a.every(x=>typeof x==='string'&&/^[2-9TJQKA][cdhs]$/.test(x))&&a[0]!==a[1]?a.sort().join(' '):null;
 }
@@ -98,7 +119,7 @@ function amount(c,confidence,minimum=75){
  return c&&Number.isSafeInteger(c.value)&&c.value>=0&&Number.isFinite(confidence)&&confidence>=minimum?c:null;
 }
 function accept(e,b,stack,t,source){
- return {...e,value:b.value,observed:true,approximate:!!b.approximate,stack:stack?.value??null,lastSeen:t,pending:null,warning:source==='correction'?'Corrected from repeated lower readings':null,source};
+ return {...e,value:b.value,observed:true,approximate:!!b.approximate,stack:stack&&!stack.approximate?stack.value:null,lastSeen:t,pending:null,warning:source==='correction'?'Corrected from repeated lower readings':null,source};
 }
 export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false}={}){
  const old=previous||createBetMemory();
@@ -106,7 +127,7 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false}={}){
  let state={...old,last:t,seats:Object.fromEntries(BET_SEATS.map(s=>[s,{...old.seats[s]}]))};
  const street=streetOf(r),hole=holeOf(r),d=r?.table_observation?.dealer?.candidate,dealer=BET_SEATS.includes(d)?d:null;
  if(!street||(state.street&&street!=='Preflop'&&streets.indexOf(street)<streets.indexOf(state.street))){
-  state.boundary=null;state.status='Round uncertain; holding prior values';
+  state.boundary=null;state.uncertain=true;state.status='Round uncertain; holding prior values';
   for(const e of Object.values(state.seats))e.pending=null;
   return state;
  }
@@ -114,12 +135,14 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false}={}){
  const newDealer=street==='Preflop'&&state.street==='Preflop'&&dealer&&state.dealer&&dealer!==state.dealer;
  if(street!==state.street||newHole||newDealer){
   const key=[street,newHole?hole:null,newDealer?dealer:null].join('|'),p=state.boundary;
+  state.uncertain=true;
   state.boundary={key,count:p?.key===key&&t-p.last<=6000?p.count+1:1,last:t};
   if(state.boundary.count<2){state.status='Checking round change';for(const e of Object.values(state.seats))e.pending=null;return state;}
-  state={...state,street,hole,dealer,boundary:null,seats:seats()};
+  state={...state,street,hole,dealer,boundary:null,generation:state.generation+1,seats:seats()};
  }else{
   state.boundary=null;state.hole=state.hole||hole;state.dealer=state.dealer||dealer;
  }
+ state.uncertain=false;
  state.status=state.street+' · tracked candidates';
  if(!ocr)return state;
  for(const id of BET_SEATS){
@@ -152,7 +175,7 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false}={}){
 }
 export function interruptBetMemory(state){
  const s=state||createBetMemory();
- return {...s,boundary:null,status:'Capture interrupted; prior bets retained',
+ return {...s,boundary:null,uncertain:true,status:'Capture interrupted; prior bets retained',
   seats:Object.fromEntries(BET_SEATS.map(id=>[id,{...s.seats[id],pending:null,warning:s.seats[id].observed?'Capture interrupted':null}]))};
 }
 export function correctTrackedBet(state,seat,value,now){

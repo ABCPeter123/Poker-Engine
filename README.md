@@ -252,3 +252,7 @@ The saved review editor also accepts a confirmed partial rank (`A?`) or suit (`?
 ### Required-field completeness for saved-image reports
 
 Audit an existing completed-image benchmark report with `py pokerist/audit_field_coverage.py saved-benchmark.json`. The report covers five stacks, five bets, dealer/turn cues, seven card slots and pot (20 fields). It separates manually unlabelled fields from recognition misses and incorrect readings, and requires every field in every expected frame to be labelled and matched for complete validation. Reported sequential-equivalent FPS is calculated from existing saved-image timings, excludes some I/O and decoding costs, and is not a sustained capture benchmark. No capture, recognition scheduling or recommendation changes are made.
+
+### 60 FPS receiver request
+
+Restart the AirPlay receiver as well as the browser/server. The Windows launcher now requests 60 FPS by default (`py start_mirror.py --fps 60`); use `--fps 30` for compatibility. Disconnect and reconnect iPhone mirroring and choose Smooth · 60 FPS in the browser. The negotiated frame rate may still be lower. Existing browser preferences are preserved.

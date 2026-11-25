@@ -127,6 +127,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", default=r"C:\msys64\ucrt64\bin\uxplay.exe")
     parser.add_argument("--max-width", type=int, default=1100)
+    parser.add_argument("--fps", type=int, choices=(30,60), default=60,
+                        help="Requested AirPlay receiver frame rate (default 60; actual rate is negotiated)")
     parser.add_argument("--software", action="store_true", help="Force software decoding if GPU rotation fails")
     parser.add_argument("--landscape", action="store_true", help="Force a wide receiver window (fallback if stream geometry events are missing)")
     parser.add_argument("--auth", choices=("password","random","pin"), default="password",
@@ -155,10 +157,10 @@ def main():
         parser.error(str(exc))
     name = "Private Mirror Secure" if args.auth == "password" else "Private Mirror " + args.auth.title()
     command = [str(exe), "-n", name, "-nh", "-m", receiver_id(uuid.getnode(), args.auth), *auth,
-               "-s", "1920x1080", "-fps", "30", "-vs", "d3d11videosink force-aspect-ratio=true"]
+               "-s", "1920x1080", "-fps", str(args.fps), "-vs", "d3d11videosink force-aspect-ratio=true"]
     if args.software:
         command.append("-avdec")
-    print(f"Starting {name}. Select this receiver on your iPhone. Authentication: {args.auth}.", flush=True)
+    print(f"Starting {name}. Select this receiver on your iPhone. Authentication: {args.auth}. Requested stream: {args.fps} FPS.", flush=True)
     if args.auth == "password":
         print("Use the dedicated password you just entered if iOS prompts.", flush=True)
     process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

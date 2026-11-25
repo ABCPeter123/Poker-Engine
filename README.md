@@ -214,3 +214,7 @@ py pokerist/saved_bar_evidence.py "E:\Poker-Screenshots\saved-frame.png" --crop 
 ```
 
 The bottom-bar tool preserves the original crop and two raw OCR readings. Adjust the crop to the actual saved image. It does not infer whether buttons are enabled or whether an action is legal. In particular, preselection controls and combination-bet buttons are distinct from ordinary Hold'em decisions. The earlier grayscale amount grammar tests passed on Windows and Linux, but no parser guarantees correct extraction from ambiguous pixels. The local manual table simulator already supports conditional heads-up raise evaluation from explicit legal bounds and assumed fold probability. Neither diagnostic script connects to a live capture or changes the external-game recommendation path.
+
+### Numeric benchmark acceptance audit
+
+Saved-corpus reports now distinguish raw text accuracy for each OCR method from the accepted candidate accuracy. Disputed fields blanked by the review interface count as missing, even when the retained raw candidate happens to be correct. Abbreviated amounts are compared against their labelled displayed magnitude, not an inferred exact balance. OCR failures prevent the quality gate passing. Numeric labels must be valid nonnegative whole chip amounts, and comparisons pair identical input bytes, crops and expected labels. Older reports without crop metadata may need regenerating. The current calibration manifest has 21 labelled numeric fields over four images. No live capture, action interpretation, or recommendation changes.

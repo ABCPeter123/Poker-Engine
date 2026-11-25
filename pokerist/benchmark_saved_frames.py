@@ -10,6 +10,7 @@ import statistics
 import time
 
 from check_saved_frame import field_results
+from numeric_review_metrics import numeric_evidence, summarize_numeric
 
 VARIANTS=("original","downscale","jpeg")
 CARD_GROUPS=("hole_slots","board_slots")
@@ -36,6 +37,11 @@ def validate_manifest(data):
                 raise ValueError(f"{name}: {key} needs {length} entries including nulls")
             if any(c is not None and (not isinstance(c,str) or len(c)!=2 or c[0] not in "23456789TJQKA" or c[1] not in "cdhs") for c in cards):
                 raise ValueError(f"{name}: invalid card label")
+        for group in ("amounts","bets"):
+            amounts=expected.get(group,{})
+            allowed={"hero","left","upper_left","upper_right","right"}|({"pot"} if group=="amounts" else set())
+            if not isinstance(amounts,dict) or any(k not in allowed or type(v) is not int or not 0<=v<=2**53-1 for k,v in amounts.items()):
+                raise ValueError(f"{name}: invalid numeric labels in {group}")
         known=[c for key in CARD_GROUPS for c in expected[key] if c is not None]
         if len(known)!=len(set(known)):
             raise ValueError(f"{name}: duplicate expected card")
@@ -76,7 +82,8 @@ def score(rows):
 def evaluate_case(case,root,variants,ocr,enhanced=False,deep=False):
     from PIL import Image
     from review import normalize, read_cards, review_image
-    with Image.open(root/case["file"]) as raw:
+    data=(root/case["file"]).read_bytes()
+    with Image.open(io.BytesIO(data)) as raw:
         image=raw.convert("RGB")
     if "crop" in case:
         l,t,r,b=case["crop"]
@@ -84,7 +91,8 @@ def evaluate_case(case,root,variants,ocr,enhanced=False,deep=False):
             raise ValueError("Saved screenshot crop outside image.")
         image=image.crop((l,t,r,b))
     expected=case["expected"] if ocr else {k:case["expected"][k] for k in CARD_GROUPS}
-    digest=hashlib.sha256((root/case["file"]).read_bytes()).hexdigest()
+    digest=hashlib.sha256(data).hexdigest()
+    crop=case.get("crop")
     results=[]
     for variant in variants:
         t=time.perf_counter()
@@ -100,7 +108,9 @@ def evaluate_case(case,root,variants,ocr,enhanced=False,deep=False):
         else:
             result=read_cards(normalized)
         results.append({"file":case["file"],"sha256":digest,"variant":variant,"elapsed_ms":round((time.perf_counter()-t)*1000,1),
-                        "fields":field_results(result,expected),"stage_ms":result.get("timings_ms")})
+                        "fields":field_results(result,expected),"stage_ms":result.get("timings_ms"),
+                        "crop":crop,"numeric_evidence":numeric_evidence(result,expected),
+                        "ocr_error":result.get("number_ocr_error") if ocr else None})
     return results
 
 
@@ -120,7 +130,9 @@ def summarize(results,errors):
             "exact_card_frames":sum(all(row["status"]=="match" for row in i["fields"] if row["field"].startswith(("hole_slots[","board_slots["))) for i in items),
             "median_ms":round(statistics.median(times),1),
             "p95_ms":times[max(0,math.ceil(.95*len(times))-1)],
-            "groups":score([row for item in items for row in item["fields"]])}
+            "groups":score([row for item in items for row in item["fields"]]),
+            "numeric_review":summarize_numeric([r for i in items for r in i.get("numeric_evidence",[])]),
+            "ocr_errors":sum(bool(i.get("ocr_error")) for i in items)}
     return {"frames_processed":len(results),"errors":errors,"variants":variants,"details":results}
 
 
@@ -128,6 +140,8 @@ def gate(report,min_card_accuracy,max_incorrect,max_p95_ms=None):
     if report["errors"] or not report["frames_processed"]:
         return False
     for variant in report["variants"].values():
+        if variant.get("ocr_errors"):
+            return False
         if max_p95_ms is not None and variant["p95_ms"]>max_p95_ms:
             return False
         groups=variant["groups"]
@@ -150,13 +164,13 @@ def compare_reports(current,baseline):
                 key=(frame["file"],frame["variant"],row["field"])
                 if key in out:
                     raise ValueError("Duplicate report field")
-                out[key]=(frame.get("sha256"),row)
+                out[key]=(frame.get("sha256"),row,frame.get("crop"))
         return out
     old,new=index(baseline),index(current)
     improved=[];regressed=[];changed_wrong=[];unpaired=[]
     for key in sorted(set(old)|set(new)):
         a,b=old.get(key),new.get(key)
-        if not a or not b or not a[0] or a[0]!=b[0] or a[1]["expected"]!=b[1]["expected"]:
+        if not a or not b or not a[0] or a[0]!=b[0] or a[1]["expected"]!=b[1]["expected"] or a[2]!=b[2]:
             unpaired.append(list(key))
             continue
         before,after=a[1],b[1]

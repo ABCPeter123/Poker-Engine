@@ -26,8 +26,12 @@ def field_results(result, expected):
                     actual = "visible-unreadable"
                 add(f"{group}[{i}]", actual, wanted)
     for key, wanted in expected.get("amounts", {}).items():
-        candidate = (result.get("number_candidates", {}).get(key) or {}).get("candidate") or {}
-        add(f"amount.{key}", candidate.get("value"), wanted)
+        observation = (result.get("number_candidates", {}).get(key) or {})
+        candidate = observation.get("candidate") or {}
+        # The saved review UI blanks disputed numeric fields. Score what is
+        # actually available for confirmation, not the rejected raw value.
+        conflict = observation.get("saved_line_status") == "conflicting readings"
+        add(f"amount.{key}", None if conflict else candidate.get("value"), wanted, missing=conflict)
     observation = result.get("table_observation") or {}
     for seat, wanted in expected.get("bets", {}).items():
         candidate = (observation.get("seats", {}).get(seat) or {}).get("bet") or {}

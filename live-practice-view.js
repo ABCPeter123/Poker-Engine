@@ -1,6 +1,6 @@
 import {CurrentStateQueue} from './frame-queue.js';
 import {retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
-import {SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
+import {practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
@@ -16,11 +16,11 @@ export function attachPractice({video,screen,canRun,rotation}){
  function stop(){closePopup();clearInterval(decisionTimer);decisionTimer=null;betMemory=createBetMemory();clearAuto();active=false;epoch++;clearTimeout(timer);timer=null;if(frameCallback!==null)video.cancelVideoFrameCallback?.(frameCallback);frameCallback=null;frameQueue=null;draining=false;controller?.abort();controller=null;$('live-overlay').hidden=true;$('live-start').disabled=!canRun()||!$('practice-consent').checked;$('live-stop').disabled=true;status('Recognition stopped. Manual locks retained.');paint();}
  function refresh(){panel.hidden=false;if(!canRun()&&active)stop();$('live-start').disabled=active||!canRun()||!$('practice-consent').checked;$('screen-seat-layer').hidden=!canRun();$('screen-decision').hidden=!canRun();if(!canRun())closePopup();paintDecision();}
  function snapshot(){const w=video.videoWidth,h=video.videoHeight,deg=rotation(),swap=Math.abs(deg%180)===90;if(!w||!h)throw Error('Waiting for video dimensions');const scale=Math.min(1,1920/Math.max(w,h)),cw=Math.round((swap?h:w)*scale),ch=Math.round((swap?w:h)*scale);if(canvas.width!==cw||canvas.height!==ch){canvas.width=cw;canvas.height=ch;}const c=canvas.getContext('2d',{alpha:false});c.setTransform(1,0,0,1,0,0);c.translate(cw/2,ch/2);c.rotate(deg*Math.PI/180);c.drawImage(video,-w*scale/2,-h*scale/2,w*scale,h*scale);return new Promise(resolve=>canvas.toBlob(resolve,'image/png'));}
- function evaluate(candidate){const opponents=Number($('live-opponents').value);if(!active||!canRun()||!$('practice-consent').checked||!candidate||!Number.isInteger(opponents)||opponents<1||opponents>4){clearEquity();metric(candidate?'Select 1–4 opponents for simulation':'Waiting for recognized cards');return;}const key=candidate.key+'|'+opponents;if(key===requestedKey)return;clearEquity();requestedKey=key;const current=epoch,worker=new Worker('./worker.js',{type:'module'});equityWorker=worker;metric('Calculating…');worker.onmessage=({data})=>{if(epoch===current&&equityWorker===worker&&requestedKey===key){metric(data.error?'Unavailable':(data.result.equity*100).toFixed(1)+'%');equityResult=data.error?null:data.result.equity;equityWorker=null;if(data.error)requestedKey='';paintDecision();}worker.terminate();};worker.onerror=()=>{if(equityWorker===worker){metric('Unavailable');equityWorker=null;requestedKey='';paintDecision();}worker.terminate();};worker.postMessage({id:current,input:practiceInput(candidate,opponents)});}
+ function evaluate(candidate){const {count:opponents}=practiceOpponentCount($('live-opponents').value,locks);if(!active||!canRun()||!$('practice-consent').checked||!candidate||!Number.isInteger(opponents)||opponents<1||opponents>4){clearEquity();metric(candidate?'Select 1–4 opponents for simulation':'Waiting for recognized cards');return;}const key=candidate.key+'|'+opponents;if(key===requestedKey)return;clearEquity();requestedKey=key;const current=epoch,worker=new Worker('./worker.js',{type:'module'});equityWorker=worker;metric('Calculating…');worker.onmessage=({data})=>{if(epoch===current&&equityWorker===worker&&requestedKey===key){metric(data.error?'Unavailable':(data.result.equity*100).toFixed(1)+'%');equityResult=data.error?null:data.result.equity;equityWorker=null;if(data.error)requestedKey='';paintDecision();}worker.terminate();};worker.onerror=()=>{if(equityWorker===worker){metric('Unavailable');equityWorker=null;requestedKey='';paintDecision();}worker.terminate();};worker.postMessage({id:current,input:practiceInput(candidate,opponents)});}
 
  function changed(key){
   save();
-  if(CARD_KEYS.includes(key)||key==='street'){reading=null;clearEquity();refreshCandidate(false);}
+  if(CARD_KEYS.includes(key)||key==='street'){reading=null;clearEquity();refreshCandidate(false);}else if(key.endsWith('.status')||key.endsWith('.participation')){clearEquity();refreshCandidate(false);}
   paint();
  }
  function editor(f,parent,map=editors,compact=false){
@@ -91,7 +91,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   if(betMemory.street===a.street&&!betMemory.boundary&&!betMemory.uncertain){
    for(const id of Object.keys(SEATS)){const b=betMemory.seats[id];if(b.observed&&!b.approximate&&!b.warning&&observationAge(b.lastSeen,now,1000).fresh)exact.add(id+'.bet');}
   }
-  const input=decisionInputs(a,exact,{confirmed:$('practice-action-confirm').checked,opponents:Number($('live-opponents').value)});
+  const input=decisionInputs(a,exact,{confirmed:$('practice-action-confirm').checked,opponents:practiceOpponentCount($('live-opponents').value,locks).count});
   const rec=decisionFromEquity(input,equityResult);
   show(rec.action||rec.reason,rec.action?'Check/call/fold model · equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'%':rec.reason==='Waiting for card equity'?'Check card recognition and simulation status.':'Review the required practice inputs.');
  }
@@ -138,7 +138,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   $('manual-effective-cards').textContent=CARD_KEYS.slice(0,2).map(cardLabel).join(' ')+' | '+CARD_KEYS.slice(2).map(cardLabel).join(' ');
   $('live-cards').textContent=$('manual-effective-cards').textContent;
   $('live-street').textContent=show('street');
-  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?'TURN · ':'')+displayValue(id+'.status',effective[id+'.status']);}
+  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=retainedRoundBet(betMemory,id,betMemory.street);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?'TURN · ':'')+displayValue(id+'.status',effective[id+'.status'])+(retained&&effective[id+'.bet']===undefined?' · retained B '+trackedBetLabel(retained):'');}
   paintDecision();
  }
  function render(result,ocr,ocrStatus,capturedAt){

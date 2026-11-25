@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {overlayPosition,decisionInputs,decisionFromEquity,inputValue} from '../practice-decision.js';
+import {practiceOpponentCount,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from '../practice-decision.js';
 import {setManual,resolveManual,releaseManual} from '../manual-observations.js';
 const a={turn:'hero',pot:600,'hero.stack':1000,'hero.bet':50,'left.bet':150,'upper_left.participation':'Empty seat','upper_right.status':'Fold','right.status':'Sat out'};
 const exact=new Set(['pot','hero.stack','hero.bet','left.bet']);
@@ -13,3 +13,12 @@ test('model chooses fold or call from simple pot odds',()=>{const i=decisionInpu
 test('manual amount supersedes automatic wager in decision',()=>{const locked=setManual({},'hero.bet',100);assert.equal(decisionInputs(resolveManual(a,locked),exact,flags).call,50);});
 test('unconfirmed, unknown and invalid pot inputs suppress model',()=>{assert.ok(decisionInputs(a,exact,{...flags,confirmed:false}).reason);assert.ok(decisionInputs({...a,turn:'left'},exact,flags).reason);assert.ok(decisionInputs({...a,pot:10},exact,flags).reason);assert.ok(decisionInputs(a,new Set(),flags).reason);assert.ok(decisionInputs(a,exact,{...flags,opponents:2}).reason);});
 test('short all-in and missing equity suppress model',()=>{assert.ok(decisionInputs({...a,'hero.stack':20},exact,flags).reason);assert.ok(decisionFromEquity(decisionInputs(a,exact,flags),null).reason);});
+
+test('opponent count uses explicit selection or fully classified manual seats',()=>{
+ assert.deepEqual(practiceOpponentCount('3',{}),{count:3,source:'selected'});
+ assert.equal(practiceOpponentCount('',{}).count,null);
+ const locks={'left.status':'Call','upper_left.participation':'Empty seat','upper_right.status':'Fold','right.status':'Playing'};
+ assert.deepEqual(practiceOpponentCount('',locks),{count:2,source:'manual seats'});
+ assert.equal(practiceOpponentCount('',{...locks,'right.participation':'Folded'}).count,null);
+ assert.equal(practiceOpponentCount('',{...locks,'right.status':'Unknown'}).count,null);
+});

@@ -12,7 +12,7 @@ export const inactive=(a,id)=>['Fold','Sat out','Left table'].includes(a[id+'.st
 export function decisionInputs(a,exact,{confirmed=false,opponents=0}={}){
  if(!confirmed)return {reason:'Confirm pot format and no side pots'};
  if(a.turn!=='hero')return {reason:a.turn===undefined?'Current player unknown':'Waiting for your turn'};
- if(!Number.isInteger(opponents)||opponents<1||opponents>4)return {reason:'Confirm 1–4 opponents'};
+ if(!Number.isInteger(opponents)||opponents<1||opponents>4)return {reason:'Select the number of opponents in the practice controls'};
  if(inactive(a,'hero'))return {reason:'You are not participating'};
  if(!exact.has('pot')||!whole(a.pot)||!exact.has('hero.stack')||!whole(a['hero.stack'])||!exact.has('hero.bet')||!whole(a['hero.bet']))return {reason:'Confirm pot, your stack and bet'};
  if(a['hero.stack']===0)return {reason:'No chips available to act'};
@@ -38,4 +38,21 @@ export function inputValue(value,field){
  if(value===null)return field.type==='card'?'-':'';
  if(field.type==='choice'&&!field.choices.includes(value))return '';
  return String(value);
+}
+
+// A manual count is authoritative. Otherwise, derive only from explicitly
+// classified manual seats, never from missing cards or absent OCR.
+export function practiceOpponentCount(selected,locks={}){
+ const n=Number(selected);
+ if(Number.isInteger(n)&&n>=1&&n<=4)return {count:n,source:'selected'};
+ const active=new Set(['Playing','Check','Call','Raise','Bet','All-in','Big blind','Small blind']);
+ const dead=new Set(['Fold','Folded','Sat out','Left table','Empty seat']);
+ let count=0;
+ for(const id of Object.keys(SEAT_ANCHORS).filter(x=>x!=='hero')){
+  const values=[locks[id+'.status'],locks[id+'.participation']];
+  const yes=values.some(v=>active.has(v)),no=values.some(v=>dead.has(v));
+  if(yes===no)return {count:null,source:'unknown'};
+  if(yes)count++;
+ }
+ return {count:count||null,source:'manual seats'};
 }

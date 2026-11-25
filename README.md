@@ -227,3 +227,12 @@ The new glyph audit separates segmentation failures from character matching fail
 py pokerist/glyph_audit.py "E:\Poker-Screenshots" pokerist/fixtures/glyph_amount_crops.json
 ```
 
+
+### Automatic segmentation and held-out card crop evaluation
+
+`automatic_glyph_audit.py` is a completed-image research tool, not a runtime reader. Training uses labelled crops; amount inference tries multiple projection thresholds without receiving the target text or its length. Conflicting segmentations are rejected. The card comparison keeps entire repeated-hand groups together, tests rank and suit separately, and compares binary vs grayscale features without a test-hand template. The crop coordinates remain manually localized and the ten crop was manually widened, so this is not automatic full-frame accuracy. The decision thresholds were explored on this calibration corpus and need independent validation. The saved and live production readers remain unchanged.
+
+```powershell
+py pokerist/automatic_glyph_audit.py "E:\Poker-Screenshots" pokerist/fixtures/glyph_amount_crops.json --kind amount --output amount-audit.json
+py pokerist/automatic_glyph_audit.py "E:\Poker-Screenshots" pokerist/fixtures/glyph_card_crops.json --kind card --output card-audit.json
+```

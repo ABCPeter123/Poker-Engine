@@ -1,0 +1,1109 @@
+{
+  "description": "Manually localized board glyph crops. Repeated frames of the same hand stay in the same group. Ten crop was manually widened; this is not full-frame inference.",
+  "cards": [
+    {
+      "file": "image(6).png",
+      "group": "a",
+      "name": "image(6).png board 0",
+      "label": "8c",
+      "frame_crop": [
+        13,
+        27,
+        729,
+        358
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(6).png",
+      "group": "a",
+      "name": "image(6).png board 1",
+      "label": "4c",
+      "frame_crop": [
+        13,
+        27,
+        729,
+        358
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(6).png",
+      "group": "a",
+      "name": "image(6).png board 2",
+      "label": "4h",
+      "frame_crop": [
+        13,
+        27,
+        729,
+        358
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(7).png",
+      "group": "a",
+      "name": "image(7).png board 0",
+      "label": "8c",
+      "frame_crop": [
+        10,
+        30,
+        726,
+        361
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(7).png",
+      "group": "a",
+      "name": "image(7).png board 1",
+      "label": "4c",
+      "frame_crop": [
+        10,
+        30,
+        726,
+        361
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(7).png",
+      "group": "a",
+      "name": "image(7).png board 2",
+      "label": "4h",
+      "frame_crop": [
+        10,
+        30,
+        726,
+        361
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(7).png",
+      "group": "a",
+      "name": "image(7).png board 3",
+      "label": "7s",
+      "frame_crop": [
+        10,
+        30,
+        726,
+        361
+      ],
+      "rank_box": [
+        820,
+        244,
+        845,
+        281
+      ],
+      "suit_box": [
+        818,
+        282,
+        845,
+        310
+      ]
+    },
+    {
+      "file": "image(7).png",
+      "group": "a",
+      "name": "image(7).png board 4",
+      "label": "6s",
+      "frame_crop": [
+        10,
+        30,
+        726,
+        361
+      ],
+      "rank_box": [
+        909,
+        244,
+        934,
+        281
+      ],
+      "suit_box": [
+        907,
+        282,
+        934,
+        310
+      ]
+    },
+    {
+      "file": "image(9).png",
+      "group": "b",
+      "name": "image(9).png board 0",
+      "label": "Kd",
+      "frame_crop": [
+        24,
+        27,
+        740,
+        358
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(9).png",
+      "group": "b",
+      "name": "image(9).png board 1",
+      "label": "8c",
+      "frame_crop": [
+        24,
+        27,
+        740,
+        358
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(9).png",
+      "group": "b",
+      "name": "image(9).png board 2",
+      "label": "As",
+      "frame_crop": [
+        24,
+        27,
+        740,
+        358
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(10).png",
+      "group": "b",
+      "name": "image(10).png board 0",
+      "label": "Kd",
+      "frame_crop": [
+        23,
+        31,
+        739,
+        362
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(10).png",
+      "group": "b",
+      "name": "image(10).png board 1",
+      "label": "8c",
+      "frame_crop": [
+        23,
+        31,
+        739,
+        362
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(10).png",
+      "group": "b",
+      "name": "image(10).png board 2",
+      "label": "As",
+      "frame_crop": [
+        23,
+        31,
+        739,
+        362
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(10).png",
+      "group": "b",
+      "name": "image(10).png board 3",
+      "label": "9s",
+      "frame_crop": [
+        23,
+        31,
+        739,
+        362
+      ],
+      "rank_box": [
+        820,
+        244,
+        845,
+        281
+      ],
+      "suit_box": [
+        818,
+        282,
+        845,
+        310
+      ]
+    },
+    {
+      "file": "image(10).png",
+      "group": "b",
+      "name": "image(10).png board 4",
+      "label": "Qs",
+      "frame_crop": [
+        23,
+        31,
+        739,
+        362
+      ],
+      "rank_box": [
+        909,
+        244,
+        934,
+        281
+      ],
+      "suit_box": [
+        907,
+        282,
+        934,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-215618).png",
+      "group": "c",
+      "name": "image(20261124-215618).png board 0",
+      "label": "2d",
+      "frame_crop": [
+        8,
+        25,
+        724,
+        356
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-215618).png",
+      "group": "c",
+      "name": "image(20261124-215618).png board 1",
+      "label": "5s",
+      "frame_crop": [
+        8,
+        25,
+        724,
+        356
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-215618).png",
+      "group": "c",
+      "name": "image(20261124-215618).png board 2",
+      "label": "As",
+      "frame_crop": [
+        8,
+        25,
+        724,
+        356
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-215809).png",
+      "group": "d",
+      "name": "image(20261124-215809).png board 0",
+      "label": "Qd",
+      "frame_crop": [
+        11,
+        26,
+        727,
+        353
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-215809).png",
+      "group": "d",
+      "name": "image(20261124-215809).png board 1",
+      "label": "As",
+      "frame_crop": [
+        11,
+        26,
+        727,
+        353
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-215809).png",
+      "group": "d",
+      "name": "image(20261124-215809).png board 2",
+      "label": "Kc",
+      "frame_crop": [
+        11,
+        26,
+        727,
+        353
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-215809).png",
+      "group": "d",
+      "name": "image(20261124-215809).png board 3",
+      "label": "2c",
+      "frame_crop": [
+        11,
+        26,
+        727,
+        353
+      ],
+      "rank_box": [
+        820,
+        244,
+        845,
+        281
+      ],
+      "suit_box": [
+        818,
+        282,
+        845,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-215809).png",
+      "group": "d",
+      "name": "image(20261124-215809).png board 4",
+      "label": "Jd",
+      "frame_crop": [
+        11,
+        26,
+        727,
+        353
+      ],
+      "rank_box": [
+        909,
+        244,
+        934,
+        281
+      ],
+      "suit_box": [
+        907,
+        282,
+        934,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-220204).png",
+      "group": "e",
+      "name": "image(20261124-220204).png board 0",
+      "label": "As",
+      "frame_crop": [
+        13,
+        31,
+        729,
+        360
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-220204).png",
+      "group": "e",
+      "name": "image(20261124-220204).png board 1",
+      "label": "4c",
+      "frame_crop": [
+        13,
+        31,
+        729,
+        360
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-220204).png",
+      "group": "e",
+      "name": "image(20261124-220204).png board 2",
+      "label": "4h",
+      "frame_crop": [
+        13,
+        31,
+        729,
+        360
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-220204).png",
+      "group": "e",
+      "name": "image(20261124-220204).png board 3",
+      "label": "8s",
+      "frame_crop": [
+        13,
+        31,
+        729,
+        360
+      ],
+      "rank_box": [
+        820,
+        244,
+        845,
+        281
+      ],
+      "suit_box": [
+        818,
+        282,
+        845,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-220204).png",
+      "group": "e",
+      "name": "image(20261124-220204).png board 4",
+      "label": "Jc",
+      "frame_crop": [
+        13,
+        31,
+        729,
+        360
+      ],
+      "rank_box": [
+        909,
+        244,
+        934,
+        281
+      ],
+      "suit_box": [
+        907,
+        282,
+        934,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-221113).png",
+      "group": "f",
+      "name": "image(20261124-221113).png board 0",
+      "label": "5s",
+      "frame_crop": [
+        13,
+        27,
+        729,
+        358
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-221113).png",
+      "group": "f",
+      "name": "image(20261124-221113).png board 1",
+      "label": "3d",
+      "frame_crop": [
+        13,
+        27,
+        729,
+        358
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-221113).png",
+      "group": "f",
+      "name": "image(20261124-221113).png board 2",
+      "label": "Ac",
+      "frame_crop": [
+        13,
+        27,
+        729,
+        358
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-221113).png",
+      "group": "f",
+      "name": "image(20261124-221113).png board 3",
+      "label": "7h",
+      "frame_crop": [
+        13,
+        27,
+        729,
+        358
+      ],
+      "rank_box": [
+        820,
+        244,
+        845,
+        281
+      ],
+      "suit_box": [
+        818,
+        282,
+        845,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-221146).png",
+      "group": "g",
+      "name": "image(20261124-221146).png board 0",
+      "label": "8d",
+      "frame_crop": [
+        10,
+        21,
+        726,
+        352
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-221146).png",
+      "group": "g",
+      "name": "image(20261124-221146).png board 1",
+      "label": "Kd",
+      "frame_crop": [
+        10,
+        21,
+        726,
+        352
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-221146).png",
+      "group": "g",
+      "name": "image(20261124-221146).png board 2",
+      "label": "8h",
+      "frame_crop": [
+        10,
+        21,
+        726,
+        352
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-222310).png",
+      "group": "h",
+      "name": "image(20261124-222310).png board 0",
+      "label": "Ts",
+      "frame_crop": [
+        16,
+        29,
+        732,
+        360
+      ],
+      "rank_box": [
+        547,
+        242,
+        584,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-222310).png",
+      "group": "h",
+      "name": "image(20261124-222310).png board 1",
+      "label": "Ah",
+      "frame_crop": [
+        16,
+        29,
+        732,
+        360
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-222310).png",
+      "group": "h",
+      "name": "image(20261124-222310).png board 2",
+      "label": "4d",
+      "frame_crop": [
+        16,
+        29,
+        732,
+        360
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-222310).png",
+      "group": "h",
+      "name": "image(20261124-222310).png board 3",
+      "label": "8d",
+      "frame_crop": [
+        16,
+        29,
+        732,
+        360
+      ],
+      "rank_box": [
+        820,
+        244,
+        845,
+        281
+      ],
+      "suit_box": [
+        818,
+        282,
+        845,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "group": "i",
+      "name": "image(20261124-222415).png board 0",
+      "label": "5c",
+      "frame_crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "group": "i",
+      "name": "image(20261124-222415).png board 1",
+      "label": "3h",
+      "frame_crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-222415).png",
+      "group": "i",
+      "name": "image(20261124-222415).png board 2",
+      "label": "2h",
+      "frame_crop": [
+        84,
+        17,
+        800,
+        348
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-223659).png",
+      "group": "j",
+      "name": "image(20261124-223659).png board 0",
+      "label": "4h",
+      "frame_crop": [
+        88,
+        21,
+        804,
+        352
+      ],
+      "rank_box": [
+        552,
+        244,
+        575,
+        281
+      ],
+      "suit_box": [
+        550,
+        282,
+        576,
+        309
+      ]
+    },
+    {
+      "file": "image(20261124-223659).png",
+      "group": "j",
+      "name": "image(20261124-223659).png board 1",
+      "label": "2s",
+      "frame_crop": [
+        88,
+        21,
+        804,
+        352
+      ],
+      "rank_box": [
+        642,
+        244,
+        666,
+        281
+      ],
+      "suit_box": [
+        641,
+        282,
+        668,
+        310
+      ]
+    },
+    {
+      "file": "image(20261124-223659).png",
+      "group": "j",
+      "name": "image(20261124-223659).png board 2",
+      "label": "5d",
+      "frame_crop": [
+        88,
+        21,
+        804,
+        352
+      ],
+      "rank_box": [
+        731,
+        244,
+        755,
+        281
+      ],
+      "suit_box": [
+        730,
+        282,
+        757,
+        309
+      ]
+    }
+  ]
+}

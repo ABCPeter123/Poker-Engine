@@ -22,15 +22,24 @@ class SavedAmountTests(unittest.TestCase):
         r=add_evidence({"raw":"430","candidate":None},[obs("450"),obs("450"),obs("430",30)],number_text)
         self.assertIsNone(r["candidate"])
         self.assertEqual(r["saved_line_status"],"conflicting readings")
-    def test_keep_primary_with_explicit_conflict(self):
+    def test_preserve_primary_as_evidence_not_candidate(self):
         p={"raw":"186550","candidate":number_text("186550")}
         r=add_evidence(p,[obs("106550"),obs("106550")],number_text)
-        self.assertEqual(r["candidate"]["value"],186550)
+        self.assertIsNone(r["candidate"])
+        self.assertEqual(r["original_candidate"]["value"],186550)
+        self.assertEqual({v["candidate"]["value"] for v in r["saved_amount_choices"]},{106550,186550})
         self.assertEqual(r["saved_line_status"],"conflicting readings")
     def test_low_confidence_and_no_primary_raw(self):
         for p,passes in [({"raw":"0","candidate":None},[obs("0",60),obs("0",62)]),
                          ({"raw":"","candidate":None},[obs("50"),obs("50")])]:
             self.assertIsNone(add_evidence(p,passes,number_text)["candidate"])
+    def test_low_confidence_grayscale_choices_remain_selectable(self):
+        p={"raw":"","candidate":None}
+        r=add_evidence(p,[{"method":"stretch","raw":"4.5K","confidence":0},
+                          {"method":"soft","raw":"4.5K","confidence":10}],number_text)
+        self.assertIsNone(r["candidate"])
+        self.assertEqual(r["saved_amount_choices"][0]["candidate"]["value"],4500)
+        self.assertEqual(r["saved_amount_choices"][0]["sources"],["stretch","soft"])
     def test_zero_is_valid_and_empty_is_not(self):
         self.assertEqual(strict_amount("0",number_text)["value"],0)
         self.assertIsNone(strict_amount("",number_text))

@@ -37,6 +37,13 @@ def reconcile(primary, alternatives, *, source="saved-image enhancement", count_
                     label=identity(reading[group][index])
                     if label:
                         votes.append(label)
+            if votes:
+                # Suggestions are only evidence for the saved review editor.
+                prior=result[group][index].get("saved_card_choices",[])
+                counts_by_label=Counter(votes)
+                result[group][index]["saved_card_choices"]=prior+[
+                    {"candidate":label,"votes":n,"method":source}
+                    for label,n in sorted(counts_by_label.items(),key=lambda v:(-v[1],v[0]))]
             if len(votes)>=MIN_AGREEMENT and len(set(votes))==1 and votes[0] not in known:
                 proposals.append((group,index,votes[0],len(votes)))
     counts=Counter(p[2] for p in proposals)

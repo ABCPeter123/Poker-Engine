@@ -1,7 +1,7 @@
 import {attachPractice} from './live-practice-view.js';
 import {reviewEquityInput} from './review-equity.js';
 import {previewDimensions,captureOptions,captureHealth,orientationDegrees,orientedDimensions,shareOptions,shareError,shareTrackState} from './capture-view.js';
-import {validateReview} from './review-validation.js';
+import {validateReview,reviewSlotDefaults} from './review-validation.js';
 const $=id=>document.getElementById(id),video=$('video'),frame=$('frame'),ink=$('ink'),ctx=ink.getContext('2d');
 let stream=null,url=null,source='none',frozen=false,drawing=false,point=null,revision=0,reviewPending=false,frameVersion=0,lastReview=null;
 let reviewWorker=null;
@@ -97,14 +97,45 @@ $('export-review').onclick=()=>{if(!lastReview)return;const url=URL.createObject
 
 function populateVerification(result){
  const area=$('verify-fields');area.replaceChildren();verifiedReview=null;$('export-verified').disabled=true;
- const slotText=slots=>slots.every(c=>!c||c.candidate)?slots.filter(Boolean).map(c=>c.candidate).join(' '):'';
- const defaults={hole:slotText(result.hole_slots),board:slotText(result.board_slots),street:result.street_candidate||''};
- for(const key of ['pot','hero','left','upper_left','upper_right','right'])defaults[key]=result.number_candidates?.[key]?.candidate?.display||'';
- const labels={hole:'Your cards',board:'Community cards',street:'Street (Preflop if no board)',pot:'Pot',hero:'Your stack',left:'Left stack',upper_left:'Upper-left stack',upper_right:'Upper-right stack',right:'Right stack'};
- for(const [key,label] of Object.entries(labels)){const wrap=document.createElement('label'),input=document.createElement('input');wrap.textContent=label;input.dataset.field=key;input.value=defaults[key]||'';input.autocomplete='off';input.addEventListener('input',()=>{cancelReviewEquity();verifiedReview=null;$('export-verified').disabled=true;$('verify-status').textContent='Unconfirmed edits';});wrap.append(input);const observation=result.number_candidates?.[key];if(observation?.saved_line_evidence){const detail=document.createElement('small');detail.className='hint';detail.textContent=(observation.saved_line_status||'Additional OCR')+': '+observation.saved_line_evidence.map(x=>(x.method?x.method+': ':'')+(x.raw||'unreadable')+(x.confidence==null?'':' ('+x.confidence+'%)')).join(' / ');wrap.append(detail);if(observation.saved_line_status==='conflicting readings')input.value='';}area.append(wrap);}
- $('verify-status').textContent='Check all filled fields before confirming.';$('verify-panel').hidden=false;
+ const invalidate=()=>{cancelReviewEquity();verifiedReview=null;$('export-verified').disabled=true;$('verify-status').textContent='Unconfirmed edits';};
+ const defaults=reviewSlotDefaults(result),obs=result.table_observation||{};
+ const fields=[];
+ for(const [group,count] of [['hole',2],['board',5]])for(let i=0;i<count;i++){
+  const key=group+'.'+i,slot=result[group+'_slots']?.[i];
+  fields.push({key,label:(group==='hole'?'Hole ':'Board ')+(i+1),value:defaults[key],choices:(slot?.saved_card_choices||[]).map(c=>({value:c.candidate,description:c.votes+' alternate readings'}))});
+ }
+ fields.push({key:'street',label:'Street',value:result.street_candidate||'',options:['Preflop','Flop','Turn','River']});
+ const names={hero:'Your',left:'Left',upper_left:'Upper-left',upper_right:'Upper-right',right:'Right'};
+ for(const key of ['pot',...Object.keys(names)]){
+  const o=result.number_candidates?.[key]||{},conflict=o.saved_line_status==='conflicting readings';
+  fields.push({key,label:key==='pot'?'Pot':names[key]+' stack',value:conflict?'':o.candidate?.display||'',
+   detail:o.saved_line_status||'',
+   choices:(o.saved_amount_choices||[]).map(c=>({value:c.candidate.display,description:c.sources.join(', ')+(c.candidate.approximate?' · rounded':'')}))});
+ }
+ for(const key of Object.keys(names))fields.push({key:'bet.'+key,label:names[key]+' visible bet',value:obs.seats?.[key]?.bet?.display||''});
+ fields.push({key:'dealer',label:'Dealer',value:obs.dealer?.candidate||'',options:Object.keys(names)},
+             {key:'turn',label:'Turn cue',value:obs.turn_candidate||'',options:Object.keys(names)});
+ for(const f of fields){
+  const wrap=document.createElement('label'),input=document.createElement(f.options?'select':'input');
+  wrap.textContent=f.label;input.dataset.field=f.key;input.autocomplete='off';
+  if(f.options)for(const v of ['',...f.options]){const option=document.createElement('option');option.value=v;option.textContent=v||'Unknown';input.append(option);}
+  input.value=f.value;input.addEventListener('input',invalidate);wrap.append(input);
+  if(f.detail){const detail=document.createElement('small');detail.className='hint';detail.textContent=f.detail;wrap.append(detail);}
+  if(f.choices?.length){
+   const list=document.createElement('div');list.className='review-candidate-choices';
+   const seen=new Set();
+   for(const choice of f.choices){
+    if(seen.has(choice.value))continue;seen.add(choice.value);
+    const btn=document.createElement('button');btn.type='button';btn.textContent=choice.value;btn.title=choice.description;
+    btn.onclick=()=>{input.value=choice.value;invalidate();};list.append(btn);
+   }
+   const label=document.createElement('small');label.className='hint';label.textContent='Candidate alternatives (select, then confirm against image)';wrap.append(label,list);
+  }
+  area.append(wrap);
+ }
+ $('verify-status').textContent='Confirm the visible fields. Use ? for unreadable cards, - for empty slots. Partial readings can be exported.';$('verify-panel').hidden=false;
 }
-$('confirm-review').onclick=()=>{try{const values=Object.fromEntries([...$('verify-fields').querySelectorAll('input')].map(e=>[e.dataset.field,e.value]));verifiedReview={source:'saved frame',recording_time_seconds:lastReview?.recording_time_seconds??null,corrected:validateReview(values),raw:lastReview};$('verify-status').textContent='Corrected readings confirmed. Blank fields remain unknown.';$('export-verified').disabled=false;cancelReviewEquity();$('review-equity').hidden=!(verifiedReview.corrected.hole&&verifiedReview.corrected.board);$('review-opponents').value='';}catch(e){verifiedReview=null;$('export-verified').disabled=true;$('verify-status').textContent=e.message;}};
+$('confirm-review').onclick=()=>{try{const values=Object.fromEntries([...$('verify-fields').querySelectorAll('[data-field]')].map(e=>[e.dataset.field,e.value]));verifiedReview={source:'saved frame',recording_time_seconds:lastReview?.recording_time_seconds??null,corrected:validateReview(values),raw:lastReview};$('verify-status').textContent='Corrected readings confirmed. Blank fields remain unknown.';$('export-verified').disabled=false;cancelReviewEquity();$('review-equity').hidden=!(verifiedReview.corrected.hole&&verifiedReview.corrected.board);$('review-opponents').value='';}catch(e){verifiedReview=null;$('export-verified').disabled=true;$('verify-status').textContent=e.message;}};
 $('export-verified').onclick=()=>{if(!verifiedReview)return;const url=URL.createObjectURL(new Blob([JSON.stringify(verifiedReview,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='pokerist-verified-review.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 
 $('review-opponents').onchange=()=>{$('calculate-review').disabled=!$('review-opponents').value||!verifiedReview;if(reviewWorker){reviewWorker.terminate();reviewWorker=null;}$('review-equity-result').textContent='';};

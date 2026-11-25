@@ -80,11 +80,23 @@ def add_evidence(primary,passes,parse):
         choices.add(identity(existing))
     if base:
         choices.add(identity(base))
-    # Do not alter original accepted candidates: flag disagreements for manual review.
+    # Preserve alternatives for explicit user selection, including syntactically
+    # valid low-confidence OCR. They are never automatically verified.
+    alternatives={}
+    for name,candidate in [("primary",base),("original candidate",existing)]+[
+            (o.get("method") or "threshold "+str(o.get("threshold","?")),o["candidate"]) for o in valid]:
+        if candidate is None:
+            continue
+        entry=alternatives.setdefault(identity(candidate),{"candidate":candidate,"sources":[]})
+        if name not in entry["sources"]:
+            entry["sources"].append(name)
+    result["saved_amount_choices"]=sorted(alternatives.values(),key=lambda e:(-len(e["sources"]),e["candidate"]["value"]))
     if len(choices)>1:
         result["saved_line_status"]="conflicting readings"
+        result["original_candidate"]=existing
+        result["candidate"]=None
         return result
-    eligible=[o for o in valid if isinstance(o.get("confidence"),(int,float)) and o["confidence"]>=75]
+    eligible=[o for o in valid if isinstance(o.get("confidence"),(int,float)) and math.isfinite(o["confidence"]) and o["confidence"]>=75]
     if existing:
         result["saved_line_status"]="original candidate retained"
     elif len(choices)==1 and len(eligible)>=2 and base is not None:

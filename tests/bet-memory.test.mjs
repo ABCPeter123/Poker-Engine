@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createBetMemory,updateBetMemory,correctTrackedBet,BET_SEATS,trackedBetLabel,interruptBetMemory} from '../live-practice.js';
+import {createBetMemory,updateBetMemory,correctTrackedBet,BET_SEATS,trackedBetLabel,interruptBetMemory,retainedRoundBet,observedHandCommitment} from '../live-practice.js';
 const c=candidate=>({candidate});
 const r=(value,street='Preflop',options={})=>({street_candidate:street,quality:{},hole_slots:[c('As'),c('Kd')],board_slots:['2c','3h','4d','5s','6h'].map((x,i)=>i<({Preflop:0,Flop:3,Turn:4,River:5})[street]?c(x):null),table_observation:{dealer:{candidate:'hero'},seats:{hero:{bet:value===null?null:{value,approximate:!!options.approximate,ocr_confidence:options.confidence??95},stack:options.stack===undefined?null:{value:options.stack,ocr_confidence:95}}}}});
 const step=(s,v,t,street='Preflop',opts={})=>updateBetMemory(s,r(v,street,opts),{capturedAt:t,now:t+100,ocr:opts.ocr??true});
@@ -18,3 +18,16 @@ test('stack conservation supports large increase with two repeated samples',()=>
 test('new preflop hole cards reset after two observations',()=>{let s=seed();for(const t of [400,500])s=updateBetMemory(s,{...r(null),hole_slots:[c('Qs'),c('Jd')]},{capturedAt:t,now:t+100,ocr:true});assert.equal(s.seats.hero.value,0);assert.equal(s.hole,'Jd Qs');});
 
 test('capture interruption drops provisional votes but retains accepted bets',()=>{let s=seed();s=step(s,50000,400);s=step(s,50000,500);s=interruptBetMemory(s);assert.equal(s.seats.hero.value,50);assert.equal(s.seats.hero.pending,null);s=step(s,50000,600);assert.equal(s.seats.hero.value,50);});
+
+test('retained round reading remains visible after missing OCR; forward street archives prior observations',()=>{
+ let s=seed();s=step(s,null,400);
+ assert.equal(retainedRoundBet(s,'hero','Preflop').value,50);
+ s=step(s,null,500,'Flop');assert.equal(retainedRoundBet(s,'hero','Preflop'),undefined);
+ s=step(s,null,600,'Flop');
+ assert.equal(s.closedRounds.length,1);assert.equal(s.closedRounds[0].seats.hero.value,50);
+ assert.equal(observedHandCommitment(s,'hero').value,50);
+ s=step(s,100,700,'Flop');s=step(s,100,800,'Flop');
+ assert.deepEqual(observedHandCommitment(s,'hero'),{value:150,observedRounds:2,rounds:2,approximate:false,complete:false});
+ s=step(s,null,900,'Preflop');s=step(s,null,1000,'Preflop');
+ assert.equal(s.closedRounds.length,0);assert.equal(observedHandCommitment(s,'hero'),null);
+});

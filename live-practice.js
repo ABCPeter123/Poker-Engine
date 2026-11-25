@@ -101,7 +101,7 @@ export const BET_SEATS=Object.freeze(['hero','left','upper_left','upper_right','
 const streets=['Preflop','Flop','Turn','River'];
 const blank=()=>({value:0,observed:false,approximate:false,pending:null,warning:null,lastSeen:null,stack:null,source:'initial'});
 const seats=()=>Object.fromEntries(BET_SEATS.map(s=>[s,blank()]));
-export function createBetMemory(){return {street:null,hole:null,dealer:null,boundary:null,last:null,generation:0,uncertain:true,seats:seats(),status:'Waiting for round confirmation'};}
+export function createBetMemory(){return {street:null,hole:null,dealer:null,boundary:null,last:null,generation:0,uncertain:true,closedRounds:[],seats:seats(),status:'Waiting for round confirmation'};}
 function streetOf(r){
  const b=r?.board_slots;
  if(!validSlots(b,5)||r.quality?.duplicate_card_candidates||r.quality?.noncontiguous_board)return null;
@@ -138,7 +138,9 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false}={}){
   state.uncertain=true;
   state.boundary={key,count:p?.key===key&&t-p.last<=6000?p.count+1:1,last:t};
   if(state.boundary.count<2){state.status='Checking round change';for(const e of Object.values(state.seats))e.pending=null;return state;}
-  state={...state,street,hole,dealer,boundary:null,generation:state.generation+1,seats:seats()};
+  const forward=state.street&&streets.indexOf(street)===streets.indexOf(state.street)+1&&!newHole&&!newDealer;
+  const closedRounds=forward?[...(state.closedRounds||[]),{street:state.street,seats:Object.fromEntries(BET_SEATS.map(id=>[id,{...state.seats[id]}]))}]:[];
+  state={...state,street,hole,dealer,boundary:null,generation:state.generation+1,closedRounds,seats:seats()};
  }else{
   state.boundary=null;state.hole=state.hole||hole;state.dealer=state.dealer||dealer;
  }
@@ -254,4 +256,19 @@ export function reconcileSnapshots(previous,current,{potIncludesBets=false,maxAg
 export function directNumericSnapshot(result,status,capturedAt,now){
  if(status!=='sampled'||!observationAge(capturedAt,now,1000).fresh||!result?.table_observation?.seats)return null;
  return {...result.table_observation,pot:result.number_candidates?.pot?.candidate};
+}
+
+// Retained history is display evidence, not a newly observed exact wager.
+export function retainedRoundBet(state,id,street){
+ const e=state?.seats?.[id];
+ return e?.observed&&state.street===street&&!state.boundary&&!state.uncertain?e:undefined;
+}
+export function observedHandCommitment(state,id){
+ if(!BET_SEATS.includes(id)||!state?.street)return null;
+ const rounds=[...(state.closedRounds||[]).map(r=>r.seats[id]),state.seats[id]];
+ const observed=rounds.filter(e=>e?.observed);
+ if(!observed.length)return null;
+ const value=observed.reduce((sum,e)=>sum+e.value,0);
+ if(!Number.isSafeInteger(value))return null;
+ return {value,observedRounds:observed.length,rounds:rounds.length,approximate:observed.some(e=>e.approximate),complete:false};
 }

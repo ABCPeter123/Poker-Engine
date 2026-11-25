@@ -37,3 +37,9 @@ Install FFmpeg and FFprobe on PATH. Record a completed local practice session at
     py pokerist/benchmark_video.py "C:\\path\\to\\recording.mp4"
 
 The report includes decoded/processed counts, source timestamp gaps, measured wall-clock FPS, median/p95/worst per-frame latency, and OCR errors. The default includes OCR; `--no-ocr` is a visual-only diagnostic and cannot pass the full command's exit gate. A throughput pass does not establish field accuracy. Use the labelled saved-frame and field-coverage audits separately. The benchmark does not connect to a live game or feed advice. No 60 FPS result is claimed without measurement.
+
+## Ground-truth completeness
+
+    py pokerist/audit_manifest.py
+
+This writes `manifest-coverage.json` with the exact missing labels for every saved screenshot. Explicit zero and empty card slots count as labelled; omitted observations do not. The current 18-image calibration corpus has 149 of 360 required labels. This is not a measured accuracy rate. A nonzero exit status means label coverage is incomplete. Fill missing fields only from inspected original images, not OCR predictions.

@@ -201,3 +201,16 @@ The existing private-practice decision status is displayed independently of the 
 ### Compact amounts and saved-image grayscale OCR
 
 Numeric grammar now handles case-insensitive K/M suffixes, detached suffix tokens, decimal abbreviated labels, and properly grouped integer amounts. Abbreviations retain an approximate flag and displayed precision; they are not confirmed exact balances. Ambiguous fragments, character substitutions and overflow are rejected. Enhanced offline saved-frame review adds two batched grayscale contrast passes preserving antialiasing instead of thresholding every pixel. The alternate crop is calibrated to the supplied five-seat stack/pot regions and may fail on other layouts or long text. Raw competing evidence is displayed for manual verification; no acceptance thresholds were reduced. An isolated local experiment on 21 manually labeled amount crops from four existing screenshots gave 21/21 raw correct readings for the stretch variant when batched per screenshot, with OCR process time approximately 0.12–0.18 seconds per batch; some confidence scores were zero. This is not the integrated accepted-candidate accuracy, not an independent test and not a Windows latency measurement. The enhanced OCR path is saved-image only. The shared grammar improvements also handle abbreviated numeric candidates in existing authorized-practice recognition. No incomplete-data action recommendation changes were made.
+
+
+### Completed-recording coverage and bottom-bar evidence
+
+A sparse screenshot sequence cannot reconstruct the exact order of actions that happened between frames. Audit a completed local recording with FFprobe (installed separately) to count actual timestamped frames, check duplicate/missing timestamps and report long gaps. Optionally provide manually labelled action visibility windows as a JSON array of objects with `label`, `start_s`, and `end_s` (seconds on the recording timestamp clock). A sample in a window does not establish that the action was readable.
+
+```powershell
+py pokerist/audit_recording.py "E:\Poker-Screenshots\completed-hand.mp4" --max-gap-ms 100
+py pokerist/audit_recording.py "E:\Poker-Screenshots\completed-hand.mp4" --events labelled-windows.json
+py pokerist/saved_bar_evidence.py "E:\Poker-Screenshots\saved-frame.png" --crop 180 310 700 342
+```
+
+The bottom-bar tool preserves the original crop and two raw OCR readings. Adjust the crop to the actual saved image. It does not infer whether buttons are enabled or whether an action is legal. In particular, preselection controls and combination-bet buttons are distinct from ordinary Hold'em decisions. The earlier grayscale amount grammar tests passed on Windows and Linux, but no parser guarantees correct extraction from ambiguous pixels. The local manual table simulator already supports conditional heads-up raise evaluation from explicit legal bounds and assumed fold probability. Neither diagnostic script connects to a live capture or changes the external-game recommendation path.

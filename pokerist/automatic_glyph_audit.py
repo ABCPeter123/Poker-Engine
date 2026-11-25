@@ -35,6 +35,24 @@ def nearest(query, library):
             "margin":ordered[1][0]-ordered[0][0]}
 
 
+class GlyphBank:
+    """Compile templates once, vectorize exact per-class nearest distances."""
+    def __init__(self,library):
+        entries=[(label,item) for label,item in library if item is not None]
+        self.labels=sorted({label for label,_ in entries})
+        self.pixels=np.asarray([item[0].ravel() for _,item in entries],dtype=np.float64).reshape(-1,384)
+        self.aspects=np.asarray([item[1] for _,item in entries],dtype=np.float64)
+        self.indices=[np.array([i for i,(c,_) in enumerate(entries) if c==label],dtype=int) for label in self.labels]
+    def nearest(self,query):
+        if query is None or len(self.labels)<2:
+            return None
+        pixels,aspect=query
+        delta=self.pixels-pixels.ravel()
+        distances=np.mean(delta*delta,axis=1)+.15*np.abs(self.aspects-aspect)
+        ordered=sorted((float(distances[idx].min()),label) for label,idx in zip(self.labels,self.indices))
+        return {"label":ordered[0][1],"distance":ordered[0][0],"margin":ordered[1][0]-ordered[0][0]}
+
+
 def fit_amount(samples):
     library=[]
     for _,label,patch,_ in samples:
@@ -47,11 +65,18 @@ def fit_amount(samples):
 def predict_amount(patch, library):
     """Unknown character count: competing segmentations are evidence only."""
     readings=[]
+    bank=library if isinstance(library,GlyphBank) else GlyphBank(library)
+    feature_cache={}
     for t in TEST_THRESHOLDS:
         parts=segment(patch,t)
         if not parts or len(parts)>16:
             continue
-        matches=[nearest(feature(p),library) for p in parts]
+        matches=[]
+        for part in parts:
+            key=(part.shape,part.tobytes())
+            if key not in feature_cache:
+                feature_cache[key]=bank.nearest(feature(part))
+            matches.append(feature_cache[key])
         if any(m is None for m in matches):
             continue
         text="".join(m["label"] for m in matches)
@@ -68,14 +93,14 @@ def predict_amount(patch, library):
 
 def amount_audit(samples):
     groups={s[0] for s in samples}
-    libraries={group:fit_amount([s for s in samples if s[0]!=group]) for group in groups}
+    libraries={group:GlyphBank(fit_amount([s for s in samples if s[0]!=group])) for group in groups}
     rows=[]
     for group,label,patch,name in samples:
         library=libraries[group]
         start=time.perf_counter()
         result=predict_amount(patch,library)
         result.update(group=group,name=name,expected=label,
-            unseen_classes=sorted(set(label)-{c for c,v in library if v is not None}),
+            unseen_classes=sorted(set(label)-set(library.labels)),
             elapsed_ms=round(1000*(time.perf_counter()-start),3))
         rows.append(result)
     return summarize(rows)

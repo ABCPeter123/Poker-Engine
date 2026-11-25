@@ -18,7 +18,7 @@ from urllib.parse import urlsplit
 import numpy as np
 from PIL import Image, ImageOps
 from amount_text import number_text
-from automatic_glyph_audit import fit_amount, predict_amount
+from automatic_glyph_audit import fit_amount, predict_amount, GlyphBank
 from glyph_audit import read_samples
 from native_ocr import recognize_tsv
 from ocr_runtime import resolve_tesseract
@@ -101,7 +101,7 @@ def vision_reader(patch,endpoint,model,timeout=10):
 def measure(samples,exe,vision=None):
     groups={s[0] for s in samples}
     if len(groups)<2:raise ValueError("At least two separate source groups required")
-    libraries={g:fit_amount([s for s in samples if s[0]!=g]) for g in groups}
+    libraries={g:GlyphBank(fit_amount([s for s in samples if s[0]!=g])) for g in groups}
     rows=[]
     for group,label,patch,name in samples:
         readers={};timings={};errors={}

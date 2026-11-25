@@ -48,10 +48,12 @@ Saved video throughput diagnostics now reject changing frame dimensions before r
 
 ## Frame coverage and incremental benchmark
 
-The authorized practice capture now queues each browser-presented frame in order. A missing callback sequence, overflow, mismatched response or excessive backlog stops recognition instead of claiming complete coverage. Display refresh is separate. The source and processing rates are independently reported. Browser-presented frames are not a guarantee that the source delivered every physical frame.
+The authorized practice capture now queues each browser-presented frame in order. Missing callbacks and overload are counted explicitly while recognition continues; queued frames remain in sequence. After saturation, new frame admission resumes when the queue drains below its low watermark. Mismatched responses and duplicate or out-of-order callbacks remain fatal. Display refresh is separate. The source and processing rates are independently reported. Browser-presented frames are not a guarantee that the source delivered every physical frame.
 
     py pokerist/benchmark_video.py recording.mp4 --incremental --target 60
 
 This measures completed-recording decoding and recognition using exact OCR-mask and card-region caches. Every changed region is reconsidered; unchanged input can reuse a candidate. This does not establish recognition accuracy or guarantee live 60 FPS. OCR subprocess latency and PNG transport remain possible bottlenecks.
 
 Recognition startup now prepares the local Python worker before starting frame accounting. Stop/restart cancels abandoned requests. A replacement session has its own sequence counter. The initial preparation time is not included in capture throughput; the displayed counters start when the worker is ready. This does not guarantee 60 FPS source capture or OCR throughput.
+
+Coverage losses are not recovered frames. Temporal observations reset at the next accepted frame after a gap; stale results are not shown as fresh. A degraded run cannot establish complete 60 FPS coverage.

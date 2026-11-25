@@ -15,7 +15,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  function save(){const ok=saveManual({setItem:(key,value)=>localStorage.setItem(key,value)},locks);$('manual-lock-count').textContent=Object.keys(locks).length+' locked'+(ok?' · saved locally':' · browser storage unavailable');}
  function stop(){closePopup();clearInterval(decisionTimer);decisionTimer=null;betMemory=createBetMemory();clearAuto();active=false;epoch++;clearTimeout(timer);timer=null;if(frameCallback!==null)video.cancelVideoFrameCallback?.(frameCallback);frameCallback=null;frameQueue=null;draining=false;controller?.abort();controller=null;$('live-overlay').hidden=true;$('live-start').disabled=!canRun()||!$('practice-consent').checked;$('live-stop').disabled=true;status('Recognition stopped. Manual locks retained.');paint();}
  function refresh(){panel.hidden=false;if(!canRun()&&active)stop();$('live-start').disabled=active||!canRun()||!$('practice-consent').checked;$('screen-seat-layer').hidden=!canRun();$('screen-decision').hidden=!canRun();if(!canRun())closePopup();paintDecision();}
- function snapshot(){const w=video.videoWidth,h=video.videoHeight,deg=rotation(),swap=Math.abs(deg%180)===90;if(!w||!h)throw Error('Waiting for video dimensions');const scale=Math.min(1,1920/Math.max(w,h));canvas.width=Math.round((swap?h:w)*scale);canvas.height=Math.round((swap?w:h)*scale);const c=canvas.getContext('2d');c.translate(canvas.width/2,canvas.height/2);c.rotate(deg*Math.PI/180);c.drawImage(video,-w*scale/2,-h*scale/2,w*scale,h*scale);return new Promise(resolve=>canvas.toBlob(resolve,'image/png'));}
+ function snapshot(){const w=video.videoWidth,h=video.videoHeight,deg=rotation(),swap=Math.abs(deg%180)===90;if(!w||!h)throw Error('Waiting for video dimensions');const scale=Math.min(1,1920/Math.max(w,h)),cw=Math.round((swap?h:w)*scale),ch=Math.round((swap?w:h)*scale);if(canvas.width!==cw||canvas.height!==ch){canvas.width=cw;canvas.height=ch;}const c=canvas.getContext('2d',{alpha:false});c.setTransform(1,0,0,1,0,0);c.translate(cw/2,ch/2);c.rotate(deg*Math.PI/180);c.drawImage(video,-w*scale/2,-h*scale/2,w*scale,h*scale);return new Promise(resolve=>canvas.toBlob(resolve,'image/png'));}
  function evaluate(candidate){const opponents=Number($('live-opponents').value);if(!active||!canRun()||!$('practice-consent').checked||!candidate||!opponents){clearEquity();return;}const key=candidate.key+'|'+opponents;if(key===requestedKey)return;clearEquity();requestedKey=key;const current=epoch,worker=new Worker('./worker.js',{type:'module'});equityWorker=worker;metric('Calculating…');worker.onmessage=({data})=>{if(epoch===current&&equityWorker===worker&&requestedKey===key){metric(data.error?'Unavailable':(data.result.equity*100).toFixed(1)+'%');equityResult=data.error?null:data.result.equity;equityWorker=null;if(data.error)requestedKey='';paintDecision();}worker.terminate();};worker.onerror=()=>{if(equityWorker===worker){metric('Unavailable');equityWorker=null;requestedKey='';paintDecision();}worker.terminate();};worker.postMessage({id:current,input:practiceInput(candidate,opponents)});}
 
  function changed(key){
@@ -149,7 +149,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   if(ocrStatus?.state==='unavailable'||ocrStatus?.state==='failed')$('live-ocr-age').textContent='OCR '+ocrStatus.state+': '+(ocrStatus.detail||'Scan failed');
   $('live-overlay').hidden=false;
  }
- function reportQueue(q){const r=q.report(performance.now());$('frame-telemetry').textContent='Captured '+r.captured+' · processed '+r.processed+' · queued '+r.queued+' / '+q.limit+' · source gaps '+r.sourceMissed+' · source '+(r.sourceFps===null?'—':r.sourceFps.toFixed(1))+' FPS · processing '+r.processingFps.toFixed(1)+' FPS · backlog '+(r.oldestAgeMs/1000).toFixed(2)+' s';}
+ function reportQueue(q){const r=q.report(performance.now());$('frame-telemetry').textContent='Captured '+r.captured+' · processed '+r.processed+' · queued '+r.queued+' / '+q.limit+' · source gaps '+r.sourceMissed+' · overload skips '+r.queueMissed+' · presented '+(r.sourceFps===null?'—':r.sourceFps.toFixed(1))+' FPS · callbacks '+(r.callbackFps===null?'—':r.callbackFps.toFixed(1))+' FPS · processing '+r.processingFps.toFixed(1)+' FPS · backlog '+(r.oldestAgeMs/1000).toFixed(2)+' s';if(r.recovering)status('Processing backlog; temporarily limiting new frames. Coverage incomplete.');else if(!r.coverageIntact)status('Recognition running · incomplete frame coverage · rebuilding observations after gaps.');else status('Recognition running · no observed frame gaps.');}
  function failQueue(q,error){reportQueue(q);stop();status('Frame coverage failed: '+String(error.message||error)+'. Restart after resolving the bottleneck.');}
  async function drain(current,q){
   if(draining||!active||epoch!==current||q!==frameQueue)return;
@@ -165,8 +165,10 @@ export function attachPractice({video,screen,canRun,rotation}){
     if(!response.ok)throw Error(data.error||'Recognition failed');
     if(data.sequence!==item.id)throw Error('Backend sequence mismatch');
     q.complete(item.id);
-    if(item.capturedAt>=resetAt)render(data.result,data.ocr_sampled,data.ocr_status,item.capturedAt);
-    if(performance.now()-item.capturedAt>5000)throw Error('Recognition backlog exceeded 5 seconds');
+    if(item.capturedAt>=resetAt){
+     if(item.gapBefore){clearAuto();betMemory=createBetMemory();}
+     render(data.result,data.ocr_sampled,data.ocr_status,item.capturedAt);
+    }
    }
   }catch(e){if(active&&epoch===current&&q===frameQueue)failQueue(q,e);}
   finally{if(epoch===current){draining=false;controller=null;}}

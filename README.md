@@ -248,3 +248,7 @@ Enhanced/deep completed-image reviews now return lossless PNG crops from the nor
 The local saved-frame bridge requests quiet CLI output so embedded crops cannot overflow the subprocess stdout buffer. On-page JSON hides the base64 strings for readability; exported raw review JSON retains them.
 
 The saved review editor also accepts a confirmed partial rank (`A?`) or suit (`?s`), and component evidence buttons allow a human reviewer to enter either independently. These export as partial slots, not complete cards. Partial cards cannot enter equity calculations or occupy a slot after the selected street.
+
+### Required-field completeness for saved-image reports
+
+Audit an existing completed-image benchmark report with `py pokerist/audit_field_coverage.py saved-benchmark.json`. The report covers five stacks, five bets, dealer/turn cues, seven card slots and pot (20 fields). It separates manually unlabelled fields from recognition misses and incorrect readings, and requires every field in every expected frame to be labelled and matched for complete validation. Reported sequential-equivalent FPS is calculated from existing saved-image timings, excludes some I/O and decoding costs, and is not a sustained capture benchmark. No capture, recognition scheduling or recommendation changes are made.

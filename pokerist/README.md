@@ -43,3 +43,5 @@ The report includes decoded/processed counts, source timestamp gaps, measured wa
     py pokerist/audit_manifest.py
 
 This writes `manifest-coverage.json` with the exact missing labels for every saved screenshot. Explicit zero and empty card slots count as labelled; omitted observations do not. The current 18-image calibration corpus has 149 of 360 required labels. This is not a measured accuracy rate. A nonzero exit status means label coverage is incomplete. Fill missing fields only from inspected original images, not OCR predictions.
+
+Saved video throughput diagnostics now reject changing frame dimensions before raw decoding. The report also records a hash of the ordered decoded pixel frames and counts adjacent identical pixel frames separately from duplicate presentation timestamps. Identical pixels may represent a legitimately static table. Coverage and throughput still do not establish that every visual event was recorded or correctly recognized.

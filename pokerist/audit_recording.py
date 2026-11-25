@@ -23,14 +23,26 @@ def finite_number(value):
 
 
 def audit_frames(frames, max_gap_ms=100, events=()):
-    if finite_number(max_gap_ms) is None or max_gap_ms<=0:
+    if type(max_gap_ms) not in (int,float) or finite_number(max_gap_ms) is None or max_gap_ms<=0:
         raise ValueError("max_gap_ms must be positive and finite")
     timestamps=[]
     missing=0
-    for frame in frames:
+    missing_indices=[]
+    invalid_dimensions=[]
+    dimensions=set()
+    for index,frame in enumerate(frames):
+        if not isinstance(frame,dict):
+            raise ValueError("Each frame must be an object")
+        if "width" in frame or "height" in frame:
+            w,h=frame.get("width"),frame.get("height")
+            if type(w) is not int or type(h) is not int or min(w,h)<=0:
+                invalid_dimensions.append(index)
+            else:
+                dimensions.add((w,h))
         t=finite_number(frame.get("best_effort_timestamp_time"))
         if t is None:
             missing+=1
+            missing_indices.append(index)
         else:
             timestamps.append(t)
     backwards=sum(b<a for a,b in zip(timestamps,timestamps[1:]))
@@ -41,6 +53,8 @@ def audit_frames(frames, max_gap_ms=100, events=()):
                for a,b,g in zip(ordered,ordered[1:],gaps) if g>max_gap_ms]
     windows=[]
     for event in events:
+        if not isinstance(event,dict):
+            raise ValueError("Each event window must be an object")
         start=finite_number(event.get("start_s"))
         end=finite_number(event.get("end_s"))
         if start is None or end is None or end<=start:
@@ -50,16 +64,21 @@ def audit_frames(frames, max_gap_ms=100, events=()):
         windows.append({"label":str(event.get("label","unlabelled")),
                         "start_s":start,"end_s":end,"frames_in_window":hi-lo,
                         "sample_present":hi>lo,
+                        "intersects_large_gap":any(a<end and b>start for a,b in zip(ordered,ordered[1:]) if round((b-a)*1000,6)>max_gap_ms),
                         "outside_timestamp_span":not ordered or start<ordered[0] or end>ordered[-1]})
     return {"frames":len(timestamps)+missing,"timestamped_frames":len(timestamps),
             "unique_timestamps":len(ordered),"missing_timestamps":missing,
             "duplicate_timestamps":duplicates,"backwards_timestamps":backwards,
+            "missing_timestamp_indices":missing_indices,
+            "observed_dimensions":[list(d) for d in sorted(dimensions)],
+            "invalid_dimension_indices":invalid_dimensions,
+            "geometry_consistent":len(dimensions)<=1 and not invalid_dimensions,
             "first_s":ordered[0] if ordered else None,"last_s":ordered[-1] if ordered else None,
             "median_gap_ms":statistics.median(gaps) if gaps else None,
             "p95_gap_ms":sorted(gaps)[math.ceil(.95*len(gaps))-1] if gaps else None,
             "max_gap_ms":max(gaps) if gaps else None,"gap_limit_ms":max_gap_ms,
             "large_gaps":long_gaps,"labelled_windows":windows,
-            "coverage_pass":bool(gaps) and not (missing or duplicates or backwards or long_gaps)
+            "coverage_pass":bool(gaps) and not (missing or duplicates or backwards or long_gaps or invalid_dimensions or len(dimensions)>1)
                 and all(w["sample_present"] and not w["outside_timestamp_span"] for w in windows),
             "limitations":["Frame timestamps do not prove that an action is visible.",
                            "No inference of individual actions from merged wagers.",
@@ -71,7 +90,7 @@ def probe_recording(path, ffprobe="ffprobe"):
     if not path.is_file():
         raise ValueError("Supply a completed local video file.")
     command=[ffprobe,"-v","error","-select_streams","v:0","-show_frames",
-             "-show_entries","frame=best_effort_timestamp_time","-of","json",str(path)]
+             "-show_entries","frame=best_effort_timestamp_time,width,height","-of","json",str(path)]
     proc=subprocess.run(command,capture_output=True,text=True,check=True,timeout=300)
     result=json.loads(proc.stdout)
     if not isinstance(result.get("frames"),list):

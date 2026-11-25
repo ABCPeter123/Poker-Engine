@@ -2,6 +2,7 @@
 Only completed local recordings; no screen capture or recommendations.
 """
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -58,6 +59,8 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60):
         raise ValueError("Unsupported video dimensions")
     stamps=probe_recording(path,ffprobe)
     coverage=audit_frames(stamps,1000/target*1.10)
+    if not coverage["geometry_consistent"] or any(d!=[w,h] for d in coverage["observed_dimensions"]):
+        raise ValueError("Recording geometry changes; fixed-size raw frame decoding would misalign pixels")
     # A gap test alone does not establish source FPS.
     span=(coverage["last_s"]-coverage["first_s"]) if len(stamps)>1 and coverage["first_s"] is not None else 0
     source_fps=(coverage["unique_timestamps"]-1)/span if span>0 else 0
@@ -68,6 +71,7 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60):
         if not exe: raise RuntimeError(error)
     previous=None
     durations=[]; errors=[]; stages={}
+    previous_digest=None; consecutive_identical=0; sequence=hashlib.sha256()
     start=time.perf_counter()
     proc=subprocess.Popen([ffmpeg,"-v","error","-nostdin","-noautorotate","-i",str(path),
         "-map","0:v:0","-an","-sn","-dn","-vsync","0","-pix_fmt","rgb24","-f","rawvideo","pipe:1"],
@@ -77,6 +81,10 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60):
             t=time.perf_counter()
             raw=read_exact(proc.stdout,w*h*3)
             if raw is None: break
+            digest=hashlib.sha256(raw).digest()
+            consecutive_identical+=int(digest==previous_digest)
+            previous_digest=digest
+            sequence.update(digest)
             image=normalize(Image.frombytes("RGB",(w,h),raw))
             comparable=previous if previous is not None and previous.info.get("capture_crop")==image.info.get("capture_crop") else None
             result=review_image(image,exe,comparable,"completed video benchmark")
@@ -96,6 +104,10 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60):
             proc.wait()
     report=summarize(len(stamps),durations,time.perf_counter()-start,source_ok,ocr,errors,target)
     report["source_fps"]=source_fps
+    report["decoded_frame_sequence_sha256"]=sequence.hexdigest()
+    report["consecutive_identical_pixel_frames"]=consecutive_identical
+    report["source_geometry"]=[w,h]
+    report["pixel_identity_note"]="Identical frames can be legitimate static content, not proof of a dropped frame."
     report["source_max_gap_ms"]=coverage["max_gap_ms"]
     report["median_stage_ms"]={name:statistics.median(ms) for name,ms in stages.items()}
     report["scope"]="Completed recording only; no live throughput or field accuracy claim"

@@ -31,6 +31,22 @@ class RecordingCoverageTests(unittest.TestCase):
         self.assertFalse(audit_frames(frames(0,.1),200,[{"start_s":-.1,"end_s":.05}])["coverage_pass"])
         with self.assertRaises(ValueError):
             audit_frames(frames(0,.1),200,[{"start_s":.2,"end_s":.1}])
+    def test_geometry_change_fails(self):
+        samples=[{"best_effort_timestamp_time":i/60,"width":1536 if i<2 else 1920,"height":709} for i in range(4)]
+        report=audit_frames(samples,20)
+        self.assertFalse(report["geometry_consistent"])
+        self.assertFalse(report["coverage_pass"])
+        self.assertEqual(report["observed_dimensions"],[[1536,709],[1920,709]])
+    def test_invalid_geometry_and_missing_timestamp_indices(self):
+        report=audit_frames([{"best_effort_timestamp_time":0,"width":1536,"height":709},{"width":False,"height":709},{"best_effort_timestamp_time":.033}],40)
+        self.assertEqual(report["missing_timestamp_indices"],[1])
+        self.assertEqual(report["invalid_dimension_indices"],[1])
+        self.assertFalse(report["coverage_pass"])
+    def test_event_with_a_gap_even_when_sample_exists(self):
+        r=audit_frames(frames(0,.016,.2,.216),20,[{"start_s":.01,"end_s":.21}])
+        self.assertTrue(r["labelled_windows"][0]["sample_present"])
+        self.assertTrue(r["labelled_windows"][0]["intersects_large_gap"])
+        self.assertFalse(r["coverage_pass"])
     def test_empty_or_one_frame_cannot_pass(self):
         self.assertFalse(audit_frames([])["coverage_pass"])
         self.assertFalse(audit_frames(frames(0))["coverage_pass"])

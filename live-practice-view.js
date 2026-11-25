@@ -166,7 +166,6 @@ export function attachPractice({video,screen,canRun,rotation}){
     if(data.sequence!==item.id)throw Error('Backend sequence mismatch');
     q.complete(item.id);
     if(item.capturedAt>=resetAt)render(data.result,data.ocr_sampled,data.ocr_status,item.capturedAt);
-    reportQueue(q);
     if(performance.now()-item.capturedAt>5000)throw Error('Recognition backlog exceeded 5 seconds');
    }
   }catch(e){if(active&&epoch===current&&q===frameQueue)failQueue(q,e);}

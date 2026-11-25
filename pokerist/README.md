@@ -45,3 +45,11 @@ The report includes decoded/processed counts, source timestamp gaps, measured wa
 This writes `manifest-coverage.json` with the exact missing labels for every saved screenshot. Explicit zero and empty card slots count as labelled; omitted observations do not. The current 18-image calibration corpus has 149 of 360 required labels. This is not a measured accuracy rate. A nonzero exit status means label coverage is incomplete. Fill missing fields only from inspected original images, not OCR predictions.
 
 Saved video throughput diagnostics now reject changing frame dimensions before raw decoding. The report also records a hash of the ordered decoded pixel frames and counts adjacent identical pixel frames separately from duplicate presentation timestamps. Identical pixels may represent a legitimately static table. Coverage and throughput still do not establish that every visual event was recorded or correctly recognized.
+
+## Frame coverage and incremental benchmark
+
+The authorized practice capture now queues each browser-presented frame in order. A missing callback sequence, overflow, mismatched response or excessive backlog stops recognition instead of claiming complete coverage. Display refresh is separate. The source and processing rates are independently reported. Browser-presented frames are not a guarantee that the source delivered every physical frame.
+
+    py pokerist/benchmark_video.py recording.mp4 --incremental --target 60
+
+This measures completed-recording decoding and recognition using exact OCR-mask and card-region caches. Every changed region is reconsidered; unchanged input can reuse a candidate. This does not establish recognition accuracy or guarantee live 60 FPS. OCR subprocess latency and PNG transport remain possible bottlenecks.

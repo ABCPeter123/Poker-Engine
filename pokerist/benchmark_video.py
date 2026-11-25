@@ -42,10 +42,11 @@ def read_exact(stream, n):
         data.extend(chunk)
     return bytes(data)
 
-def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60):
+def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60, incremental=False):
     from PIL import Image
     from review import normalize, review_image
     from ocr_runtime import resolve_tesseract
+    from adaptive_labels import RegionOCRCache
     path=Path(path).resolve(strict=True)
     if not path.is_file():
         raise ValueError("A completed local recording is required")
@@ -70,6 +71,7 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60):
         exe,error=resolve_tesseract()
         if not exe: raise RuntimeError(error)
     previous=None
+    cache=RegionOCRCache() if incremental else None
     durations=[]; errors=[]; stages={}
     previous_digest=None; consecutive_identical=0; sequence=hashlib.sha256()
     start=time.perf_counter()
@@ -87,7 +89,9 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60):
             sequence.update(digest)
             image=normalize(Image.frombytes("RGB",(w,h),raw))
             comparable=previous if previous is not None and previous.info.get("capture_crop")==image.info.get("capture_crop") else None
-            result=review_image(image,exe,comparable,"completed video benchmark")
+            if previous is not None and comparable is None and incremental:
+                cache=RegionOCRCache()
+            result=review_image(image,exe,comparable,"completed video benchmark",ocr_cache=cache)
             if ocr and (result.get("number_ocr_error") or result.get("table_observation",{}).get("ocr_warning") or result.get("seat_evidence",{}).get("ocr_warning")):
                 errors.append({"frame":len(durations),"error":"OCR error"})
             for name,ms in result.get("timings_ms",{}).items():
@@ -104,6 +108,7 @@ def benchmark(path, *, ffmpeg="ffmpeg", ffprobe="ffprobe", ocr=True, target=60):
             proc.wait()
     report=summarize(len(stamps),durations,time.perf_counter()-start,source_ok,ocr,errors,target)
     report["source_fps"]=source_fps
+    report["incremental_exact_region_cache"]=incremental
     report["decoded_frame_sequence_sha256"]=sequence.hexdigest()
     report["consecutive_identical_pixel_frames"]=consecutive_identical
     report["source_geometry"]=[w,h]
@@ -119,11 +124,12 @@ def main():
     p.add_argument("--ffmpeg",default="ffmpeg")
     p.add_argument("--ffprobe",default="ffprobe")
     p.add_argument("--target",type=float,default=60)
+    p.add_argument("--incremental",action="store_true",help="Use exact-region cache as in the practice worker")
     p.add_argument("--no-ocr",action="store_true",help="Visual-only diagnostic, not full recognition")
     p.add_argument("--output",type=Path,default=Path("video-throughput.json"))
     a=p.parse_args()
     if not math.isfinite(a.target) or a.target<=0: p.error("Target must be positive and finite")
-    report=benchmark(a.recording,ffmpeg=a.ffmpeg,ffprobe=a.ffprobe,ocr=not a.no_ocr,target=a.target)
+    report=benchmark(a.recording,ffmpeg=a.ffmpeg,ffprobe=a.ffprobe,ocr=not a.no_ocr,target=a.target,incremental=a.incremental)
     a.output.write_text(json.dumps(report,indent=2,allow_nan=False),encoding="utf-8")
     print(json.dumps(report,indent=2,allow_nan=False))
     return 0 if report["throughput_pass"] and report["ocr_enabled"] else 1

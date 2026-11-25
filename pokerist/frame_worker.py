@@ -41,7 +41,7 @@ for line in sys.stdin:
         if session != previous_session:
             previous = None
             previous_session = session
-            last_ocr = 0.0
+            ocr_cache = RegionOCRCache()
         # Inspect each frame; reuse OCR only when exact prepared text pixels match.
         use_ocr = tesseract if req.get("ocr") else None
         comparable = previous if previous is not None and previous.info.get("capture_crop")==image.info.get("capture_crop") else None

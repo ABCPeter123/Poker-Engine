@@ -271,9 +271,34 @@ def review(path, executable=None, previous_path=None, *, enhanced=False, deep=Fa
             previous=None
     return review_image(image, executable, previous, Path(path).name, enhanced=enhanced, deep=deep)
 
-def read_cards(image):
-    board=[card(image,spec,lower_corner(spec),narrow_suit(spec),wide_ten=ten_corner(spec)) for spec in BOARD]
-    hole=[card(image,spec,alternate,wide,highlight,rotated,gold_pair) for spec,alternate,wide,highlight,rotated,gold_pair in zip(HOLE,HOLE_MIRROR,HOLE_WIDE,HOLE_HIGHLIGHT,HOLE_ROTATED,HOLE_GOLD_PAIR)]
+def card_region_signature(image,specs,wide_ten=None):
+    # Cover every static crop, face-search expansion, possible translated
+    # corner and face-relative corner. Exact RGB bytes, not a lossy hash.
+    boxes=[box for spec in specs for box in spec]
+    if wide_ten:
+        boxes.extend(wide_ten)
+    left=max(0,min(b[0] for b in boxes)-12)
+    top=max(0,min(b[1] for b in boxes)-12)
+    right=min(image.width,max(b[2] for b in boxes)+36)
+    bottom=min(image.height,max(b[3] for b in boxes)+70)
+    return (image.size,(left,top,right,bottom),image.crop((left,top,right,bottom)).tobytes())
+
+
+def read_cards(image, cache=None):
+    def read(key,spec,*alternates,wide_ten=None):
+        if cache is None:
+            return card(image,spec,*alternates,wide_ten=wide_ten)
+        signature=card_region_signature(image,(spec,*alternates),wide_ten)
+        if not hasattr(cache,"cards"):
+            cache.cards={}
+        old=cache.cards.get(key)
+        if old is not None and old[0]==signature:
+            return old[1]
+        result=card(image,spec,*alternates,wide_ten=wide_ten)
+        cache.cards[key]=(signature,result)
+        return result
+    board=[read(("board",i),spec,lower_corner(spec),narrow_suit(spec),wide_ten=ten_corner(spec)) for i,spec in enumerate(BOARD)]
+    hole=[read(("hole",i),spec,alternate,wide,highlight,rotated,gold_pair) for i,(spec,alternate,wide,highlight,rotated,gold_pair) in enumerate(zip(HOLE,HOLE_MIRROR,HOLE_WIDE,HOLE_HIGHLIGHT,HOLE_ROTATED,HOLE_GOLD_PAIR))]
     count=sum(c is not None for c in board)
     contiguous=all(c is not None for c in board[:count]) and all(c is None for c in board[count:])
     known=[c["candidate"] for c in hole+board if c and c["candidate"]]
@@ -295,7 +320,7 @@ def review_image(image, executable=None, previous=None, source="frame", *, enhan
         from saved_card_review import read_enhanced
         cards=read_enhanced(image,read_cards)
     else:
-        cards=read_cards(image)
+        cards=read_cards(image,cache=ocr_cache)
     after_cards=time.perf_counter()
     hole=cards["hole_slots"]
     numbers,err=read_numbers(image,executable,cache=ocr_cache)

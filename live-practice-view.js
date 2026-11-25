@@ -13,7 +13,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  function clearAuto(){lastResult=null;lastOcrAt=null;lastTable=null;cardMemory=null;reading=null;lastFrame=null;clearEquity();}
  function save(){const ok=saveManual({setItem:(key,value)=>localStorage.setItem(key,value)},locks);$('manual-lock-count').textContent=Object.keys(locks).length+' locked'+(ok?' · saved locally':' · browser storage unavailable');}
  function stop(){closePopup();clearInterval(decisionTimer);decisionTimer=null;betMemory=createBetMemory();clearAuto();active=false;epoch++;clearTimeout(timer);timer=null;controller?.abort();controller=null;$('live-overlay').hidden=true;$('live-start').disabled=!canRun()||!$('practice-consent').checked;$('live-stop').disabled=true;status('Recognition stopped. Manual locks retained.');paint();}
- function refresh(){panel.hidden=false;if(!canRun()&&active)stop();$('live-start').disabled=active||!canRun()||!$('practice-consent').checked;$('screen-seat-layer').hidden=!canRun();if(!canRun())closePopup();}
+ function refresh(){panel.hidden=false;if(!canRun()&&active)stop();$('live-start').disabled=active||!canRun()||!$('practice-consent').checked;$('screen-seat-layer').hidden=!canRun();$('screen-decision').hidden=!canRun();if(!canRun())closePopup();paintDecision();}
  function snapshot(){const w=video.videoWidth,h=video.videoHeight,deg=rotation(),swap=Math.abs(deg%180)===90;if(!w||!h)throw Error('Waiting for video dimensions');const scale=Math.min(1,1920/Math.max(w,h));canvas.width=Math.round((swap?h:w)*scale);canvas.height=Math.round((swap?w:h)*scale);const c=canvas.getContext('2d');c.translate(canvas.width/2,canvas.height/2);c.rotate(deg*Math.PI/180);c.drawImage(video,-w*scale/2,-h*scale/2,w*scale,h*scale);return new Promise(resolve=>canvas.toBlob(resolve,'image/png'));}
  function evaluate(candidate){const opponents=Number($('live-opponents').value);if(!active||!canRun()||!$('practice-consent').checked||!candidate||!opponents){clearEquity();return;}const key=candidate.key+'|'+opponents;if(key===requestedKey)return;clearEquity();requestedKey=key;const current=epoch,worker=new Worker('./worker.js',{type:'module'});equityWorker=worker;metric('Calculating…');worker.onmessage=({data})=>{if(epoch===current&&equityWorker===worker&&requestedKey===key){metric(data.error?'Unavailable':(data.result.equity*100).toFixed(1)+'%');equityResult=data.error?null:data.result.equity;equityWorker=null;if(data.error)requestedKey='';paintDecision();}worker.terminate();};worker.onerror=()=>{if(equityWorker===worker){metric('Unavailable');equityWorker=null;requestedKey='';paintDecision();}worker.terminate();};worker.postMessage({id:current,input:practiceInput(candidate,opponents)});}
 
@@ -76,10 +76,12 @@ export function attachPractice({video,screen,canRun,rotation}){
   $('live-confidence').textContent=complete?'Manually locked deck':reading?.stable?'Repeated effective reading':cardMemory?.carried.length?'Cached cards are display only':'Waiting for confirmed cards';
  }
  function paintDecision(){
-  const action=$('live-action'),detail=$('live-action-detail');detail.textContent='';
-  if(!active||!canRun()||!$('practice-consent').checked){action.textContent='Recognition stopped';return;}
+  const show=(message,description='')=>{for(const id of ['live-action','decision-status-text']){const el=$(id);if(el.textContent!==message)el.textContent=message;}for(const id of ['live-action-detail','decision-status-detail']){const el=$(id);if(el.textContent!==description)el.textContent=description;}};
+  if(!canRun()){show('Waiting for authorized practice window','Select a supported shared window.');return;}
+  if(!$('practice-consent').checked){show('Practice permission required','Only enable recognition where real-time analysis is explicitly permitted.');return;}
+  if(!active){show('Recognition stopped','Use Start recognition to begin.');return;}
   const now=performance.now(),fresh=observationAge(lastFrame,now,5000).fresh;
-  if(!fresh){action.textContent='Waiting for fresh screen data';return;}
+  if(!fresh){show('Waiting for fresh screen data','No recent successful recognition frame. Check the recognition status.');return;}
   const a=resolveManual(autoValues(),locks),exact=new Set(Object.keys(locks));
   if(observationAge(lastOcrAt,now,5000).fresh){
    if(lastTable?.pot&&!lastTable.pot.approximate)exact.add('pot');
@@ -90,8 +92,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   }
   const input=decisionInputs(a,exact,{confirmed:$('practice-action-confirm').checked,opponents:Number($('live-opponents').value)});
   const rec=decisionFromEquity(input,equityResult);
-  action.textContent=rec.action||rec.reason;
-  if(rec.action)detail.textContent='Check/call/fold model · equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'%';
+  show(rec.action||rec.reason,rec.action?'Check/call/fold model · equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'%':rec.reason==='Waiting for card equity'?'Check card recognition and simulation status.':'Review the required practice inputs.');
  }
  function autoValues(){
   const result=lastResult,obs=result?.table_observation,age=observationAge(lastOcrAt,performance.now()),num=age.fresh?lastTable:null;

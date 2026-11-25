@@ -12,6 +12,7 @@ function shutdown(reason='Recognition worker stopped'){
  if(old){old.stdin.destroy();old.kill();}
 }
 process.once('exit',()=>{if(child)child.kill();});
+export function closePracticeWorker(){owner=null;shutdown('Recognition worker closed');}
 function start(){
  if(child&&ready)return ready.promise;
  const python=process.env.POKER_PYTHON||(process.platform==='win32'?'py':'python3');
@@ -26,9 +27,9 @@ function start(){
  proc.once('exit',code=>{if(child===proc)shutdown('Recognition worker exited ('+code+'). '+diagnostics);});
  const timer=setTimeout(()=>{if(child===proc)shutdown('Python initialization timed out');},180000);promise.then(()=>clearTimeout(timer),()=>clearTimeout(timer));return promise;
 }
-async function recognize(data,session,ocr){
+async function recognize(data,session,ocr,token){
  clearTimeout(idleTimer);await start();
- if(!child||!ready)throw Error('Recognition worker unavailable');
+ if(owner!==token||!child||!ready)throw Error('Recognition worker unavailable');
  return await new Promise((resolve,reject)=>{
   const id=++serial,timer=setTimeout(()=>shutdown('Recognition frame timed out'),50000);
   pending={id,resolve,reject,timer};
@@ -90,7 +91,7 @@ export async function practiceFrame(req,res,port){
   if(owner!==token)return;
   const png=Buffer.concat(parts);if(count!==length||!png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||png.toString('ascii',12,16)!=='IHDR')throw Error('Invalid PNG');
   const w=png.readUInt32BE(16),h=png.readUInt32BE(20);if(!w||!h||w>4096||h>4096||w*h>12000000)throw Error('Frame dimensions exceed limit');
-  const result=await recognize(png,session,req.headers['x-frame-ocr']==='yes');
+  const result=await recognize(png,session,req.headers['x-frame-ocr']==='yes',token);
   if(owner!==token)return;
   lastSequence=sequence;reply(res,200,{...result,sequence});
  }catch(e){if(owner===token)reply(res,400,{error:String(e.message||e).slice(-1800)});}

@@ -53,3 +53,5 @@ The authorized practice capture now queues each browser-presented frame in order
     py pokerist/benchmark_video.py recording.mp4 --incremental --target 60
 
 This measures completed-recording decoding and recognition using exact OCR-mask and card-region caches. Every changed region is reconsidered; unchanged input can reuse a candidate. This does not establish recognition accuracy or guarantee live 60 FPS. OCR subprocess latency and PNG transport remain possible bottlenecks.
+
+Recognition startup now prepares the local Python worker before starting frame accounting. Stop/restart cancels abandoned requests. A replacement session has its own sequence counter. The initial preparation time is not included in capture throughput; the displayed counters start when the worker is ready. This does not guarantee 60 FPS source capture or OCR throughput.

@@ -1,6 +1,6 @@
 import {CurrentStateQueue} from './frame-queue.js';
 import {pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
-import {practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
+import {displayCallObservation,observedPotAccounting,practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
@@ -115,6 +115,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  $('screen-new-hand').onclick=()=>$('manual-new-hand').click();
  $('practice-action-confirm').onchange=()=>paintDecision();
  $('practice-big-blind').oninput=()=>paintDecision();
+ $('practice-pot-convention').onchange=()=>paintDecision();
  function currentDeck(now){return conditionalDeck(effectiveCards(lastResult,locks),cardMemory,handPresence,betMemory.street,now,reading?.stable);}
  function refreshCandidate(sample){
   if(!active)return;
@@ -148,7 +149,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   const primary=summary.pot?'Pot '+pot:wager?'Visible wagers '+wagerText:'Pot label unavailable';
   const extra=summary.pot?' · Visible wagers '+wagerText:wager?' · Collected pot label unavailable':'';
   show('Opponents '+opponents+' · '+primary,'Stacks '+summary.stackCount+'/5 · Wagers '+summary.betCount+'/5 · '+(fresh&&turn?'Turn cue: '+SEATS[turn]:displayedTurn?'Last turn: '+SEATS[displayedTurn]:'No unique turn cue')+extra);
-  const prompt=numeric&&lastResult?.table_observation?.hero_call_prompt?.candidate;
+  const prompt=fresh&&lastResult?.table_observation?.hero_call_prompt?.candidate;
   const currentCards=fresh?currentDeck(now):null;
   const scenario=reading?.stable&&currentCards&&scenarioResults?.cardKey===currentCards.key&&scenarioResults.key===requestedKey?scenarioResults:null;
   const label=$('conditional-model-result');
@@ -168,11 +169,15 @@ export function attachPractice({video,screen,canRun,rotation}){
    }
    const price=numeric?observedCallPrice(numeric.seats,prompt,r.excluded):null;
    const rounded=numeric&&(!price||price.reason)?roundedCallObservation(numeric.seats,prompt):null;
-   show(practicePriceHeadline(price,rounded,exactStack),context);
+   const observedNumeric=withRetainedRoundWagers(fresh&&lastResult?.table_observation,betMemory,handPresence,lastResult?.street_candidate);
+   const observed=displayCallObservation(observedNumeric?.seats,prompt,{sameStreet:betMemory.street===lastResult?.street_candidate&&!betMemory.boundary&&!betMemory.uncertain,trackedHero:betMemory.seats.hero});
+   const fallback=(!price||price.reason)&&!rounded?observed:null;
+   show(fallback?.upperObserved?'Your turn · Wager '+fallback.value.toLocaleString('en-CA')+' · your bet unknown':practicePriceHeadline(price,rounded||fallback,exactStack),context);
    if(price&&!price.reason)label.textContent=(price.partial?'At least ':'Call price: ')+price.value.toLocaleString('en-CA')+' · '+price.source;
    else if(rounded)label.textContent='Call price ≈'+rounded.value.toLocaleString('en-CA')+' · '+rounded.source;
+   else if(fallback)label.textContent=fallback.source+' · '+(fallback.upperObserved?'observed wager ':'observed call price ≈')+fallback.value.toLocaleString('en-CA');
    if(scenario&&numeric){
-    const args={street:currentCards.street??lastResult.street_candidate,pot:numeric.pot,prompt,seats:numeric.seats,equities:scenario.equities,excluded:r.excluded};
+    const args={street:currentCards.street??lastResult.street_candidate,pot:observedPotAccounting(numeric.pot,numeric.seats,$('practice-pot-convention').value),prompt,seats:numeric.seats,equities:scenario.equities,excluded:r.excluded};
     const exactModel=practicePanelModel(args);
     const model=exactModel.reason?roundedPracticeScenario(args)||exactModel:exactModel;
     if(!model.reason){

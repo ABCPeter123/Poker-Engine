@@ -112,7 +112,7 @@ export function practicePanelModel({street,pot,prompt,seats,equities,excluded=[]
  if(price.reason)return price;
  const call=price.value;
  if(stack===0||stack!==null&&call>stack)return {reason:'All-in eligibility unresolved'};
- let amount=exact(pot),source='displayed pot',partial=false;
+ let amount=exact(pot),source=pot?.source||'displayed pot',partial=!!pot?.partialAccounting;
  if(amount===null&&street==='Preflop'&&readable.length){
   amount=readable.reduce((a,b)=>a+b,0);
   source=complete?'visible preflop wagers':'partial visible preflop wagers';
@@ -225,4 +225,29 @@ export function sizedPracticeHeadline(model,raise,sizing){
  if(!baseline)return null;
  if(raise?.action&&sizing?.bounds)return {text:'Raise to '+sizing.bounds.safeTo.toLocaleString('en-CA')+' (conditional)',raise:true};
  return {text:baseline.action==='Call'?'Call '+(model.estimated?'≈':model.pricePartial?'at least ':'')+model.call.toLocaleString('en-CA'):baseline.action,raise:false,reason:raise?.action?sizing?.reason:null};
+}
+
+// Observation-only fallback. A missing hero amount must not masquerade
+// as a verified zero. An outstanding table wager remains useful evidence.
+export function displayCallObservation(seats,prompt,{sameStreet=false,trackedHero=null}={}){
+ const valid=c=>c&&whole(c.value);
+ if(valid(prompt))return {value:prompt.value,approximate:!!prompt.approximate,source:'visible call prompt'};
+ const hero=seats?.hero;
+ const amounts=Object.entries(seats||{}).filter(([id,s])=>id!=='hero'&&valid(s?.bet)).map(([,s])=>s.bet);
+ if(!amounts.length)return null;
+ const highest=amounts.reduce((a,b)=>a.value>=b.value?a:b);
+ if(valid(hero?.bet))return {value:Math.max(0,highest.value-hero.bet.value),approximate:true,source:'observed round wager difference'};
+ if(sameStreet&&hero?.bet_chip_present===false&&!hero.bet_reader_conflict&&!trackedHero?.pending&&(!trackedHero?.observed||trackedHero.value===0)){
+  return {value:highest.value,approximate:true,source:'round wager; assumes zero hero commitment'};
+ }
+ return {value:highest.value,approximate:true,upperObserved:true,source:'highest observed wager; your commitment unknown'};
+}
+// Explicit accounting convention: a collected-pot label excludes chips
+// still in front of players. Never add those chips to an inclusive pot.
+export function observedPotAccounting(pot,seats,convention){
+ if(convention!=='collected'||!pot||!whole(pot.value))return pot;
+ const bets=Object.values(seats||{}).map(s=>s?.bet).filter(c=>c&&whole(c.value));
+ const sum=pot.value+bets.reduce((n,c)=>n+c.value,0);
+ if(!Number.isSafeInteger(sum))return null;
+ return {...pot,value:sum,approximate:!!pot.approximate||bets.some(c=>c.approximate),partialAccounting:bets.length!==Object.keys(SEAT_ANCHORS).length||bets.some(c=>c.retained),source:'collected pot plus observed round wagers'};
 }

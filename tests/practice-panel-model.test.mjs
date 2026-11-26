@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {practicePanelModel,practiceHeadline,conditionalRaiseComparison,observedCallPrice,roundedCallObservation,roundedPracticeScenario,practicePriceHeadline} from '../practice-decision.js';
+import {practicePanelModel,practiceHeadline,conditionalRaiseComparison,observedCallPrice,roundedCallObservation,roundedPracticeScenario,practicePriceHeadline,displayCallObservation,observedPotAccounting} from '../practice-decision.js';
 const c=value=>({value,approximate:false});
 const seats=Object.fromEntries(['hero','left','upper_left','upper_right','right'].map(id=>[id,{bet:c(id==='hero'?50:500),stack:c(20000)}]));
 test('complete visible preflop wager subtotal supports explicitly conditional calculation',()=>{
@@ -105,4 +105,22 @@ test('stack-limited call display does not certify side-pot eligibility',()=>{
  assert.equal(practicePriceHeadline({value:700,partial:false},null,300),'Your turn · All-in call cost 300');
  assert.equal(practicePriceHeadline({value:700,partial:false},null,0),'All-in · no action required');
  assert.equal(practicePanelModel({street:'Preflop',seats:{hero:{stack:c(0)}},equities:[.5]}).reason,'All-in · no action required');
+});
+
+test('12K screenshot display survives unreadable hero wager and missing equity',()=>{
+ const s={hero:{bet_chip_present:false,stack:c(77300)},upper_right:{bet:{value:12000,approximate:true}}};
+ assert.deepEqual(displayCallObservation(s,{value:12000,approximate:true}),{value:12000,approximate:true,source:'visible call prompt'});
+ assert.equal(displayCallObservation(s,null,{sameStreet:true,trackedHero:{observed:false,value:0}}).value,12000);
+ assert.equal(displayCallObservation(s,null).upperObserved,true);
+ assert.equal(displayCallObservation(s,null,{sameStreet:true,trackedHero:{observed:true,value:200}}).upperObserved,true);
+});
+test('collected pot convention adds visible wagers exactly once, marks incomplete evidence',()=>{
+ const s={hero:{bet:c(200)},upper_right:{bet:c(400)},right:{bet:c(400)}};
+ const pot=c(200);
+ const a=observedPotAccounting(pot,s,'collected');
+ assert.equal(a.value,1200);assert.equal(a.partialAccounting,true);
+ assert.equal(observedPotAccounting(pot,s,'inclusive'),pot);
+ const m=practicePanelModel({street:'Preflop',pot:a,seats:s,prompt:c(200),equities:[.2],excluded:['left','upper_left']});
+ assert.equal(m.pot,1200);assert.equal(m.partial,true);
+ assert.equal(m.odds,200/1400);
 });

@@ -251,3 +251,17 @@ export function observedPotAccounting(pot,seats,convention){
  if(!Number.isSafeInteger(sum))return null;
  return {...pot,value:sum,approximate:!!pot.approximate||bets.some(c=>c.approximate),partialAccounting:bets.length!==Object.keys(SEAT_ANCHORS).length||bets.some(c=>c.retained),source:'collected pot plus observed round wagers'};
 }
+
+// Presentation only: an observed cost is never a recommended action.
+export function simplePracticeAction(text){
+ if(typeof text!=='string')return 'NO SUGGESTION';
+ const clean=text.replace(/ \(conditional\)$/,'').trim();
+ if(!/^(?:Check|Fold|Call(?: (?:≈|at least )?[0-9][0-9,]*)?|Raise to [0-9][0-9,]*)$/.test(clean))return 'NO SUGGESTION';
+ return clean.toUpperCase();
+}
+export function simplePriceDetail(price,rounded,stack=null){
+ const full=practicePriceHeadline(price,rounded,stack);
+ if(full==='Your turn · Check available')return 'Check available (cost 0)';
+ if(full==='Your turn · Price unavailable')return 'Call price unknown';
+ return full.replace(/^Your turn · /,'');
+}

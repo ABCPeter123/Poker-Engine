@@ -1,6 +1,6 @@
 import {CurrentStateQueue} from './frame-queue.js';
 import {updateHeroWagerEvidence,pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
-import {displayCallObservation,observedPotAccounting,practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
+import {simplePracticeAction,simplePriceDetail,displayCallObservation,observedPotAccounting,practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
@@ -148,7 +148,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   const wagerText=wager?(wager.approximate?'≈':'')+wager.value.toLocaleString('en-CA')+' ('+wager.count+'/5 seats)':'unavailable';
   const primary=summary.pot?'Pot '+pot:wager?'Visible wagers '+wagerText:'Pot label unavailable';
   const extra=summary.pot?' · Visible wagers '+wagerText:wager?' · Collected pot label unavailable':'';
-  show('Opponents '+opponents+' · '+primary,'Stacks '+summary.stackCount+'/5 · Wagers '+summary.betCount+'/5 · '+(fresh&&turn?'Turn cue: '+SEATS[turn]:displayedTurn?'Last turn: '+SEATS[displayedTurn]:'No unique turn cue')+extra);
+  show(fresh&&turn&&turn!=='hero'?'NOT YOUR TURN':'NO SUGGESTION','Opponents '+opponents+' · '+primary+' · Stacks '+summary.stackCount+'/5 · Wagers '+summary.betCount+'/5 · '+(fresh&&turn?'Turn cue: '+SEATS[turn]:displayedTurn?'Last turn: '+SEATS[displayedTurn]:'No unique turn cue')+extra);
   const prompt=fresh&&lastResult?.table_observation?.hero_call_prompt?.candidate;
   const currentCards=fresh?currentDeck(now):null;
   const scenario=reading?.stable&&currentCards&&scenarioResults?.cardKey===currentCards.key&&scenarioResults.key===requestedKey?scenarioResults:null;
@@ -156,15 +156,15 @@ export function attachPractice({video,screen,canRun,rotation}){
   const stack=numeric?.seats?.hero?.stack;
   const exactStack=stack&&!stack.approximate&&Number.isSafeInteger(stack.value)&&stack.value>=0?stack.value:null;
   if(fresh&&heroCardPresence(lastResult)==='visible'&&(exactStack===0||heroAllIn?.confirmed)){
-   show('All-in · no action required','Your stack is committed · '+primary);
+   show('ALL-IN','No further action required');
    label.textContent='Tracking the remainder of the hand; no further betting action.';
    return;
   }
   if(fresh&&turn==='hero'&&heroCardPresence(lastResult)==='visible'){
    const context='Opponents '+opponents+' · '+primary;
-   show('Your turn',context);
+   show('NO SUGGESTION','Your turn · awaiting model inputs');
    if(prompt?.value===0&&!prompt.approximate){
-    show('Your turn · Check available',context+' · No additional chips required');
+    show('NO SUGGESTION','Check available (cost 0)');
     label.textContent='Explicit CHECK or RAISE prompt detected.';
    }
    const price=numeric?observedCallPrice(numeric.seats,prompt,r.excluded):null;
@@ -172,7 +172,7 @@ export function attachPractice({video,screen,canRun,rotation}){
    const observedNumeric=withRetainedRoundWagers(fresh&&lastResult?.table_observation,betMemory,handPresence,lastResult?.street_candidate);
    const observed=displayCallObservation(observedNumeric?.seats,prompt,{sameStreet:betMemory.street===lastResult?.street_candidate&&!betMemory.boundary&&!betMemory.uncertain,trackedHero:betMemory.seats.hero});
    const fallback=(!price||price.reason)&&!rounded?observed:null;
-   show(fallback?.upperObserved?'Your turn · Wager '+fallback.value.toLocaleString('en-CA')+' · your bet unknown':practicePriceHeadline(price,rounded||fallback,exactStack),context);
+   show('NO SUGGESTION',fallback?.upperObserved?'Observed wager '+fallback.value.toLocaleString('en-CA')+' · your bet unknown':simplePriceDetail(price,rounded||fallback,exactStack));
    if(price&&!price.reason)label.textContent=(price.partial?'At least ':'Call price: ')+price.value.toLocaleString('en-CA')+' · '+price.source;
    else if(rounded)label.textContent='Call price ≈'+rounded.value.toLocaleString('en-CA')+' · '+rounded.source;
    else if(fallback)label.textContent=fallback.source+' · '+(fallback.upperObserved?'observed wager ':'observed call price ≈')+fallback.value.toLocaleString('en-CA');
@@ -193,7 +193,7 @@ export function attachPractice({video,screen,canRun,rotation}){
      const sizing=raise?.action?practiceRaiseSizing({street,hero,call:model.call,bigBlind:bb,raiseVisible:true,zeroWagerEvidence:zeroEvidence}):null;
      const bounds=sizing?.bounds;
      const headline=sizedPracticeHeadline(model,raise,sizing).text;
-     show((model.estimated?'Conditional estimate: ':'Conditional: ')+headline,context+' · Break-even '+(model.odds*100).toFixed(1)+'%');
+     show(simplePracticeAction(headline),model.estimated||model.partial||model.pricePartial||currentCards.retained?.length?'Conditional estimate · incomplete or retained inputs':'Conditional practice model');
      label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+(model.estimated?' (rounded point estimate, not an exact price or legal raise size)':model.pricePartial?' (retained or incomplete wagers; price may change)':'')+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'')+(raise?' Raise scenario: '+raise.assumption+'. '+(raise.action?(bounds?'Add '+bounds.additional.toLocaleString('en-CA')+' chips; conservative full-raise bound, not exact room minimum.'+(sizing.assumedZero?' Assumes zero commitment from the absent chip label and check prompt.':''):'Raise size not established: '+(sizing?.reason||'missing evidence')+'. Showing the baseline instead.'):'Raise not favored across all scenarios.'):'');
     }else label.textContent+=(label.textContent?' · ':'')+model.reason;
    }else{
@@ -216,7 +216,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   }
   const input=decisionInputs(a,exact,{confirmed:true,opponents:practiceOpponentCount($('live-opponents').value,locks).count});
   const rec=decisionFromEquity(input,equityResult);
-  if(rec.action){action.textContent='Optional practice model: '+rec.action+' · equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'%';show('Practice model: '+rec.action,'Equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'% · '+primary);}
+  if(rec.action){action.textContent='Optional practice model: '+rec.action+' · equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'%';show(simplePracticeAction(rec.action),'Conditional practice model');}
  }
  function autoValues(){
   const now=performance.now(),result=observationAge(lastFrame,now,1000).fresh?lastResult:null,obs=result?.table_observation,age=observationAge(lastOcrAt,now,1000),num=age.fresh?lastTable:null;

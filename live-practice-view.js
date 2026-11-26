@@ -1,6 +1,6 @@
 import {CurrentStateQueue} from './frame-queue.js';
 import {pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
-import {roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
+import {practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
@@ -114,6 +114,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  $('screen-edit-table').onclick=()=>openPopup('table');
  $('screen-new-hand').onclick=()=>$('manual-new-hand').click();
  $('practice-action-confirm').onchange=()=>paintDecision();
+ $('practice-big-blind').oninput=()=>paintDecision();
  function currentDeck(now){return conditionalDeck(effectiveCards(lastResult,locks),cardMemory,handPresence,betMemory.street,now,reading?.stable);}
  function refreshCandidate(sample){
   if(!active)return;
@@ -178,15 +179,17 @@ export function attachPractice({video,screen,canRun,rotation}){
      const recommendation=practiceHeadline(model);
      const raise=model.estimated?null:conditionalRaiseComparison({model,counts:scenario.counts,equities:scenario.equities,stack:numeric.seats?.hero?.stack?.approximate?null:numeric.seats?.hero?.stack?.value,raiseVisible:!!prompt&&/\bOR\s+RAISE\b/i.test(lastResult?.table_observation?.hero_call_prompt?.raw||'')});
      const hero=numeric.seats?.hero;
-     const bounds=raise?.action?conservativeRaiseBounds({
-       street:currentCards.street??lastResult.street_candidate,
-       heroBet:hero?.bet&&!hero.bet.approximate?hero.bet.value:null,
-       stack:hero?.stack&&!hero.stack.approximate?hero.stack.value:null,
-       call:model.call,bigBlind:blindEvidence?.confirmed?blindEvidence.value:null,raiseVisible:true
-     }):null;
-     const headline=raise?.action?(bounds?'Raise to '+bounds.safeTo.toLocaleString('en-CA')+' (conditional)':'Raise (size unavailable)'):recommendation.action==='Call'?'Call '+(model.estimated?'≈':model.pricePartial?'at least ':'')+model.call.toLocaleString('en-CA'):recommendation.action;
+     const street=currentCards.street??lastResult.street_candidate;
+     const configured=Number($('practice-big-blind').value);
+     const bb=Number.isSafeInteger(configured)&&configured>0?configured:blindEvidence?.confirmed?blindEvidence.value:null;
+     const sameStreet=betMemory.street===street&&!betMemory.boundary&&!betMemory.uncertain;
+     const trackedHero=betMemory.seats.hero;
+     const zeroEvidence=sameStreet&&prompt?.value===0&&!prompt.approximate&&(!trackedHero.observed||trackedHero.value===0)&&!trackedHero.pending&&!hero?.bet_reader_conflict;
+     const sizing=raise?.action?practiceRaiseSizing({street,hero,call:model.call,bigBlind:bb,raiseVisible:true,zeroWagerEvidence:zeroEvidence}):null;
+     const bounds=sizing?.bounds;
+     const headline=sizedPracticeHeadline(model,raise,sizing).text;
      show((model.estimated?'Conditional estimate: ':'Conditional: ')+headline,context+' · Break-even '+(model.odds*100).toFixed(1)+'%');
-     label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+(model.estimated?' (rounded point estimate, not an exact price or legal raise size)':model.pricePartial?' (retained or incomplete wagers; price may change)':'')+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'')+(raise?' Raise scenario: '+raise.assumption+'. '+(raise.action?(bounds?'Add '+bounds.additional.toLocaleString('en-CA')+' chips; conservative full-raise bound, not exact room minimum.':'Exact wager/blind/stack evidence insufficient for sizing.'):'Raise not favored across all scenarios.'):'');
+     label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+(model.estimated?' (rounded point estimate, not an exact price or legal raise size)':model.pricePartial?' (retained or incomplete wagers; price may change)':'')+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'')+(raise?' Raise scenario: '+raise.assumption+'. '+(raise.action?(bounds?'Add '+bounds.additional.toLocaleString('en-CA')+' chips; conservative full-raise bound, not exact room minimum.'+(sizing.assumedZero?' Assumes zero commitment from the absent chip label and check prompt.':''):'Raise size not established: '+(sizing?.reason||'missing evidence')+'. Showing the baseline instead.'):'Raise not favored across all scenarios.'):'');
     }else label.textContent+=(label.textContent?' · ':'')+model.reason;
    }else{
     const blocker=!currentCards?'Card recognition incomplete':!reading?.stable?'Waiting for repeated card reading':simulationState==='failed'?'Equity calculation failed':simulationState==='no opponents'?'No opponent scenario available':!scenario?'Calculating current card equity':!numeric?'Numeric snapshot unavailable ('+(lastOcrState?.state||'waiting')+')':'Model inputs unavailable';

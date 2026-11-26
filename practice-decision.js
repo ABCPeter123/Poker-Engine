@@ -170,7 +170,7 @@ export function observePracticeBlind(previous,result,hand,at){
  const old=hand?.started?null:previous;
  if(hand?.phase!=='active')return null;
  if(result?.street_candidate!=='Preflop')return old;
- const candidates=Object.values(result?.table_observation?.seats||{}).filter(s=>s.status_candidate==='Big blind'&&s.bet_chip_present===true&&s.bet&&!s.bet.approximate&&whole(s.bet.value)&&s.bet.value>0&&s.stack&&!s.stack.approximate&&whole(s.stack.value)&&s.stack.value>0);
+ const candidates=Object.values(result?.table_observation?.seats||{}).filter(s=>s.status_candidate==='Big blind'&&s.bet_chip_present===true&&s.bet&&!s.bet.approximate&&whole(s.bet.value)&&s.bet.value>0&&s.stack&&whole(s.stack.value)&&s.stack.value>0);
  if(candidates.length!==1)return old;
  const value=candidates[0].bet.value;
  if(old?.confirmed&&old.value!==value)return {value:null,count:0,confirmed:false,conflict:true,at};
@@ -203,4 +203,26 @@ export function practicePriceHeadline(price,rounded,stack=null){
  }
  if(rounded&&whole(rounded.value))return 'Your turn · Call cost ≈'+rounded.value.toLocaleString('en-CA');
  return 'Your turn · Price unavailable';
+}
+
+// Conditional sizing for the authorized local practice workspace. No
+// external-room minimum is asserted when the last increment is unknown.
+export function practiceRaiseSizing({street,hero,call,bigBlind,raiseVisible,zeroWagerEvidence=false}){
+ const exact=c=>c&&!c.approximate&&whole(c.value)?c.value:null;
+ let committed=exact(hero?.bet);
+ if(committed===null&&!hero?.bet&&zeroWagerEvidence&&hero?.bet_chip_present===false)committed=0;
+ const stack=exact(hero?.stack);
+ if(!raiseVisible)return {reason:'Raise control not observed'};
+ if(committed===null)return {reason:'Your current-street wager is unreadable'};
+ if(stack===null)return {reason:'Exact remaining stack unavailable'};
+ if(!whole(call)||stack<=call)return {reason:'No chips available beyond the call'};
+ if(!(whole(bigBlind)&&bigBlind>0)&&!(street==='Preflop'&&committed+call>0))return {reason:'Big blind not established'};
+ const bounds=conservativeRaiseBounds({street,heroBet:committed,stack,call,bigBlind,raiseVisible});
+ return bounds?{bounds,assumedZero:!hero?.bet}:{reason:'No conservative full-raise size fits the remaining stack'};
+}
+export function sizedPracticeHeadline(model,raise,sizing){
+ const baseline=practiceHeadline(model);
+ if(!baseline)return null;
+ if(raise?.action&&sizing?.bounds)return {text:'Raise to '+sizing.bounds.safeTo.toLocaleString('en-CA')+' (conditional)',raise:true};
+ return {text:baseline.action==='Call'?'Call '+(model.estimated?'≈':model.pricePartial?'at least ':'')+model.call.toLocaleString('en-CA'):baseline.action,raise:false,reason:raise?.action?sizing?.reason:null};
 }

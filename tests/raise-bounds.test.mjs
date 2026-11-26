@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {raiseBounds,start,legal,act} from '../table-engine.js';
-import {conservativeRaiseBounds,observePracticeBlind} from '../practice-decision.js';
+import {conservativeRaiseBounds,observePracticeBlind,practiceRaiseSizing,sizedPracticeHeadline} from '../practice-decision.js';
 const state={bet:300,committed:100,stack:1000,bb:50,minIncrement:200,actedAt:100,opponentCanAct:true};
 test('exact simulator raise-to versus chips added, short all-in and reopened action',()=>{
  const r=raiseBounds(state);assert.equal(r.minTo,500);assert.equal(r.maxTo,1100);assert.equal(r.legalMinTo,500);assert.equal(r.raise,true);
@@ -36,4 +36,25 @@ test('blind observations require consistent exact non-all-in evidence within a h
  assert.equal(observePracticeBlind(b,{street_candidate:'Flop'},{phase:'active'},300),b);
  assert.equal(observePracticeBlind(b,{street_candidate:'Flop'},{phase:'active',started:true},400),null);
  assert.equal(observePracticeBlind(b,f,{phase:'ended'},400),null);
+});
+
+test('opening wager can be sized from explicit zero evidence and a known blind',()=>{
+ const args={street:'Flop',hero:{stack:{value:1000},bet_chip_present:false},call:0,bigBlind:50,raiseVisible:true,zeroWagerEvidence:true};
+ assert.equal(practiceRaiseSizing(args).bounds.safeTo,50);
+ assert.equal(practiceRaiseSizing(args).assumedZero,true);
+ assert.equal(practiceRaiseSizing({...args,zeroWagerEvidence:false}).reason,'Your current-street wager is unreadable');
+ assert.equal(practiceRaiseSizing({...args,bigBlind:null}).reason,'Big blind not established');
+ assert.equal(practiceRaiseSizing({...args,hero:{...args.hero,bet:{value:25,approximate:true}}}).reason,'Your current-street wager is unreadable');
+});
+test('a practice raise headline always includes a size or falls back to baseline',()=>{
+ const model={call:0,unanimous:'Check',outcomes:['Check']};
+ const raise={action:'Raise'};
+ assert.deepEqual(sizedPracticeHeadline(model,raise,{reason:'Big blind not established'}),{text:'Check',raise:false,reason:'Big blind not established'});
+ assert.equal(sizedPracticeHeadline(model,raise,{bounds:{safeTo:50}}).text,'Raise to 50 (conditional)');
+});
+test('rounded positive stack does not prevent blind observation',()=>{
+ const f={street_candidate:'Preflop',table_observation:{seats:{left:{status_candidate:'Big blind',bet_chip_present:true,bet:{value:50},stack:{value:10000,approximate:true}}}}};
+ let b=observePracticeBlind(null,f,{phase:'active',started:true},100);
+ b=observePracticeBlind(b,f,{phase:'active'},200);
+ assert.equal(b.confirmed,true);assert.equal(b.value,50);
 });

@@ -9,12 +9,12 @@ class MirrorAudioTests(unittest.TestCase):
         def probe(exe,name,env):
             seen.append((exe.name,name))
             return True
-        self.assertEqual(audio_options(Path("bin/uxplay.exe"),{},probe=probe),["-as","wasapi2sink","-vsync","no"])
+        self.assertEqual(audio_options(Path("bin/uxplay.exe"),{},"auto",probe=probe),["-as","wasapi2sink","-vsync","no"])
         self.assertEqual(seen,[("gst-inspect-1.0.exe","wasapi2sink")])
     def test_fallbacks(self):
         for sink in ("wasapisink","directsoundsink"):
-            self.assertEqual(audio_options("uxplay.exe",{},probe=lambda *a:a[1]==sink),["-as",sink,"-vsync","no"])
-        self.assertEqual(audio_options("uxplay.exe",{},probe=lambda *a:None),["-as","autoaudiosink","-vsync","no"])
+            self.assertEqual(audio_options("uxplay.exe",{},"auto",probe=lambda *a:a[1]==sink),["-as",sink,"-vsync","no"])
+        self.assertEqual(audio_options("uxplay.exe",{},"auto",probe=lambda *a:None),["-as","autoaudiosink","-vsync","no"])
     def test_manual_sink_and_sync(self):
         self.assertEqual(audio_options("uxplay.exe",{},"directsoundsink","timestamp",probe=lambda *a:True),["-as","directsoundsink","-vsync"])
         with self.assertRaises(ValueError):
@@ -28,3 +28,8 @@ class MirrorAudioTests(unittest.TestCase):
         self.assertTrue(audio_warning("ERROR wasapi device removed"))
         self.assertFalse(audio_warning("Audio format AAC"))
         self.assertFalse(audio_warning("WARN d3d11videosink caps changed"))
+
+    def test_directsound_default(self):
+        self.assertEqual(audio_options("uxplay.exe",{},probe=lambda *a:True),["-as","directsoundsink","-vsync","no"])
+        source=(Path(__file__).resolve().parents[1]/"start_mirror.py").read_text(encoding="utf-8")
+        self.assertIn('choices=("auto","default",*AUDIO_SINKS), default="directsoundsink"',source)

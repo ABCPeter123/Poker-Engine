@@ -134,7 +134,7 @@ def inspect_audio_sink(inspector, sink, env):
     except (OSError, subprocess.TimeoutExpired):
         return None
 
-def audio_options(exe, env, sink="auto", sync="live", probe=inspect_audio_sink):
+def audio_options(exe, env, sink="directsoundsink", sync="live", probe=inspect_audio_sink):
     """Prefer an installed Windows audio backend; preserve a manual fallback."""
     if sink not in ("auto", "default", *AUDIO_SINKS) or sync not in ("live", "timestamp"):
         raise ValueError("Invalid audio settings")
@@ -162,8 +162,8 @@ def main():
     parser.add_argument("--max-width", type=int, default=1100)
     parser.add_argument("--fps", type=int, choices=(30,60), default=60,
                         help="Requested AirPlay receiver frame rate (default 60; actual rate is negotiated)")
-    parser.add_argument("--audio-sink", choices=("auto","default",*AUDIO_SINKS), default="auto",
-                        help="Audio backend; auto probes installed Windows sinks, default uses autoaudiosink")
+    parser.add_argument("--audio-sink", choices=("auto","default",*AUDIO_SINKS), default="directsoundsink",
+                        help="Audio backend; DirectSound by default, auto probes installed sinks")
     parser.add_argument("--audio-sync", choices=("live","timestamp"), default="live",
                         help="Live mirroring without timestamp synchronization (default), or synchronized video playback")
     parser.add_argument("--software", action="store_true", help="Force software decoding if GPU rotation fails")
@@ -215,7 +215,7 @@ def main():
                 now = time.monotonic()
                 if now - last_audio_hint >= 15:
                     last_audio_hint = now
-                    print("Audio pipeline warning. If sound is lost, try --audio-sink directsoundsink on the next receiver launch.", flush=True)
+                    print("Audio pipeline warning. If sound is lost, try --audio-sink auto on the next receiver launch.", flush=True)
             sink_size = parse_sink_geometry(line)
             value = sink_size or parse_geometry(line)
             if value:

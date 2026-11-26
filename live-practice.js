@@ -521,3 +521,12 @@ export function updateHeroAllIn(previous,result,hand,at,sampled){
  const count=(old?.count||0)+1;
  return {at,count,confirmed:!!(old?.confirmed||count>=2||s?.status_candidate==='All-in')};
 }
+
+// Cache independent scenario simulations by deck, not by fluctuating seat count.
+export function scenarioProgress(cardKey,counts,results){
+ if(!cardKey||!Array.isArray(counts)||!counts.length)return {state:'no opponents',equities:[]};
+ const equities=counts.map(n=>results.get(n));
+ if(equities.some(e=>e===undefined))return {state:'pending',equities};
+ if(equities.some(e=>!Number.isFinite(e)||e<0||e>1))return {state:'failed',equities};
+ return {state:'ready',equities};
+}

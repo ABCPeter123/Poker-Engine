@@ -1,0 +1,761 @@
+{
+  "description": "Manually labelled visible numeric crops from ten later screenshots; two hand groups. Missing labels omitted.",
+  "lines": [
+    {
+      "file": "IMG_0435.jpeg",
+      "group": "hand3",
+      "name": "upper_right",
+      "label": "45850",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0435.jpeg",
+      "group": "hand3",
+      "name": "left",
+      "label": "10700",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0435.jpeg",
+      "group": "hand3",
+      "name": "right",
+      "label": "13825",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0435.jpeg",
+      "group": "hand3",
+      "name": "hero",
+      "label": "19550",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    },
+    {
+      "file": "IMG_0436.jpeg",
+      "group": "hand4",
+      "name": "upper_right",
+      "label": "45825",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0436.jpeg",
+      "group": "hand4",
+      "name": "left",
+      "label": "10700",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0436.jpeg",
+      "group": "hand4",
+      "name": "right",
+      "label": "13775",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0436.jpeg",
+      "group": "hand4",
+      "name": "hero",
+      "label": "19550",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    },
+    {
+      "file": "IMG_0436.jpeg",
+      "group": "hand4",
+      "name": "bet_ur",
+      "label": "25",
+      "box": [
+        952,
+        197,
+        983,
+        225
+      ]
+    },
+    {
+      "file": "IMG_0436.jpeg",
+      "group": "hand4",
+      "name": "bet_right",
+      "label": "50",
+      "box": [
+        1027,
+        295,
+        1058,
+        323
+      ]
+    },
+    {
+      "file": "IMG_0437.jpeg",
+      "group": "hand4",
+      "name": "upper_right",
+      "label": "45800",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0437.jpeg",
+      "group": "hand4",
+      "name": "left",
+      "label": "10650",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0437.jpeg",
+      "group": "hand4",
+      "name": "right",
+      "label": "13775",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0437.jpeg",
+      "group": "hand4",
+      "name": "hero",
+      "label": "19500",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    },
+    {
+      "file": "IMG_0437.jpeg",
+      "group": "hand4",
+      "name": "bet_ur",
+      "label": "50",
+      "box": [
+        952,
+        197,
+        983,
+        225
+      ]
+    },
+    {
+      "file": "IMG_0437.jpeg",
+      "group": "hand4",
+      "name": "bet_left",
+      "label": "50",
+      "box": [
+        481,
+        293,
+        514,
+        322
+      ]
+    },
+    {
+      "file": "IMG_0437.jpeg",
+      "group": "hand4",
+      "name": "bet_right",
+      "label": "50",
+      "box": [
+        1027,
+        295,
+        1058,
+        323
+      ]
+    },
+    {
+      "file": "IMG_0437.jpeg",
+      "group": "hand4",
+      "name": "bet_hero",
+      "label": "50",
+      "box": [
+        831,
+        424,
+        864,
+        456
+      ]
+    },
+    {
+      "file": "IMG_0438.jpeg",
+      "group": "hand4",
+      "name": "upper_right",
+      "label": "45800",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0438.jpeg",
+      "group": "hand4",
+      "name": "left",
+      "label": "10650",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0438.jpeg",
+      "group": "hand4",
+      "name": "right",
+      "label": "13775",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0438.jpeg",
+      "group": "hand4",
+      "name": "hero",
+      "label": "19500",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    },
+    {
+      "file": "IMG_0438.jpeg",
+      "group": "hand4",
+      "name": "bet_ur",
+      "label": "50",
+      "box": [
+        952,
+        197,
+        983,
+        225
+      ]
+    },
+    {
+      "file": "IMG_0438.jpeg",
+      "group": "hand4",
+      "name": "bet_left",
+      "label": "50",
+      "box": [
+        481,
+        293,
+        514,
+        322
+      ]
+    },
+    {
+      "file": "IMG_0438.jpeg",
+      "group": "hand4",
+      "name": "bet_right",
+      "label": "50",
+      "box": [
+        1027,
+        295,
+        1058,
+        323
+      ]
+    },
+    {
+      "file": "IMG_0438.jpeg",
+      "group": "hand4",
+      "name": "bet_hero",
+      "label": "50",
+      "box": [
+        831,
+        424,
+        864,
+        456
+      ]
+    },
+    {
+      "file": "IMG_0439.jpeg",
+      "group": "hand4",
+      "name": "upper_right",
+      "label": "45800",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0439.jpeg",
+      "group": "hand4",
+      "name": "left",
+      "label": "10650",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0439.jpeg",
+      "group": "hand4",
+      "name": "right",
+      "label": "13775",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0439.jpeg",
+      "group": "hand4",
+      "name": "hero",
+      "label": "19500",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    },
+    {
+      "file": "IMG_0439.jpeg",
+      "group": "hand4",
+      "name": "pot",
+      "label": "200",
+      "box": [
+        745,
+        203,
+        790,
+        231
+      ]
+    },
+    {
+      "file": "IMG_0440.jpeg",
+      "group": "hand4",
+      "name": "upper_left",
+      "label": "20000",
+      "box": [
+        535,
+        163,
+        598,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0440.jpeg",
+      "group": "hand4",
+      "name": "upper_right",
+      "label": "45800",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0440.jpeg",
+      "group": "hand4",
+      "name": "left",
+      "label": "10650",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0440.jpeg",
+      "group": "hand4",
+      "name": "right",
+      "label": "13775",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0440.jpeg",
+      "group": "hand4",
+      "name": "hero",
+      "label": "19500",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    },
+    {
+      "file": "IMG_0440.jpeg",
+      "group": "hand4",
+      "name": "pot",
+      "label": "200",
+      "box": [
+        745,
+        203,
+        790,
+        231
+      ]
+    },
+    {
+      "file": "IMG_0441.jpeg",
+      "group": "hand4",
+      "name": "upper_left",
+      "label": "20000",
+      "box": [
+        535,
+        163,
+        598,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0441.jpeg",
+      "group": "hand4",
+      "name": "upper_right",
+      "label": "45800",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0441.jpeg",
+      "group": "hand4",
+      "name": "left",
+      "label": "10650",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0441.jpeg",
+      "group": "hand4",
+      "name": "right",
+      "label": "13725",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0441.jpeg",
+      "group": "hand4",
+      "name": "hero",
+      "label": "19450",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    },
+    {
+      "file": "IMG_0441.jpeg",
+      "group": "hand4",
+      "name": "pot",
+      "label": "200",
+      "box": [
+        745,
+        203,
+        790,
+        231
+      ]
+    },
+    {
+      "file": "IMG_0441.jpeg",
+      "group": "hand4",
+      "name": "bet_right",
+      "label": "50",
+      "box": [
+        1027,
+        295,
+        1058,
+        323
+      ]
+    },
+    {
+      "file": "IMG_0441.jpeg",
+      "group": "hand4",
+      "name": "bet_hero",
+      "label": "50",
+      "box": [
+        831,
+        424,
+        864,
+        456
+      ]
+    },
+    {
+      "file": "IMG_0442.jpeg",
+      "group": "hand4",
+      "name": "upper_left",
+      "label": "20000",
+      "box": [
+        535,
+        163,
+        598,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0442.jpeg",
+      "group": "hand4",
+      "name": "upper_right",
+      "label": "45750",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0442.jpeg",
+      "group": "hand4",
+      "name": "left",
+      "label": "10600",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0442.jpeg",
+      "group": "hand4",
+      "name": "right",
+      "label": "13725",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0442.jpeg",
+      "group": "hand4",
+      "name": "hero",
+      "label": "19450",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    },
+    {
+      "file": "IMG_0442.jpeg",
+      "group": "hand4",
+      "name": "pot",
+      "label": "400",
+      "box": [
+        745,
+        203,
+        790,
+        231
+      ]
+    },
+    {
+      "file": "IMG_0443.jpeg",
+      "group": "hand4",
+      "name": "upper_left",
+      "label": "20000",
+      "box": [
+        535,
+        163,
+        598,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0443.jpeg",
+      "group": "hand4",
+      "name": "upper_right",
+      "label": "45750",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0443.jpeg",
+      "group": "hand4",
+      "name": "left",
+      "label": "10600",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0443.jpeg",
+      "group": "hand4",
+      "name": "right",
+      "label": "13725",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0443.jpeg",
+      "group": "hand4",
+      "name": "hero",
+      "label": "19450",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    },
+    {
+      "file": "IMG_0443.jpeg",
+      "group": "hand4",
+      "name": "pot",
+      "label": "400",
+      "box": [
+        745,
+        203,
+        790,
+        231
+      ]
+    },
+    {
+      "file": "IMG_0444.jpeg",
+      "group": "hand4",
+      "name": "upper_left",
+      "label": "20000",
+      "box": [
+        535,
+        163,
+        598,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0444.jpeg",
+      "group": "hand4",
+      "name": "upper_right",
+      "label": "45750",
+      "box": [
+        955,
+        163,
+        1016,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0444.jpeg",
+      "group": "hand4",
+      "name": "left",
+      "label": "11000",
+      "box": [
+        324,
+        459,
+        389,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0444.jpeg",
+      "group": "hand4",
+      "name": "right",
+      "label": "13725",
+      "box": [
+        1171,
+        459,
+        1235,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0444.jpeg",
+      "group": "hand4",
+      "name": "hero",
+      "label": "19450",
+      "box": [
+        703,
+        590,
+        772,
+        612
+      ]
+    }
+  ],
+  "image_sha256": {
+    "IMG_0435.jpeg": "4ea3274ee15df84f6815778b0d2e82583d035b3c016cec3673a9aafd7fb78f4c",
+    "IMG_0436.jpeg": "47d64e3ec568e2affd6415536c3574d7295b1bbc6c3acaab5db147338a62ecd4",
+    "IMG_0437.jpeg": "a734574178b2573024c0c6116672578bd4a774d59e2676364c45b5fce02df6dc",
+    "IMG_0438.jpeg": "f45cce9bdaf5159f3efcc68562cb0a0cc731d4a7d760595ac5a24bdfec599954",
+    "IMG_0439.jpeg": "2c3e7f9c56ce2076b3ab3a249d1489096b65f83a4023c4cf736b9957655fcab4",
+    "IMG_0440.jpeg": "93c804ec7b05e75f2050ecaa978801a1bda15eccaf87641dbac6d236fada8596",
+    "IMG_0441.jpeg": "e321273449cec41782498c9aec67ffc10605b390c966ef1d735f1252f821f7d0",
+    "IMG_0442.jpeg": "10b00ff4df5a02c07f799262b5643e00af89e814f4bb19ebccd9e6755dca181c",
+    "IMG_0443.jpeg": "2ec6e329796f6d7978772147f09a11822c9f5b9f80ade54c7fd70d6a431a3c",
+    "IMG_0444.jpeg": "d998a5e306725a59ac4acdb95d85b03b2ffe2075f6c5bb3a14c54f1ad2213207"
+  }
+}

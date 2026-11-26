@@ -87,7 +87,14 @@ export function updateCardMemory(previous,result,now){
  const display=raw.map((x,i)=>carried.includes(i)?{candidate:slots[i].value,cached:true,ageMs:now-slots[i].lastSeen}:x);
  const board=display.slice(2),count=board.filter(Boolean).length;
  const street=board.slice(0,count).every(Boolean)&&board.slice(count).every(x=>!x)?({0:'Preflop',3:'Flop',4:'Turn',5:'River'})[count]||null:null;
- return {slots,last:now,boardVisible,holeVisible,carried,displayHole:display.slice(0,2),displayBoard:board,displayStreet:street};
+ // A complete independently repeated raw deck is observation evidence.
+ // Keep it separate from the transient simulation's stable-reading gate.
+ // It cannot survive an identity conflict, whole-board reset or full
+ // disappearance of hero cards, nor be renewed by carried values.
+ const direct=candidateCards(result);
+ const complete=direct&&values.every((v,i)=>!raw[i]||v&&slots[i].confirmed);
+ const confirmedDeck=holeVisible&&!duplicate?(complete?{key:direct.key,at:now}:old?.confirmedDeck||null):null;
+ return {slots,last:now,boardVisible,holeVisible,carried,displayHole:display.slice(0,2),displayBoard:board,displayStreet:street,confirmedDeck};
 }
 
 // The capture clock, not response arrival, determines the age of an observation.
@@ -513,7 +520,9 @@ export function conditionalDeck(raw,memory,hand,street,now,previousStable=null){
  // Physical absence is less reliable than visible unreadable ink. Only a
  // previously complete same-street deck may support that kind of dropout.
  const original=[...raw.hole_slots,...raw.board_slots];
- if(retained.some(i=>original[i]===null)&&previousStable?.key!==candidate.key)return null;
+ const anchor=memory.confirmedDeck;
+ const anchored=anchor?.key===candidate.key&&observationAge(anchor.at,now,CARD_MEMORY_MS).fresh;
+ if(retained.some(i=>original[i]===null)&&previousStable?.key!==candidate.key&&!anchored)return null;
  return {...candidate,retained};
 }
 
@@ -566,4 +575,16 @@ export function updateHeroWagerEvidence(previous,prior,next,hand,at){
  if(!b?.observed||!Number.isSafeInteger(b.value)||b.value<0||b.lastSeen!==at)return old;
  if(prior?.generation!==next.generation||!a?.observed||a.approximate||b.approximate||b.value<=a.value)return old;
  return {street:next.street,before:a.value,after:b.value,added:b.value-a.value,at};
+}
+
+// Observation diagnosis only: distinguish an incomplete displayed deck
+// from a deck awaiting independent validation or a calculation.
+export function deckObservationStatus({candidate,reading,memory,street,fresh}){
+ if(!fresh)return 'Snapshot stale';
+ if(candidate)return reading?.stable?.key===candidate.key?'Deck validated':'Waiting for repeated card reading';
+ if(memory?.carried?.length){
+  if(!street||memory.displayStreet!==street)return 'Retained card · street not confirmed';
+  return 'Retained card · deck validation pending';
+ }
+ return 'Card recognition incomplete';
 }

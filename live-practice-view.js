@@ -1,5 +1,5 @@
 import {CurrentStateQueue} from './frame-queue.js';
-import {updateHeroWagerEvidence,pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
+import {deckObservationStatus,updateHeroWagerEvidence,pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
 import {simplePracticeAction,simplePriceDetail,displayCallObservation,observedPotAccounting,practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
@@ -116,7 +116,13 @@ export function attachPractice({video,screen,canRun,rotation}){
  $('practice-action-confirm').onchange=()=>paintDecision();
  $('practice-big-blind').oninput=()=>paintDecision();
  $('practice-pot-convention').onchange=()=>paintDecision();
- function currentDeck(now){return conditionalDeck(effectiveCards(lastResult,locks),cardMemory,handPresence,betMemory.street,now,reading?.stable);}
+ function currentDeck(now){
+  const raw=effectiveCards(lastResult,locks);
+  // Card observation can establish a street independently of wager OCR.
+  // If both sources identify different streets, keep the ledger gate.
+  const street=betMemory.street||raw.street_candidate;
+  return conditionalDeck(raw,cardMemory,handPresence,street,now,reading?.stable);
+ }
  function refreshCandidate(sample){
   if(!active)return;
   if(heroCardPresence(lastResult)==='absent'){reading=null;clearEquity();metric('Not playing · no hole cards visible');return;}
@@ -197,7 +203,7 @@ export function attachPractice({video,screen,canRun,rotation}){
      label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+(model.estimated?' (rounded point estimate, not an exact price or legal raise size)':model.pricePartial?' (retained or incomplete wagers; price may change)':'')+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'')+(raise?' Raise scenario: '+raise.assumption+'. '+(raise.action?(bounds?'Add '+bounds.additional.toLocaleString('en-CA')+' chips; conservative full-raise bound, not exact room minimum.'+(sizing.assumedZero?' Assumes zero commitment from the absent chip label and check prompt.':''):'Raise size not established: '+(sizing?.reason||'missing evidence')+'. Showing the baseline instead.'):'Raise not favored across all scenarios.'):'');
     }else label.textContent+=(label.textContent?' · ':'')+model.reason;
    }else{
-    const blocker=!currentCards?'Card recognition incomplete':!reading?.stable?'Waiting for repeated card reading':simulationState==='failed'?'Equity calculation failed':simulationState==='no opponents'?'No opponent scenario available':!scenario?'Calculating current card equity':!numeric?'Numeric snapshot unavailable ('+(lastOcrState?.state||'waiting')+')':'Model inputs unavailable';
+    const blocker=!currentCards||!reading?.stable?deckObservationStatus({candidate:currentCards,reading,memory:cardMemory,street:betMemory.street||lastResult?.street_candidate,fresh}):simulationState==='failed'?'Equity calculation failed':simulationState==='no opponents'?'No opponent scenario available':!scenario?'Calculating current card equity':!numeric?'Numeric snapshot unavailable ('+(lastOcrState?.state||'waiting')+')':'Model inputs unavailable';
     label.textContent+=(label.textContent?' · ':'')+blocker;
     if(!currentCards||!reading?.stable)show('NO SUGGESTION',blocker+(prompt?.value===0&&!prompt.approximate?' · Check available (cost 0)':''));
    }

@@ -272,3 +272,74 @@ export function observedHandCommitment(state,id){
  if(!Number.isSafeInteger(value))return null;
  return {value,observedRounds:observed.length,rounds:rounds.length,approximate:observed.some(e=>e.approximate),complete:false};
 }
+
+// Display-only observations. A missing or contradictory frame never overwrites
+// the last reading. Nothing here upgrades evidence for decision calculations.
+export function updateDisplayEvidence(previous,result,state,prior,{at,sampled=false}={}){
+ if(!Number.isFinite(at)||at<0||(previous&&at<=previous.at))return previous;
+ let fields={...(previous?.fields||{})};
+ const changed=state?.generation!==prior?.generation;
+ if(changed&&prior?.street){
+  if(state.street==='Preflop'||!state.closedRounds?.length)fields={};
+  else for(const k of Object.keys(fields))if(k==='pot'||k.endsWith('.bet')||k.endsWith('.status'))delete fields[k];
+ }
+ const incoming={};
+ const obs=result?.table_observation;
+ if(validSlots(result?.hole_slots,2)&&validSlots(result?.board_slots,5)&&!result.quality?.duplicate_card_candidates){
+  [...result.hole_slots,...result.board_slots].forEach((slot,i)=>{
+   const key=i<2?'hole.'+i:'board.'+(i-2);
+   // Nulls can be temporary presence misses. Confirmed hand reset clears old slots.
+   if(slot?.candidate&&validCard(slot.candidate))incoming[key]=slot.candidate;
+   else if(slot===null&&!fields[key])incoming[key]=null;
+  });
+ }
+ if(result?.street_candidate&&!state?.uncertain)incoming.street=result.street_candidate;
+ if(BET_SEATS.includes(obs?.dealer?.candidate))incoming.dealer=obs.dealer.candidate;
+ if(sampled){
+  const put=(key,c)=>{if(c&&Number.isSafeInteger(c.value)&&c.value>=0)incoming[key]={value:c.value,approximate:!!c.approximate};};
+  put('pot',result?.number_candidates?.pot?.candidate);
+  for(const id of BET_SEATS)put(id+'.stack',obs?.seats?.[id]?.stack);
+ }
+ for(const id of BET_SEATS){
+  const e=state?.seats?.[id];
+  if(e?.observed)incoming[id+'.bet']={value:e.value,approximate:!!e.approximate,retainedAt:e.lastSeen};
+ }
+ for(const [key,value] of Object.entries(incoming)){
+  const old=fields[key],numeric=value!==null&&typeof value==='object';
+  const v=numeric?value.value:value,approximate=numeric&&value.approximate;
+  const seen=numeric&&Number.isFinite(value.retainedAt)?value.retainedAt:at;
+  if(!old||old.value===null||key.endsWith('.bet')){
+   fields[key]={value:v,approximate,seen,votes:key.endsWith('.bet')?2:old?.value===v?old.votes+1:1,pending:null};
+  }else if(old.value===v&&old.approximate===approximate){
+   fields[key]={...old,seen,votes:old.votes+1,pending:null};
+  }else{
+   const pending=old.pending?.value===v&&old.pending?.approximate===approximate&&at-old.pending.at<=3000?old.pending.votes+1:1;
+   fields[key]=pending>=2?{value:v,approximate,seen,votes:pending,pending:null}:{...old,pending:{value:v,approximate,votes:pending,at}};
+  }
+ }
+ return {at,fields};
+}
+export function displayEvidenceValues(memory,now){
+ const values={},details={};
+ for(const [key,e] of Object.entries(memory?.fields||{})){
+  values[key]=e.value;
+  const age=observationAge(e.seen,now,1000);
+  details[key]={...e,ageMs:age.ageMs,state:e.pending?'disputed':!age.fresh?'last seen':e.votes<2?'provisional':'repeated'};
+ }
+ return {values,details};
+}
+// Count only positive/explicit negative participation evidence. Unknown seats
+// are reported as a range; absence of a red card back is not proof of a fold.
+export function observedOpponentRange(result,locks={}){
+ const active=new Set(['Playing','Check','Call','Raise','Bet','All-in','Big blind','Small blind','Participation evidence']);
+ const inactive=new Set(['Fold','Folded','Sat out','Left table','Empty seat']);
+ const participants=[],excluded=[],unknown=[];
+ for(const id of BET_SEATS.filter(id=>id!=='hero')){
+  const s=result?.table_observation?.seats?.[id];
+  const manual=[locks[id+'.status'],locks[id+'.participation']].filter(v=>active.has(v)||inactive.has(v));
+  const evidence=manual.length?manual:[s?.status_candidate,s?.participation_candidate,s?.card_visible_candidate===true?'Participation evidence':null,s?.turn_candidate===true?'Participation evidence':null];
+  const yes=evidence.some(v=>active.has(v)),no=evidence.some(v=>inactive.has(v));
+  (yes&&!no?participants:no&&!yes?excluded:unknown).push(id);
+ }
+ return {min:participants.length,max:participants.length+unknown.length,participants,excluded,unknown};
+}

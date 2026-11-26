@@ -115,3 +115,5 @@
 .console-page .hand-overview>.heading{padding-bottom:8px;border-bottom:1px solid var(--line)}
 .console-page .deck button.card:disabled{opacity:.52}
 .console-page .deck button.card.in-hole,.console-page .deck button.card.in-board{opacity:1}
+
+.observation-retained input { color: #e4b96b; border-color: #97794a; }

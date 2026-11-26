@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createBetMemory,updateBetMemory,correctTrackedBet,BET_SEATS,trackedBetLabel,interruptBetMemory,retainedRoundBet,observedHandCommitment} from '../live-practice.js';
+import {createBetMemory,updateBetMemory,correctTrackedBet,BET_SEATS,trackedBetLabel,interruptBetMemory,retainedRoundBet,observedHandCommitment,handContributionDisplay} from '../live-practice.js';
 const c=candidate=>({candidate});
 const r=(value,street='Preflop',options={})=>({street_candidate:street,quality:{},hole_slots:[c('As'),c('Kd')],board_slots:['2c','3h','4d','5s','6h'].map((x,i)=>i<({Preflop:0,Flop:3,Turn:4,River:5})[street]?c(x):null),table_observation:{dealer:{candidate:'hero'},seats:{hero:{bet:value===null?null:{value,approximate:!!options.approximate,ocr_confidence:options.confidence??95},stack:options.stack===undefined?null:{value:options.stack,ocr_confidence:95}}}}});
 const step=(s,v,t,street='Preflop',opts={})=>updateBetMemory(s,r(v,street,opts),{capturedAt:t,now:t+100,ocr:opts.ocr??true});
@@ -30,4 +30,26 @@ test('retained round reading remains visible after missing OCR; forward street a
  assert.deepEqual(observedHandCommitment(s,'hero'),{value:150,observedRounds:2,rounds:2,approximate:false,complete:false});
  s=step(s,null,900,'Preflop');s=step(s,null,1000,'Preflop');
  assert.equal(s.closedRounds.length,0);assert.equal(observedHandCommitment(s,'hero'),null);
+});
+
+test('zero baseline, check, repeated labels, raise and street contributions stay distinct',()=>{
+ let s=createBetMemory();
+ const hand={phase:'active'};
+ assert.equal(handContributionDisplay(s,'hero',hand).value,0);
+ assert.equal(handContributionDisplay(s,'hero',hand).initialized,true);
+ s=seed();
+ const check=(s,t,street='Preflop')=>{const f=r(null,street);f.table_observation.seats.hero.status_candidate='Check';return updateBetMemory(s,f,{capturedAt:t,now:t+1,ocr:true,hand});};
+ s=check(s,400);s=check(s,500);
+ assert.equal(s.seats.hero.value,50);
+ assert.equal(s.seats.hero.lastSeen,300);
+ assert.equal(handContributionDisplay(s,'hero',hand).value,50);
+ s=step(s,150,600);s=step(s,150,700);s=step(s,150,800);
+ assert.equal(handContributionDisplay(s,'hero',hand).value,150);
+ s=check(s,900,'Flop');s=check(s,1000,'Flop');
+ assert.equal(s.seats.hero.value,0);
+ assert.equal(handContributionDisplay(s,'hero',hand).value,150);
+ s=step(s,100,1100,'Flop');s=step(s,100,1200,'Flop');
+ s=check(s,1300,'Flop');s=check(s,1400,'Flop');
+ assert.equal(handContributionDisplay(s,'hero',hand).value,250);
+ assert.equal(handContributionDisplay(createBetMemory(),'hero',hand).value,0);
 });

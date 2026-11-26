@@ -176,7 +176,13 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false,hand=null
  for(const id of BET_SEATS){
   const e=state.seats[id],s=r?.table_observation?.seats?.[id],b=amount(s?.bet,s?.bet?.ocr_confidence??s?.bet_confidence);
   const stack=amount(s?.stack,s?.stack?.ocr_confidence??s?.stack_confidence,85);
-  if(!b){if(!hand||!e.pending||t-e.pending.last>2000)e.pending=null;e.warning=e.observed?'Missing sample; holding last value':null;continue;}
+  if(!b){
+   if(!hand||!e.pending||t-e.pending.last>2000)e.pending=null;
+   // Check is a zero increment, never a reset to zero. Do not refresh the
+   // age of a numerical reading from action text or a missing label.
+   e.warning=e.observed?(s?.status_candidate==='Check'?'Check; prior wager retained':'Missing sample; holding last value'):null;
+   continue;
+  }
   const v=b.value;
   if(v===e.value&&e.observed){e.pending=null;e.warning=null;e.lastSeen=t;if(!b.approximate)e.approximate=false;if(stack&&!stack.approximate)e.stack=stack.value;continue;}
   const p=e.pending,approximate=!!b.approximate;
@@ -448,4 +454,13 @@ export function observedCallHypothesis(previous,current,previousAt,currentAt){
  if(old?.bet&&old.bet.value>target.value)return null;
  if(BET_SEATS.some(k=>k!==id&&b.seats?.[k]?.bet?.value>target.value))return null;
  return {seat:id,value:target.value,approximate:!!target.approximate,street,at:currentAt,source:'Call hypothesis · assumes highest visible prior wager was the actual price'};
+}
+
+// The ledger starts at zero observed chips. This is an accounting baseline,
+ // not proof that a seat has not wagered before capture began.
+export function handContributionDisplay(state,id,hand){
+ const total=observedHandCommitment(state,id);
+ if(total)return {...total,initialized:false};
+ if(!BET_SEATS.includes(id)||(!state?.street&&!['active','ended'].includes(hand?.phase)))return null;
+ return {value:0,observedRounds:0,rounds:(state.closedRounds?.length||0)+(state.street?1:0),approximate:false,complete:false,initialized:true};
 }

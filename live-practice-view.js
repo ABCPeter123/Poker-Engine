@@ -1,5 +1,5 @@
 import {CurrentStateQueue} from './frame-queue.js';
-import {observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
+import {handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
 import {practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
@@ -130,6 +130,10 @@ export function attachPractice({video,screen,canRun,rotation}){
   const label=$('conditional-model-result');
   if(fresh&&turn==='hero'&&heroCardPresence(lastResult)==='visible'){
    const context='Opponents '+opponents+' · '+primary;
+   if(prompt?.value===0&&!prompt.approximate){
+    show('Your turn · Check available',context+' · No additional chips required');
+    label.textContent='Explicit CHECK or RAISE prompt detected.';
+   }
    if(prompt&&!prompt.approximate)label.textContent='Visible call price: '+prompt.value.toLocaleString('en-CA');
    if(scenario&&numeric){
     const model=practicePanelModel({street:currentCards.street??lastResult.street_candidate,pot:numeric.pot,prompt,seats:numeric.seats,equities:scenario.equities});
@@ -185,6 +189,18 @@ export function attachPractice({video,screen,canRun,rotation}){
     history.details[id+'.bet']={state:'visible candidate',approximate:!!raw.approximate,ageMs:now-lastFrame};
    }
   }
+  // Zero is the display baseline for an unobserved current round, not
+  // an exact recognized bet or a substitute for a missing numeric input.
+  if(betMemory.street&&handPresence?.phase==='active'){
+   for(const id of Object.keys(SEATS)){
+    const key=id+'.bet';
+    if(effective[key]===undefined&&!isLocked(locks,key)){
+     const held=betMemory.seats[id];
+     effective[key]=held.value;
+     history.details[key]={state:held.observed?'last observed':'initial baseline',approximate:!!held.approximate,ageMs:held.lastSeen===null?null:now-held.lastSeen};
+    }
+   }
+  }
   for(const map of [editors,inlineEditors,popupEditors])for(const [key,e] of map){
    const locked=isLocked(locks,key),v=effective[key];
    e.box.classList.toggle('manual-locked',locked);e.auto.disabled=!locked;e.lock.textContent=locked?'Update':'Lock';
@@ -203,19 +219,19 @@ export function attachPractice({video,screen,canRun,rotation}){
   $('live-dealer').textContent=show('dealer');$('live-turn').textContent=show('turn');$('live-pot').textContent=show('pot');
   $('live-stacks').textContent=Object.keys(SEATS).map(id=>SEATS[id]+': '+show(id+'.stack')).join(' · ');
   const heroBand=lastResult?.seat_evidence?.seats?.hero?.bar;
-  $('hero-ring-status').textContent='Hero light: '+(!observationAge(lastFrame,now,1000).fresh?'no fresh image':heroBand?.multicolor_band_candidate?'colored ring detected':heroBand?'not detected':'unknown')+(heroBand?' · green '+heroBand.bright_pixels.green+' px · warm '+(heroBand.bright_pixels.amber+heroBand.bright_pixels.red)+' px':'')+' · hand '+(handPresence?.phase||'waiting');
+  $('hero-ring-status').textContent='Hero light: '+(!observationAge(lastFrame,now,1000).fresh?'no fresh image':heroBand?.multicolor_band_candidate?'colored ring detected':heroBand?'not detected':'unknown')+(heroBand?' · green '+heroBand.bright_pixels.green+' px · warm '+(heroBand.bright_pixels.amber+heroBand.bright_pixels.red)+' px':'')+' · turn source '+(lastResult?.table_observation?.turn_source||'none')+' · hand '+(handPresence?.phase||'waiting');
   $('live-bet-state').textContent=betMemory.status;$('live-ocr-age').textContent=lastOcrState?.state==='failed'||lastOcrState?.state==='unavailable'?'OCR '+lastOcrState.state+': '+(lastOcrState.detail||'No reading'):direct?'Latest capture '+((now-lastFrame)/1000).toFixed(1)+' s ago'+(!age.fresh?' · awaiting round confirmation':''):'No fresh OCR sample';
   const body=$('live-table-body');body.replaceChildren();
   for(const [id,label] of Object.entries(SEATS)){
-   const n=direct?.seats?.[id]||{},row=document.createElement('tr'),held=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=observedHandCommitment(betMemory,id);if(effective.turn===id)row.className='active-observation';
-   const values=[label,effective.dealer===id?'D':'—',effective.turn===id?'Turn cue':'—',show(id+'.stack'),n.stack_reader_conflict?'Conflict: font '+(n.stack_font_candidate?.display??'?')+' / OCR '+(n.stack_raw||'?'):n.stack?.display??'?',n.bet_reader_conflict?'Conflict: font '+(n.bet_font_candidate?.display??'?')+' / OCR '+(n.bet_raw||'?'):n.bet?.display??'?',isLocked(locks,id+'.bet')?show(id+'.bet'):held?trackedBetLabel(held)+(a[id+'.bet']===undefined||betMemory.uncertain?' (last seen)':''):callHypotheses[id]?'≈'+callHypotheses[id].value.toLocaleString('en-CA')+' (call hypothesis)':'? (unobserved)',total?(total.approximate?'≈':'')+total.value.toLocaleString('en-CA')+' ('+total.observedRounds+'/'+total.rounds+' rounds observed)':'?',(n.status_candidate||actionEvidence?.seats?.[id]?.action||show(id+'.status'))+(n.status_candidate?'':actionEvidence?.seats?.[id]?' [last observed]':''),show(id+'.cards'),show(id+'.participation')+' · profile '+(observationAge(lastFrame,now,1000).fresh?lastResult?.seat_evidence?.seats?.[id]?.avatar_appearance?.candidate??'unknown':'unknown'),[n.stack_raw,n.bet_raw,n.status_raw].filter(Boolean).join(' / ')||'—'];
+   const n=direct?.seats?.[id]||{},row=document.createElement('tr'),held=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=handContributionDisplay(betMemory,id,handPresence);if(effective.turn===id)row.className='active-observation';
+   const values=[label,effective.dealer===id?'D':'—',effective.turn===id?'Turn cue':'—',show(id+'.stack'),n.stack_reader_conflict?'Conflict: font '+(n.stack_font_candidate?.display??'?')+' / OCR '+(n.stack_raw||'?'):n.stack?.display??'?',n.bet_reader_conflict?'Conflict: font '+(n.bet_font_candidate?.display??'?')+' / OCR '+(n.bet_raw||'?'):n.bet?.display??'?',isLocked(locks,id+'.bet')?show(id+'.bet'):held?trackedBetLabel(held)+(a[id+'.bet']===undefined||betMemory.uncertain?' (last seen)':''):callHypotheses[id]?'≈'+callHypotheses[id].value.toLocaleString('en-CA')+' (call hypothesis)':betMemory.street?'0 (initial, unobserved)':'? (unobserved)',total?(total.approximate?'≈':'')+total.value.toLocaleString('en-CA')+' ('+total.observedRounds+'/'+total.rounds+' rounds observed)':'?',(n.status_candidate||actionEvidence?.seats?.[id]?.action||show(id+'.status'))+(n.status_candidate?'':actionEvidence?.seats?.[id]?' [last observed]':''),show(id+'.cards'),show(id+'.participation')+' · profile '+(observationAge(lastFrame,now,1000).fresh?lastResult?.seat_evidence?.seats?.[id]?.avatar_appearance?.candidate??'unknown':'unknown'),[n.stack_raw,n.bet_raw,n.status_raw].filter(Boolean).join(' / ')||'—'];
    values.forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i===6)td.title=isLocked(locks,id+'.bet')?'Manual lock':betMemory.seats[id].warning||betMemory.seats[id].source;row.append(td);});body.append(row);
   }
   const cardLabel=key=>{const v=effective[key];return (v===null?'·':v??'?')+(isLocked(locks,key)?' [L]':history.details[key]&&history.details[key].state!=='repeated'?'*':'');};
   $('manual-effective-cards').textContent=CARD_KEYS.slice(0,2).map(cardLabel).join(' ')+' | '+CARD_KEYS.slice(2).map(cardLabel).join(' ');
   $('live-cards').textContent=$('manual-effective-cards').textContent;
   $('live-street').textContent=show('street');
-  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=observedHandCommitment(betMemory,id);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?'TURN · ':'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');const raw=direct?.seats?.[id]?.bet;const conflict=direct?.seats?.[id]?.bet_reader_conflict;if(conflict)n.note.textContent+=' · wager readers disagree';else if(raw&&(!retained||raw.value!==retained.value))n.note.textContent+=' · visible B '+raw.display;else if(callHypotheses[id]&&!raw)n.note.textContent+=' · inferred call ~'+callHypotheses[id].value.toLocaleString('en-CA');n.total.textContent=total?'Hand total observed: '+(total.approximate?'≈':'')+total.value.toLocaleString('en-CA'):'Hand total: ?';}
+  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=handContributionDisplay(betMemory,id,handPresence);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?'TURN · ':'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');const raw=direct?.seats?.[id]?.bet;const conflict=direct?.seats?.[id]?.bet_reader_conflict;if(conflict)n.note.textContent+=' · wager readers disagree';else if(raw&&(!retained||raw.value!==retained.value))n.note.textContent+=' · visible B '+raw.display;else if(callHypotheses[id]&&!raw)n.note.textContent+=' · inferred call ~'+callHypotheses[id].value.toLocaleString('en-CA');n.total.textContent=total?'Hand total observed: '+(total.approximate?'≈':'')+total.value.toLocaleString('en-CA')+(total.initialized?' (initial)':''):'Hand total: ?';}
   paintDecision();
  }
  function render(result,ocr,ocrStatus,capturedAt){

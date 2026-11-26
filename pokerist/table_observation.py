@@ -85,10 +85,23 @@ def call_prompt(text,confidence,parse):
     # The central CALL ... or RAISE prompt is distinct from pre-action
     # checkboxes. Do not infer a price from a bare "Call" label.
     if not np.isfinite(confidence) or confidence<75:return None
+    if re.fullmatch(r"\s*CHECK\s+OR\s+RAISE\s*",text.upper()):
+        return {**parse("0"),"source":"explicit check prompt"}
     m=re.fullmatch(r"\s*CALL\s*[^A-Z0-9]*\s*([0-9][0-9 ,.]*[KM]?)\s+OR\s+RAISE\s*",text.upper())
     if not m:return None
     c=parse(m.group(1).strip())
     return c if c and not c.get("approximate") else None
+
+def action_prompt_panel(image):
+    # The central blue prompt has two long pale horizontal borders.
+    # Excludes the narrow hand-strength banner and ordinary felt.
+    a=np.asarray(image.crop((630,382,907,424)),dtype=np.int16)
+    r,g,b=np.moveaxis(a,-1,0)
+    pale=(a.min(2)>105)&(a.max(2)-a.min(2)<65)
+    blue=(b>r+35)&(b>g+10)&(r<75)&(g<130)
+    return bool(pale[:10].sum(1).max()>=200 and
+                pale[-10:].sum(1).max()>=200 and
+                blue[9:-9,10:-10].mean()>.35)
 
 def read_call_prompt(image,exe,number_text,cache=None):
     key="hero_call_prompt"
@@ -102,6 +115,17 @@ def read_call_prompt(image,exe,number_text,cache=None):
 def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
     labels,error=scan_labels(image,exe,number_text,cache=cache)
     dealer=dealer_marker(image,cache=cache)
+    ring=cues.get("active_band_candidate")
+    visible_hero=any(c is not None for c in hole)
+    panel=visible_hero and action_prompt_panel(image)
+    # A complete explicit prompt can corroborate a missing ring, but cannot
+    # override another seat's ring or a simultaneous ring conflict.
+    prompt=read_call_prompt(image,exe,number_text,cache) if exe and panel and ring in (None,"hero") and not cues.get("active_band_conflict") else None
+    turn=ring
+    source="ring" if ring else None
+    if visible_hero and prompt and prompt.get("candidate") is not None and turn is None:
+        turn="hero"
+        source="explicit action prompt"
     seats={}
     for seat in SEAT_ORDER:
         bet=labels.get((seat,"bet"),{})
@@ -123,11 +147,10 @@ def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
             "stack_text_bounds":numbers.get(seat,{}).get("text_bounds"),
             "status_candidate":action,"status_raw":status.get("raw",""),
             "card_visible_candidate":True if visible else None,
-            "turn_candidate":cues.get("active_band_candidate")==seat,
+            "turn_candidate":turn==seat,
             "dealer_candidate":dealer["candidate"]==seat,
-            "participation_candidate":participation_label(action,visible,cues.get("active_band_candidate")==seat),
+            "participation_candidate":participation_label(action,visible,turn==seat),
             "verified":False}
-    prompt=read_call_prompt(image,exe,number_text,cache) if exe and cues.get("active_band_candidate")=="hero" and any(c is not None for c in hole) else None
-    return {"dealer":dealer,"turn_candidate":cues.get("active_band_candidate"),"hero_call_prompt":prompt,
+    return {"dealer":dealer,"turn_candidate":turn,"turn_source":source,"hero_call_prompt":prompt,"hero_prompt_panel":panel,
             "seats":seats,"ocr_sampled":bool(exe),"ocr_warning":error,
             "note":"Displayed bets are candidates, not total committed chips. Missing cards or labels do not establish folds or departures."}

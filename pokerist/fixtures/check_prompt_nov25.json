@@ -1,0 +1,49 @@
+{
+  "file": "IMG_0447.jpeg",
+  "sha256": "f0dc9830bc60f5c311df23cb707230d2df6bece3d0d50571fc25b469e5dc569d",
+  "size": [
+    1536,
+    709
+  ],
+  "hero": [
+    "5s",
+    "Th"
+  ],
+  "board": [
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "turn": "hero",
+  "prompt": "CHECK or RAISE",
+  "callPrice": 0,
+  "centralPot": null,
+  "seats": {
+    "hero": {
+      "stack": 19950,
+      "bet": 50
+    },
+    "left": {
+      "stack": 1600,
+      "bet": 50,
+      "action": "Big blind"
+    },
+    "upper_left": {
+      "stack": 18850,
+      "bet": 50,
+      "action": "Call"
+    },
+    "upper_right": {
+      "stack": 1950,
+      "bet": 50,
+      "action": "Call"
+    },
+    "right": {
+      "stack": 2600,
+      "bet": 50,
+      "action": "Call"
+    }
+  }
+}

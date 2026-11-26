@@ -68,6 +68,8 @@ RANKS.update({"5_gold_red":"1f8,00c,014,016,036,3fe,ffe,f1e,b80,b80,b80,b8e,f0e,
 SUITS.update({"d_gold":"040,078,0f8,178,1fc,3fe,7fe,fff,fff,7fe,3fe,1fc,1f8,0f8,070,060","s_gold":"040,0e0,0f8,1fe,1fe,3fe,7fe,7ff,fff,fff,7ff,7ff,7fc,100,018,018"})
 # Additional rank masks extracted from saved 6 and 10 corners at native and reduced resolutions.
 RANKS.update({"6_nov25_424_1536":"1f8,7fe,f8f,f0f,00f,0ef,7ff,fdf,f0f,f0f,70f,70f,f0f,f9f,7fe,1f8","6_nov25_424_960":"0fc,7fc,f0e,f1e,00e,0fe,3fe,ffe,f1e,f0e,f1f,f1e,f0e,f9e,7fc,1f8","6_nov25_424_720":"0f4,3fe,7de,70f,007,0d7,3ff,7de,71f,f0f,f07,f07,70f,7be,3fe,0f0","T_nov25_424_1536":"384,7cc,ecf,ccf,cec,cec,cec,cec,cec,cec,cec,cec,ccc,ecc,7cc,300","T_nov25_424_960":"300,7cc,ecf,ccf,ccc,ccc,c6c,c6c,c6c,ccc,ccc,ccc,ccc,ecc,7cc,384","T_nov25_424_720":"384,7cc,eef,e6e,c4c,c4c,c4c,c4c,c4c,c4c,c4c,c4c,e6c,eec,7cc,380","T_nov25_433_1536":"7e0,662,c33,c33,c33,c33,c33,c33,c33,c33,c33,c33,c33,e73,7e3,3c3","T_nov25_433_720":"7e0,e62,c33,c33,c33,c33,c33,c33,c33,c33,c33,c33,c33,e73,7e3,3c1"})
+# Calibrated normal board-corner 3 and 9 masks from IMG_0439 and IMG_0427.
+RANKS.update({"3_nov25_439_1536":"3fc,79e,e0e,e06,e00,f00,780,3f0,780,f00,e00,e07,e07,f07,7fe,3fc","3_nov25_439_720":"1f8,7fe,f0e,e06,e00,f00,780,3f0,780,f00,e00,e02,e07,f07,7fe,3fc","9_nov25_427_1536":"0f0,7fe,79e,f0e,e0e,e07,e0f,f1e,7fe,ffc,f00,f06,f0e,79e,3fc,0f0","9_nov25_427_720":"1f8,7fe,79f,b9f,b9d,e9d,e9d,f1f,bfe,ffc,e80,a86,a9e,70e,7fe,1f8"})
 BOARD = [
     ((552,244,575,281),(550,282,576,309),(548,242,628,353)),
     ((642,244,666,281),(641,282,668,310),(638,242,719,353)),

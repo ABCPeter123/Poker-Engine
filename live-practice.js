@@ -374,7 +374,7 @@ export function displayEvidenceValues(memory,now){
 }
 // Count only positive/explicit negative participation evidence. Unknown seats
 // are reported as a range; absence of a red card back is not proof of a fold.
-export function observedOpponentRange(result,locks={}){
+export function observedOpponentRange(result,locks={},actions=null){
  const active=new Set(['Playing','Check','Call','Raise','Bet','All-in','Big blind','Small blind','Ante','Participation evidence']);
  const inactive=new Set(['Fold','Folded','Sat out','Left table','Empty seat']);
  const participants=[],excluded=[],unknown=[];
@@ -383,6 +383,10 @@ export function observedOpponentRange(result,locks={}){
   const manual=[locks[id+'.status'],locks[id+'.participation']].filter(v=>active.has(v)||inactive.has(v));
   const evidence=manual.length?manual:[s?.status_candidate,s?.participation_candidate,s?.card_visible_candidate===true?'Participation evidence':null,s?.turn_candidate===true?'Participation evidence':null];
   let yes=evidence.some(v=>active.has(v)),no=evidence.some(v=>inactive.has(v));
+  // An explicit accepted fold is terminal for the observed hand, unlike
+  // a missing label or a dimmed avatar.
+  if(!manual.length&&actions?.seats?.[id]?.action==='Fold'){excluded.push(id);continue;}
+  if(!manual.length&&s?.status_candidate==='Fold'&&!s.status_reader_conflict){excluded.push(id);continue;}
   if(!manual.length){
    const appearance=result?.seat_evidence?.seats?.[id]?.avatar_appearance?.candidate;
    // A colored avatar alone is not proof of participation: a newly joined
@@ -397,8 +401,8 @@ export function observedOpponentRange(result,locks={}){
 
 // Read-only field inventory: no assumed pot convention, missing bets are not
 // zero, and retained readings remain explicitly historical.
-export function observationSummary(result,locks,memory,now,fresh,numericFresh){
- const range=observedOpponentRange(fresh?result:null,locks);
+export function observationSummary(result,locks,memory,now,fresh,numericFresh,actions=null){
+ const range=observedOpponentRange(fresh?result:null,locks,actions);
  const history=displayEvidenceValues(memory,now);
  const choose=(key,raw)=>{
   if(Object.hasOwn(locks,key))return {value:locks[key],source:'manual'};

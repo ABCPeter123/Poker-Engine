@@ -8,6 +8,7 @@ from PIL import Image
 from numpy.lib.stride_tricks import sliding_window_view
 from adaptive_labels import scan_regions, select_amount, text_lines
 from calibrated_amounts import BET_KEYS, candidate as font_amount, combine as combine_amount
+from action_word import right_action
 
 SEAT_ORDER=("hero","left","upper_left","upper_right","right")
 # Normalized 1536x709 coordinates. Other seats/layouts are not calibrated.
@@ -130,6 +131,14 @@ def scan_labels(image,exe,number_text,cache=None):
                     "candidate":None if conflict else other["candidate"],"confidence":other["confidence"],
                     "source":"alternate color mask" if other["candidate"] and not conflict else None}
             # A failed optional scan should not discard accepted primary reads.
+    # Calibrated right-seat word fallback: do not replace a valid OCR
+    # reading or resolve disagreement between explicit action labels.
+    if exe:
+        primary=data[("right","status")]
+        if not primary["candidate"] and not primary["conflict"]:
+            word=right_action(image,REGIONS["right"]["status"])
+            if word and all(label==word["candidate"] for label in primary["plausible"]):
+                data[("right","status")]={**primary,**word}
     return data,error
 
 def participation_label(action,visible,turn=False):

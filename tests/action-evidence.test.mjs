@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {updateActionEvidence,heroCardPresence,updateHeroWagerEvidence} from '../live-practice.js';
+import {updateActionEvidence,heroCardPresence,updateHeroWagerEvidence,observedOpponentRange} from '../live-practice.js';
 const frame=(action,holes=[{candidate:'As'},{candidate:'Kd'}])=>({hole_slots:holes,table_observation:{seats:{left:{status_candidate:action}}}});
 const active={phase:'active'};
 test('repeated action labels persist without becoming new wager events',()=>{
@@ -42,4 +42,15 @@ test('hero accepted wager delta is retained independently of action text',()=>{
  assert.equal(updateHeroWagerEvidence(x,b,b,active,300),x);
  assert.equal(updateHeroWagerEvidence(x,b,{...state(900,400),generation:2},active,400),x);
  assert.equal(updateHeroWagerEvidence(x,b,b,{...active,started:true},500),null);
+});
+
+test('explicit right-seat fold persists despite later missing labels or lingering card-back cue',()=>{
+ const r={hole_slots:[{candidate:'8d'},{candidate:'6s'}],table_observation:{seats:{right:{status_candidate:'Fold',card_visible_candidate:true},upper_right:{status_candidate:'Raise'}}}};
+ const a=updateActionEvidence(null,r,active,'Preflop',100);
+ assert.ok(observedOpponentRange(r,{},a).excluded.includes('right'));
+ const later={...r,table_observation:{seats:{right:{card_visible_candidate:true},upper_right:{status_candidate:'Raise'}}}};
+ assert.ok(observedOpponentRange(later,{},a).excluded.includes('right'));
+ assert.ok(observedOpponentRange(later,{'right.status':'Playing'},a).participants.includes('right'));
+ const next=updateActionEvidence(a,later,{phase:'active',started:true},'Preflop',200);
+ assert.ok(observedOpponentRange(later,{},next).participants.includes('right'));
 });

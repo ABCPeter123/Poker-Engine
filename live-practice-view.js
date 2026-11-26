@@ -21,7 +21,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  function evaluate(candidate){
   if(!active||!canRun()||!$('practice-consent').checked||!candidate){clearEquity();metric('Cards incomplete');return;}
   const {count:selected}=practiceOpponentCount($('live-opponents').value,locks);
-  const range=observedOpponentRange(observationAge(lastFrame,performance.now(),1000).fresh?lastResult:null,locks);
+  const range=observedOpponentRange(observationAge(lastFrame,performance.now(),1000).fresh?lastResult:null,locks,actionEvidence);
   const counts=observationScenarioCounts(selected,range);
   if(simulationDeck!==candidate.key){clearEquity();simulationDeck=candidate.key;}
   if(!counts.length){requestedKey='';scenarioResults=null;equityResult=null;simulationState='no opponents';metric('No opposing seats in observation');return;}
@@ -138,7 +138,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   const now=performance.now(),fresh=observationAge(lastFrame,now,1000).fresh;
   const direct=directNumericSnapshot(lastResult,lastOcrState?.state,lastFrame,now);
   const numeric=withRetainedRoundWagers(direct,betMemory,handPresence,lastResult?.street_candidate);
-  const summary=observationSummary(lastResult,locks,displayMemory,now,fresh,!!numeric);
+  const summary=observationSummary(lastResult,locks,displayMemory,now,fresh,!!numeric,actionEvidence);
   const r=summary.range,opponents=r.min===r.max?String(r.min):r.min+'–'+r.max;
   const pot=summary.pot?summary.pot.value.toLocaleString('en-CA')+' ('+summary.pot.source+')':'unknown';
   const turn=lastResult?.table_observation?.turn_candidate;
@@ -272,7 +272,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   $('snapshot-coverage').textContent='Field availability: '+(coverage.total-coverage.counts.unknown)+' / '+coverage.total+' · '+coverage.counts.manual+' manual · '+coverage.counts.candidate+' candidates · '+coverage.counts.approximate+' approximate · '+coverage.counts.unknown+' unknown. Not an accuracy score.';
   $('snapshot-reconciliation').textContent=!observationAge(lastFrame,now,1000).fresh?'Stack/pot reconciliation: no fresh snapshot':conservation?.status==='unavailable'||!conservation?'Stack/pot reconciliation: '+(conservation?.reason||'waiting for adjacent snapshots'):'Stack/pot reconciliation: '+conservation.status+' · '+Object.entries(conservation.seats).filter(([,s])=>s.status==='conflict'||s.status==='hypothesis').map(([id,s])=>SEATS[id]+': '+s.status+' '+s.implied).join(' · ');
   const show=key=>displayValue(key,effective[key])+(isLocked(locks,key)?' [locked]':history.details[key]&&history.details[key].state!=='repeated'?' ['+history.details[key].state+']':'');
-  const range=observedOpponentRange(observationAge(lastFrame,now,1000).fresh?lastResult:null,locks);
+  const range=observedOpponentRange(observationAge(lastFrame,now,1000).fresh?lastResult:null,locks,actionEvidence);
   $('observed-opponents').textContent='Observed opponents: '+(range.min===range.max?range.min:range.min+'–'+range.max)+' · '+range.unknown.length+' unresolved seats. Blue-grey profiles and empty chairs are excluded unless other evidence conflicts; blue default avatars remain unresolved without card or action evidence.';
   $('live-dealer').textContent=show('dealer');$('live-turn').textContent=show('turn');$('live-pot').textContent=show('pot');
   $('live-stacks').textContent=Object.keys(SEATS).map(id=>SEATS[id]+': '+show(id+'.stack')).join(' · ');

@@ -8,6 +8,8 @@ from amount_text import number_text
 from amount_glyph_library import decode_library
 from automatic_glyph_audit import GlyphBank
 from glyph_audit import feature
+from offline_ocr_fallback import amount_fallback
+from ocr_runtime import resolve_tesseract
 
 SIZE=(1536,709)
 STACKS={'hero':(725,600),'left':(347,469),'upper_left':(557,172),'upper_right':(975,172),'right':(1191,469)}
@@ -84,22 +86,28 @@ def read_image(root,file,hashes):
         if im.size!=SIZE:raise ValueError("Unsupported image dimensions: "+file)
         return np.asarray(im.convert("RGB"))
 
-def evaluate(root,manifest,bank):
+def evaluate(root,manifest,bank,*,fallback=False):
     results=[];images={}
+    exe=resolve_tesseract()[0] if fallback else None
     for item in manifest["lines"]:
         name=item["name"];name="bet_ul" if name=="showdown_payout_ul" else name
         if item["file"] not in images:images[item["file"]]=read_image(root,item["file"],manifest.get("image_sha256",{}))
         t=time.perf_counter();v,b=read_amount(images[item["file"]],name,bank)
+        baseline=v
+        if v is None and b is not None and exe:
+            x,y,X,Y=b
+            v=amount_fallback(Image.fromarray(images[item["file"]][y:Y,x:X]),exe)
         truth=item["label"]
         status=("absent_correct" if v is None else "false_positive") if truth is None else "unknown" if v is None else "correct" if v==truth else "incorrect"
-        results.append({**item,"predicted":v,"automatic_box":b,"status":status,"ms":round((time.perf_counter()-t)*1000,3)})
+        results.append({**item,"predicted":v,"baseline":baseline,"automatic_box":b,"status":status,"ms":round((time.perf_counter()-t)*1000,3)})
     return {"scope":"Offline automatic text localization; labelled fields only, not complete-table or live accuracy",
+            "fallback_enabled":fallback,"ocr_available":bool(exe),
             "scores":dict(Counter(x["status"] for x in results)),
             "median_ms":statistics.median(x["ms"] for x in results),"details":results}
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument("images",type=Path);p.add_argument("--model",type=Path,required=True);p.add_argument("--manifest",type=Path,required=True);p.add_argument("--output",type=Path,default=Path("automatic-font-report.json"));a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument("images",type=Path);p.add_argument("--model",type=Path,required=True);p.add_argument("--manifest",type=Path,required=True);p.add_argument("--output",type=Path,default=Path("automatic-font-report.json"));p.add_argument("--fallback",action="store_true");a=p.parse_args()
     model=json.loads(a.model.read_text(encoding="utf-8"));bank=GlyphBank(decode_library(model))
-    report=evaluate(a.images,json.loads(a.manifest.read_text(encoding="utf-8")),bank)
+    report=evaluate(a.images,json.loads(a.manifest.read_text(encoding="utf-8")),bank,fallback=a.fallback)
     a.output.write_text(json.dumps(report,indent=2),encoding="utf-8");print(json.dumps({k:v for k,v in report.items() if k!="details"},indent=2))
 if __name__=="__main__":main()

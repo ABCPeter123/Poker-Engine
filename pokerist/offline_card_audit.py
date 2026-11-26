@@ -5,6 +5,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from offline_font_review import read_image
+from offline_ocr_fallback import board_rank_fallback
+from review import RANKS, SUITS, match
+from ocr_runtime import resolve_tesseract
 
 BOARD_X=(547,637,726,815,905)
 
@@ -102,10 +105,19 @@ def nearest(q,bank):
     if len(ordered)<2 or ordered[0][0]>.15 or ordered[1][0]-ordered[0][0]<.025:return None
     return ordered[0][1]
 
-def audit(root,manifest):
-    samples=[]
+def legacy_candidate(q,kind):
+    if q is None:return None
+    mask=np.asarray(Image.fromarray(np.uint8(q[0]*255)).resize((12,16)))>=128
+    label,_=match(mask,RANKS if kind=='rank' else SUITS,.18 if kind=='rank' else .25)
+    if kind=='rank' and label=='8' and enclosed_loops(q)!=2:return None
+    return label
+
+def audit(root,manifest,*,fallback=False):
+    samples=[];images={}
+    exe=resolve_tesseract()[0] if fallback else None
     for row in manifest["frames"]:
         a=read_image(root,row["file"],manifest.get("image_sha256",{}))
+        if fallback:images[row["file"]]=Image.fromarray(a)
         for i,label in enumerate(row["board"]):
             samples.append((row["group"],row["file"],"board",i,label,board_features(a,i)))
         if "hero" in row:
@@ -117,18 +129,31 @@ def audit(root,manifest):
         others=[(c,v) for g,_,_,_,c,v in samples if g!=group and c and v]
         banks=[[(c[j],v[j]) for c,v in others] for j in (0,1)]
         rank,suit=(rank_candidate(f[0],banks[0]),nearest(f[1],banks[1])) if f else (None,None)
+        baseline=rank+suit if rank and suit else None
+        sources={"rank":"held-out glyph" if rank else None,"suit":"held-out glyph" if suit else None}
+        if fallback and f:
+            if rank is None:
+                rank=legacy_candidate(f[0],"rank")
+                if rank:sources["rank"]="legacy template"
+            if suit is None:
+                suit=legacy_candidate(f[1],"suit")
+                if suit:sources["suit"]="legacy template"
+            if rank is None and kind=="board":
+                rank=board_rank_fallback(images[file],BOARD_X[i],exe)
+                if rank=="8" and enclosed_loops(f[0])!=2:rank=None
+                if rank:sources["rank"]="line OCR fallback"
         candidate=rank+suit if rank and suit else None
         status=("absent_correct" if f is None else "false_presence") if label is None else "unknown" if not candidate else "correct" if label==candidate else "incorrect"
-        rows.append({"group":group,"file":file,"kind":kind,"slot":i,"expected":label,"rank":rank,"suit":suit,"candidate":candidate,"status":status})
+        rows.append({"group":group,"file":file,"kind":kind,"slot":i,"expected":label,"rank":rank,"suit":suit,"candidate":candidate,"baseline":baseline,"sources":sources,"status":status})
     def stats(subset):
         return {"scores":dict(Counter(r["status"] for r in subset)),
                 "rank_correct":sum(r["expected"] is not None and r["rank"]==r["expected"][0] for r in subset),
                 "suit_correct":sum(r["expected"] is not None and r["suit"]==r["expected"][1] for r in subset),
                 "present_cards":sum(r["expected"] is not None for r in subset)}
     return {"scope":"Saved-image held-hand-out board and calibrated hero position audit; geometry and loop veto developed on these images, not independent full-screen or live validation",
-            **stats(rows),"by_kind":{k:stats([r for r in rows if r["kind"]==k]) for k in ("board","hero")},
+            "fallback_enabled":fallback,"ocr_available":bool(exe),**stats(rows),"by_kind":{k:stats([r for r in rows if r["kind"]==k]) for k in ("board","hero")},
             "details":rows}
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument("images",type=Path);p.add_argument("manifest",type=Path);p.add_argument("--output",type=Path,default=Path("offline-card-report.json"));a=p.parse_args();r=audit(a.images,json.loads(a.manifest.read_text(encoding="utf-8")));a.output.write_text(json.dumps(r,indent=2),encoding="utf-8");print(json.dumps({k:v for k,v in r.items() if k!="details"},indent=2))
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument("images",type=Path);p.add_argument("manifest",type=Path);p.add_argument("--output",type=Path,default=Path("offline-card-report.json"));p.add_argument("--fallback",action="store_true");a=p.parse_args();r=audit(a.images,json.loads(a.manifest.read_text(encoding="utf-8")),fallback=a.fallback);a.output.write_text(json.dumps(r,indent=2),encoding="utf-8");print(json.dumps({k:v for k,v in r.items() if k!="details"},indent=2))
 if __name__=="__main__":main()

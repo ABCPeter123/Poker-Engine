@@ -1,5 +1,5 @@
 import {CurrentStateQueue} from './frame-queue.js';
-import {handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
+import {updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
 import {practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
@@ -8,12 +8,12 @@ export function attachPractice({video,screen,canRun,rotation}){
  let locks=loadManual({getItem:key=>localStorage.getItem(key)}),lastOcrAt=null,lastTable=null,cardMemory=null,betMemory=createBetMemory();
  let active=false,session='',epoch=0,timer=null,controller=null,equityWorker=null,reading=null,requestedKey='',lastFrame=null,resetAt=-1,lastResult=null;
  const editors=new Map(),inlineEditors=new Map(),popupEditors=new Map(),seatNodes=new Map();
- let scenarioResults=null,equityResult=null,decisionTimer=null,ocrBackend='unknown',lastTimings=null,lastOcrState=null,previousSnapshot=null,conservation=null,frameQueue=null,frameCallback=null,draining=false,lastPaintAt=-Infinity,displayMemory=null,handPresence=null,actionEvidence=null,callHypotheses={},autoPaused=false;
+ let scenarioResults=null,equityResult=null,decisionTimer=null,ocrBackend='unknown',lastTimings=null,lastOcrState=null,previousSnapshot=null,conservation=null,frameQueue=null,frameCallback=null,draining=false,lastPaintAt=-Infinity,displayMemory=null,handPresence=null,actionEvidence=null,callHypotheses={},turnMemory=null,autoPaused=false;
  const preferenceKey='pokerist.practice-auto-start.v1';
  try{$('practice-consent').checked=localStorage.getItem(preferenceKey)!=='off';}catch{$('practice-consent').checked=true;}
  const status=msg=>$('live-status').textContent=msg, metric=msg=>{$('live-equity').textContent=msg;$('simulation-observation-status').textContent='Practice simulation: '+msg;};
  function clearEquity(){scenarioResults=null;equityResult=null;if(equityWorker){equityWorker.terminate();equityWorker=null;}requestedKey='';metric('—');}
- function clearAuto(){callHypotheses={};actionEvidence=null;handPresence=null;displayMemory=null;lastOcrState=null;lastTimings=null;previousSnapshot=null;conservation=null;lastResult=null;lastOcrAt=null;lastTable=null;cardMemory=null;reading=null;lastFrame=null;clearEquity();}
+ function clearAuto(){turnMemory=null;callHypotheses={};actionEvidence=null;handPresence=null;displayMemory=null;lastOcrState=null;lastTimings=null;previousSnapshot=null;conservation=null;lastResult=null;lastOcrAt=null;lastTable=null;cardMemory=null;reading=null;lastFrame=null;clearEquity();}
  function save(){const ok=saveManual({setItem:(key,value)=>localStorage.setItem(key,value)},locks);$('manual-lock-count').textContent=Object.keys(locks).length+' locked'+(ok?' · saved locally':' · browser storage unavailable');}
  function stop(){closePopup();clearInterval(decisionTimer);decisionTimer=null;betMemory=createBetMemory();clearAuto();active=false;epoch++;clearTimeout(timer);timer=null;if(frameCallback!==null)video.cancelVideoFrameCallback?.(frameCallback);frameCallback=null;frameQueue=null;draining=false;controller?.abort();controller=null;$('live-overlay').hidden=true;$('live-start').disabled=!canRun()||!$('practice-consent').checked;$('live-stop').disabled=true;status('Recognition stopped. Manual locks retained.');paint();}
  function refresh(){panel.hidden=false;if(!canRun()&&active)stop();$('live-start').disabled=active||!canRun()||!$('practice-consent').checked;$('screen-seat-layer').hidden=!canRun();$('screen-decision').hidden=!canRun();if(!canRun())closePopup();paintDecision();if(canRun()&&!active&&!autoPaused&&$('practice-consent').checked)void startRecognition();}
@@ -98,17 +98,18 @@ export function attachPractice({video,screen,canRun,rotation}){
  $('screen-edit-table').onclick=()=>openPopup('table');
  $('screen-new-hand').onclick=()=>$('manual-new-hand').click();
  $('practice-action-confirm').onchange=()=>paintDecision();
+ function currentDeck(now){return conditionalDeck(effectiveCards(lastResult,locks),cardMemory,handPresence,betMemory.street,now,reading?.stable);}
  function refreshCandidate(sample){
   if(!active)return;
   if(heroCardPresence(lastResult)==='absent'){reading=null;clearEquity();metric('Not playing · no hole cards visible');return;}
   const now=performance.now(),complete=CARD_KEYS.every(key=>isLocked(locks,key));
   const fresh=observationAge(lastFrame,now,1000).fresh;
-  const candidate=complete||fresh?candidateCards(effectiveCards(lastResult,locks)):null;
+  const candidate=complete||fresh?currentDeck(now):null;
   if(complete&&candidate)reading={key:candidate.key,count:2,stable:candidate,last:now};
   else if(sample)reading=stableReading(reading,candidate,lastFrame??now);
   else if(!candidate||reading?.key!==candidate.key)reading=null;
   if(!reading?.stable){clearEquity();metric('Cards incomplete');}else evaluate(reading.stable);
-  $('live-confidence').textContent=complete?'Manually locked deck':reading?.stable?'Repeated effective reading':cardMemory?.carried.length?'Cached cards are display only':'Cards incomplete';
+  $('live-confidence').textContent=complete?'Manually locked deck':reading?.stable?(candidate?.retained?.length?'Conditional equity · retained card evidence':'Repeated effective reading'):'Cards incomplete';
  }
  function paintDecision(){
   const show=(message,description='')=>{for(const id of ['live-action','decision-status-text']){const el=$(id);if(el.textContent!==message)el.textContent=message;}for(const id of ['live-action-detail','decision-status-detail']){const el=$(id);if(el.textContent!==description)el.textContent=description;}};
@@ -122,14 +123,15 @@ export function attachPractice({video,screen,canRun,rotation}){
   const r=summary.range,opponents=r.min===r.max?String(r.min):r.min+'–'+r.max;
   const pot=summary.pot?summary.pot.value.toLocaleString('en-CA')+' ('+summary.pot.source+')':'unknown';
   const turn=lastResult?.table_observation?.turn_candidate;
+  const displayedTurn=turn??turnMemory?.seat;
   if(fresh&&heroCardPresence(lastResult)==='absent'){show('Not playing · no hole cards visible','Table observations remain available.');$('optional-model-result').textContent='';return;}
   const wager=summary.visibleWagers;
   const wagerText=wager?(wager.approximate?'≈':'')+wager.value.toLocaleString('en-CA')+' ('+wager.count+'/5 seats)':'unavailable';
   const primary=summary.pot?'Pot '+pot:wager?'Visible wagers '+wagerText:'Pot label unavailable';
   const extra=summary.pot?' · Visible wagers '+wagerText:wager?' · Collected pot label unavailable':'';
-  show('Opponents '+opponents+' · '+primary,'Stacks '+summary.stackCount+'/5 · Wagers '+summary.betCount+'/5 · '+(fresh&&turn?'Turn cue: '+SEATS[turn]:fresh?'No unique turn cue':'Last observed values; snapshot stale')+extra);
+  show('Opponents '+opponents+' · '+primary,'Stacks '+summary.stackCount+'/5 · Wagers '+summary.betCount+'/5 · '+(fresh&&turn?'Turn cue: '+SEATS[turn]:displayedTurn?'Last turn: '+SEATS[displayedTurn]:'No unique turn cue')+extra);
   const prompt=numeric&&lastResult?.table_observation?.hero_call_prompt?.candidate;
-  const currentCards=fresh?candidateCards(effectiveCards(lastResult,locks)):null;
+  const currentCards=fresh?currentDeck(now):null;
   const scenario=reading?.stable&&currentCards&&scenarioResults?.cardKey===currentCards.key&&scenarioResults.key===requestedKey?scenarioResults:null;
   const label=$('conditional-model-result');
   if(fresh&&turn==='hero'&&heroCardPresence(lastResult)==='visible'){
@@ -145,7 +147,7 @@ export function attachPractice({video,screen,canRun,rotation}){
      const recommendation=practiceHeadline(model);
      const headline=recommendation.action==='Call'?'Call '+model.call.toLocaleString('en-CA'):recommendation.action;
      show('Conditional: '+headline,context+' · Break-even '+(model.odds*100).toFixed(1)+'%');
-     label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+' · assumes eligible pot, no side pots and random opponent hands.';
+     label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'');
     }else label.textContent+=(label.textContent?' · ':'')+model.reason;
    }else if(!scenario)label.textContent+=(label.textContent?' · ':'')+'Waiting for current card equity';
   }
@@ -153,7 +155,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   // independent observation summary or asks for missing data.
   const action=$('optional-model-result');
   action.textContent='';
-  if(!$('practice-action-confirm').checked||!fresh)return;
+  if(!$('practice-action-confirm').checked||!fresh||turn!=='hero')return;
   const a=resolveManual(autoValues(),locks),exact=new Set(Object.keys(locks));
   if(observationAge(lastOcrAt,now,1000).fresh){
    if(lastTable?.pot&&!lastTable.pot.approximate)exact.add('pot');
@@ -168,7 +170,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  }
  function autoValues(){
   const now=performance.now(),result=observationAge(lastFrame,now,1000).fresh?lastResult:null,obs=result?.table_observation,age=observationAge(lastOcrAt,now,1000),num=age.fresh?lastTable:null;
-  const a={street:result?.street_candidate??(result?cardMemory?.displayStreet:undefined),pot:num?.pot?.value,dealer:obs?.dealer?.candidate??undefined,turn:obs?.turn_candidate??undefined};
+  const a={street:result?.street_candidate??(result?cardMemory?.displayStreet:undefined),pot:num?.pot?.value,dealer:obs?.dealer?.candidate??undefined,turn:obs?.turn_candidate??turnMemory?.seat??undefined};
   const groups=[result&&(cardMemory?.displayHole||result.hole_slots),result&&(cardMemory?.displayBoard||result.board_slots)];
   CARD_KEYS.forEach((key,i)=>{const slot=i<2?groups[0]?.[i]:groups[1]?.[i-2];a[key]=slot===null?null:slot?.candidate??undefined;});
   for(const id of Object.keys(SEATS)){
@@ -236,7 +238,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   $('manual-effective-cards').textContent=CARD_KEYS.slice(0,2).map(cardLabel).join(' ')+' | '+CARD_KEYS.slice(2).map(cardLabel).join(' ');
   $('live-cards').textContent=$('manual-effective-cards').textContent;
   $('live-street').textContent=show('street');
-  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=handContributionDisplay(betMemory,id,handPresence);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?'TURN · ':'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');const raw=direct?.seats?.[id]?.bet;const conflict=direct?.seats?.[id]?.bet_reader_conflict;if(conflict)n.note.textContent+=' · wager readers disagree';else if(raw&&(!retained||raw.value!==retained.value))n.note.textContent+=' · visible B '+raw.display;else if(callHypotheses[id]&&!raw)n.note.textContent+=' · inferred call ~'+callHypotheses[id].value.toLocaleString('en-CA');n.contributionValue.value=total?(total.approximate?'≈':'')+total.value.toLocaleString('en-CA'):'0';
+  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=handContributionDisplay(betMemory,id,handPresence);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?(lastResult?.table_observation?.turn_candidate===id?'TURN · ':'LAST TURN · '):'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');const raw=direct?.seats?.[id]?.bet;const conflict=direct?.seats?.[id]?.bet_reader_conflict;if(conflict)n.note.textContent+=' · wager readers disagree';else if(raw&&(!retained||raw.value!==retained.value))n.note.textContent+=' · visible B '+raw.display;else if(callHypotheses[id]&&!raw)n.note.textContent+=' · inferred call ~'+callHypotheses[id].value.toLocaleString('en-CA');n.contributionValue.value=total?(total.approximate?'≈':'')+total.value.toLocaleString('en-CA'):'0';
    n.contributionValue.title=total?.initialized?'Initial zero; unobserved wagers may be missing':'Cumulative observed hand contribution; incomplete if any wagers were missed';
    n.total.textContent='Round wager: '+(retained?trackedBetLabel(retained):raw?raw.display+' (candidate)':'0 (unobserved)');}
   paintDecision();
@@ -263,6 +265,7 @@ export function attachPractice({video,screen,canRun,rotation}){
    if(h)callHypotheses[h.seat]=h;
    for(const id of Object.keys(callHypotheses))if(result.table_observation?.seats?.[id]?.bet||['Raise','Fold','All-in'].includes(result.table_observation?.seats?.[id]?.status_candidate))delete callHypotheses[id];
   }
+  turnMemory=updateTurnMemory(turnMemory,result,handPresence,result.street_candidate,capturedAt);
   actionEvidence=updateActionEvidence(actionEvidence,result,handPresence,betMemory.street,capturedAt);
   displayMemory=updateDisplayEvidence(displayMemory,result,betMemory,prior,{at:capturedAt,sampled});
   const numeric=sampled?currentNumericSample(null,result,betMemory,prior,{capturedAt,now,sampled}):null;

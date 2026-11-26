@@ -464,3 +464,36 @@ export function handContributionDisplay(state,id,hand){
  if(!BET_SEATS.includes(id)||(!state?.street&&!['active','ended'].includes(hand?.phase)))return null;
  return {value:0,observedRounds:0,rounds:(state.closedRounds?.length||0)+(state.street?1:0),approximate:false,complete:false,initialized:true};
 }
+
+// Last observed turn is display evidence, not a fresh action authorization.
+export function updateTurnMemory(previous,result,hand,street,at){
+ if(!Number.isFinite(at)||at<0||(previous&&at<=previous.at))return previous;
+ const obs=result?.table_observation;
+ const prior=hand?.started||hand?.phase==='ended'||(street&&previous?.street&&street!==previous.street)?null:previous;
+ const seat=obs?.turn_candidate;
+ if(hand?.phase!=='ended'&&BET_SEATS.includes(seat))return {seat,seen:at,at,street:street||prior?.street||null};
+ if(prior)return {...prior,at};
+ return null;
+}
+export function conditionalDeck(raw,memory,hand,street,now,previousStable=null){
+ const direct=candidateCards(raw);
+ if(direct)return {...direct,retained:[]};
+ if(hand?.phase!=='active'||!memory||!validSlots(raw?.hole_slots,2)||!validSlots(raw?.board_slots,5)||raw.quality?.duplicate_card_candidates||!memory.carried.length||!observationAge(memory.last,now,1000).fresh)return null;
+ if(!street||memory.displayStreet!==street||(raw.street_candidate&&raw.street_candidate!==street))return null;
+ const slots=[...raw.hole_slots,...raw.board_slots],retained=[];
+ for(const i of memory.carried){
+  const c=memory.slots[i];
+  if(slots[i]?.candidate||slots[i]?.manual||slots[i]?.manual_conflict||slots[i]?.unknown)continue;
+  if(!c?.confirmed||!observationAge(c.lastSeen,now,CARD_MEMORY_MS).fresh)continue;
+  slots[i]={candidate:c.value,cached:true};retained.push(i);
+ }
+ if(!retained.length)return null;
+ const candidate=candidateCards({...raw,hole_slots:slots.slice(0,2),board_slots:slots.slice(2),street_candidate:street,
+ quality:{...raw.quality,noncontiguous_board:false,unrecognized_visible_cards:0}});
+ if(!candidate)return null;
+ // Physical absence is less reliable than visible unreadable ink. Only a
+ // previously complete same-street deck may support that kind of dropout.
+ const original=[...raw.hole_slots,...raw.board_slots];
+ if(retained.some(i=>original[i]===null)&&previousStable?.key!==candidate.key)return null;
+ return {...candidate,retained};
+}

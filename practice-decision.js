@@ -93,3 +93,11 @@ export function practicePanelModel({street,pot,prompt,seats,equities}){
  if(!model)return {reason:'Equity unavailable'};
  return {...model,pot:amount,call,source,partial,wagerCount:readable.length,priceSource:explicitCall!==null?'call prompt':'visible wagers'};
 }
+
+// A deterministic conservative practice baseline is a conditional result,
+// not a claim that the incomplete pot or random-hand equities are exact.
+export function practiceHeadline(model){
+ if(!model||model.reason||!Array.isArray(model.outcomes)||!model.outcomes.length)return null;
+ const outcome=model.unanimous??(model.outcomes.includes('Fold')?'Fold':model.outcomes.includes('Indifferent')?'Indifferent':model.outcomes[0]);
+ return {action:outcome==='Indifferent'?'Fold':outcome,sensitive:!!model.partial||!model.unanimous||outcome==='Indifferent',policy:model.unanimous?'all scenarios agree':'conservative scenario'};
+}

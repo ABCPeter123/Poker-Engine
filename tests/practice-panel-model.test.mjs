@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {practicePanelModel} from '../practice-decision.js';
+import {practicePanelModel,practiceHeadline} from '../practice-decision.js';
 const c=value=>({value,approximate:false});
 const seats=Object.fromEntries(['hero','left','upper_left','upper_right','right'].map(id=>[id,{bet:c(id==='hero'?50:500),stack:c(20000)}]));
 test('complete visible preflop wager subtotal supports explicitly conditional calculation',()=>{
@@ -32,4 +32,15 @@ test('an explicit price needs no opponent wagers when the pot is displayed',()=>
  assert.equal(r.unanimous,'Check');
  assert.equal(r.partial,false);
  assert.equal(r.wagerCount,0);
+});
+
+test('partial observations return a conditional practice headline instead of a missing-pot placeholder',()=>{
+ const result=practicePanelModel({street:'Preflop',seats:{upper_left:{bet:c(25)},upper_right:{bet:c(50)},right:{bet:c(50)}},prompt:c(50),equities:[.245,.159,.129]});
+ assert.equal(result.partial,true);
+ assert.deepEqual(practiceHeadline(result),{action:'Fold',sensitive:true,policy:'all scenarios agree'});
+});
+test('disagreeing scenarios use the conservative model baseline and mark sensitivity',()=>{
+ const result=practicePanelModel({street:'Flop',pot:c(200),prompt:c(50),seats:{},equities:[.3,.1]});
+ assert.deepEqual(practiceHeadline(result),{action:'Fold',sensitive:true,policy:'conservative scenario'});
+ assert.equal(practiceHeadline({reason:'Pot unavailable'}),null);
 });

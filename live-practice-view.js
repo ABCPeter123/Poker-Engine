@@ -1,6 +1,6 @@
 import {CurrentStateQueue} from './frame-queue.js';
 import {handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
-import {practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
+import {practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
@@ -142,9 +142,10 @@ export function attachPractice({video,screen,canRun,rotation}){
    if(scenario&&numeric){
     const model=practicePanelModel({street:currentCards.street??lastResult.street_candidate,pot:numeric.pot,prompt,seats:numeric.seats,equities:scenario.equities});
     if(!model.reason){
-     const headline=model.partial&&model.unanimous==='Fold'?'Depends on missing pot':model.unanimous?(model.unanimous==='Call'?'Call '+model.call.toLocaleString('en-CA'):model.unanimous):'Varies by opponent count';
+     const recommendation=practiceHeadline(model);
+     const headline=recommendation.action==='Call'?'Call '+model.call.toLocaleString('en-CA'):recommendation.action;
      show('Conditional: '+headline,context+' · Break-even '+(model.odds*100).toFixed(1)+'%');
-     label.textContent='Practice model · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; omitted wagers unknown)':'')+' · '+model.priceSource+' · assumes eligible pot, no side pots and random opponent hands.';
+     label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+' · assumes eligible pot, no side pots and random opponent hands.';
     }else label.textContent+=(label.textContent?' · ':'')+model.reason;
    }else if(!scenario)label.textContent+=(label.textContent?' · ':'')+'Waiting for current card equity';
   }

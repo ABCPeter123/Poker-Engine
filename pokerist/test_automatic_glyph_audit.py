@@ -16,9 +16,11 @@ class AutomaticGlyphAuditTests(unittest.TestCase):
         self.assertIsNone(nearest(entry,[("0",entry)]))
     def test_competing_segmentations_abstain(self):
         patch_image=np.zeros((16,16))
-        pieces=[np.ones((12,5))]
-        with patch("automatic_glyph_audit.segment",return_value=pieces),patch("automatic_glyph_audit.feature",return_value=(np.ones((24,16)),.5)),patch("automatic_glyph_audit.nearest",side_effect=[{"label":str(i%2),"distance":.01,"margin":.1} for i in range(8)]):
+        # Different masks, not eight identical crops with contradictory mocked results.
+        pieces=[[np.full((12,5),.7+i*.01)] for i in range(8)]
+        with patch("automatic_glyph_audit.segment",side_effect=pieces),patch("automatic_glyph_audit.feature",return_value=(np.ones((24,16)),.5)),patch("automatic_glyph_audit.GlyphBank.nearest",side_effect=[{"label":str(i%2),"distance":.01,"margin":.1} for i in range(8)]) as matcher:
             result=predict_amount(patch_image,[])
+        self.assertEqual(matcher.call_count,8)
         self.assertIsNone(result["candidate"])
         self.assertEqual(result["reason"],"conflicting segmentations")
     def test_inference_never_receives_label(self):
@@ -27,7 +29,8 @@ class AutomaticGlyphAuditTests(unittest.TestCase):
             amount_audit([("a","11",a,"a"),("b","22",a,"b")])
         for call in fn.call_args_list:
             self.assertEqual(len(call.args),2)
-        self.assertEqual({c for c,v in fn.call_args_list[0].args[1]},{"2"})
+        self.assertEqual(set(fn.call_args_list[0].args[1].labels),{"2"})
+        self.assertEqual(set(fn.call_args_list[1].args[1].labels),{"1"})
     def test_blank_card_feature(self):
         self.assertIsNone(card_feature(Image.new("RGB",(20,30),"white"),False))
     def test_unknown_card_is_not_a_false_positive(self):

@@ -393,3 +393,11 @@ export function observationSummary(result,locks,memory,now,fresh,numericFresh){
  const stackCount=stakes.filter(s=>s.stack!==null).length,betCount=stakes.filter(s=>s.bet!==null).length;
  return {range,pot,stakes,stackCount,betCount};
 }
+
+// Conditional random-hand simulations, not a confirmed participant count.
+export function observationScenarioCounts(selected,range){
+ if(Number.isInteger(selected)&&selected>=1&&selected<=4)return [selected];
+ const min=range?.min,max=range?.max;
+ if(!Number.isInteger(min)||!Number.isInteger(max)||min<0||max>4||min>max)return [];
+ return Array.from({length:Math.max(0,max-Math.max(1,min)+1)},(_,i)=>Math.max(1,min)+i);
+}

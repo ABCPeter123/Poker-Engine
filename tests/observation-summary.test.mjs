@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {observationSummary} from '../live-practice.js';
+import {observationSummary,observationScenarioCounts} from '../live-practice.js';
 test('partial observations are available without pot confirmation or count selection',()=>{
  const r={number_candidates:{pot:{candidate:{value:250,approximate:false}}},table_observation:{seats:{hero:{stack:{value:1000},bet:{value:50}},left:{card_visible_candidate:true}}}};
  const s=observationSummary(r,{},null,100,true,true);
@@ -14,4 +14,13 @@ test('manual zero, historical amount, and approximate candidate remain distinct'
  assert.deepEqual(s.stakes[0].bet,{value:0,source:'manual'});
  assert.deepEqual(s.stakes[0].stack,{value:700,source:'last observed'});
  const stale=observationSummary(r,{},m,2000,false,false);assert.equal(stale.pot,null);
+});
+
+test('unresolved opponent counts produce conditional scenarios without pretending to confirm a count',()=>{
+ assert.deepEqual(observationScenarioCounts(null,{min:0,max:4}),[1,2,3,4]);
+ assert.deepEqual(observationScenarioCounts(null,{min:2,max:3}),[2,3]);
+ assert.deepEqual(observationScenarioCounts(null,{min:3,max:3}),[3]);
+ assert.deepEqual(observationScenarioCounts(null,{min:0,max:0}),[]);
+ assert.deepEqual(observationScenarioCounts(2,{min:0,max:4}),[2]);
+ assert.deepEqual(observationScenarioCounts(null,{min:4,max:1}),[]);
 });

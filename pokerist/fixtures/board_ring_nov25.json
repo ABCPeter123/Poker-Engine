@@ -1,5 +1,5 @@
 {
-  "description": "Five hand groups, saved screenshot board and ring annotations. Ring labels are visual markers, not action or outcome verification.",
+  "description": "Five hand groups, saved screenshot board and ring annotations. Ring labels are visual markers, not action or outcome verification. Hero labels describe the calibrated lower-right position only. IMG_0429 relocates cards at showdown and is intentionally excluded from the hero audit.",
   "image_sha256": {
     "IMG_0423.jpeg": "fdfd10f19b92ab010d4d39a716332a73452dc640cdc97a0d4b4de906962e2e9f",
     "IMG_0424.jpeg": "e6ebdc2f01fe6adb919b08b42e381baf886dd6f02a01b3689daa38ad92008996",
@@ -36,7 +36,11 @@
         "4s"
       ],
       "active": null,
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        null,
+        null
+      ]
     },
     {
       "file": "IMG_0424.jpeg",
@@ -49,7 +53,11 @@
         "4s"
       ],
       "active": "right",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        null,
+        null
+      ]
     },
     {
       "file": "IMG_0425.jpeg",
@@ -62,7 +70,11 @@
         "4s"
       ],
       "active": null,
-      "winner_ring": "upper_left"
+      "winner_ring": "upper_left",
+      "hero": [
+        null,
+        null
+      ]
     },
     {
       "file": "IMG_0426.jpeg",
@@ -75,7 +87,11 @@
         null
       ],
       "active": null,
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        null,
+        "Qc"
+      ]
     },
     {
       "file": "IMG_0427.jpeg",
@@ -88,7 +104,11 @@
         null
       ],
       "active": "right",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "Th",
+        "Qc"
+      ]
     },
     {
       "file": "IMG_0428.jpeg",
@@ -101,7 +121,11 @@
         null
       ],
       "active": "left",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "Th",
+        "Qc"
+      ]
     },
     {
       "file": "IMG_0429.jpeg",
@@ -127,7 +151,11 @@
         null
       ],
       "active": "left",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "7s",
+        "4s"
+      ]
     },
     {
       "file": "IMG_0431.jpeg",
@@ -140,7 +168,11 @@
         "5d"
       ],
       "active": "hero",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "7s",
+        "4s"
+      ]
     },
     {
       "file": "IMG_0432.jpeg",
@@ -153,7 +185,11 @@
         null
       ],
       "active": "upper_right",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "5c",
+        "Td"
+      ]
     },
     {
       "file": "IMG_0433.jpeg",
@@ -166,7 +202,11 @@
         null
       ],
       "active": "right",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "5c",
+        "Td"
+      ]
     },
     {
       "file": "IMG_0434.jpeg",
@@ -179,7 +219,11 @@
         null
       ],
       "active": "left",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "5c",
+        "Td"
+      ]
     },
     {
       "file": "IMG_0435.jpeg",
@@ -192,7 +236,11 @@
         "7d"
       ],
       "active": null,
-      "winner_ring": "upper_right"
+      "winner_ring": "upper_right",
+      "hero": [
+        "5c",
+        "Td"
+      ]
     },
     {
       "file": "IMG_0436.jpeg",
@@ -205,7 +253,11 @@
         null
       ],
       "active": "hero",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "8h",
+        "2d"
+      ]
     },
     {
       "file": "IMG_0437.jpeg",
@@ -218,7 +270,11 @@
         null
       ],
       "active": "right",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "8h",
+        "2d"
+      ]
     },
     {
       "file": "IMG_0438.jpeg",
@@ -231,7 +287,11 @@
         null
       ],
       "active": null,
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "8h",
+        "2d"
+      ]
     },
     {
       "file": "IMG_0439.jpeg",
@@ -244,7 +304,11 @@
         null
       ],
       "active": "right",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "8h",
+        "2d"
+      ]
     },
     {
       "file": "IMG_0440.jpeg",
@@ -257,7 +321,11 @@
         null
       ],
       "active": "right",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "8h",
+        "2d"
+      ]
     },
     {
       "file": "IMG_0441.jpeg",
@@ -270,7 +338,11 @@
         null
       ],
       "active": "left",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "8h",
+        "2d"
+      ]
     },
     {
       "file": "IMG_0442.jpeg",
@@ -283,7 +355,11 @@
         "Td"
       ],
       "active": "right",
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "8h",
+        "2d"
+      ]
     },
     {
       "file": "IMG_0443.jpeg",
@@ -296,7 +372,11 @@
         "Td"
       ],
       "active": null,
-      "winner_ring": null
+      "winner_ring": null,
+      "hero": [
+        "8h",
+        "2d"
+      ]
     },
     {
       "file": "IMG_0444.jpeg",
@@ -309,7 +389,11 @@
         "Td"
       ],
       "active": null,
-      "winner_ring": "left"
+      "winner_ring": "left",
+      "hero": [
+        "8h",
+        "2d"
+      ]
     }
   ]
 }

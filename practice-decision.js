@@ -88,13 +88,14 @@ export function observedCallPrice(seats,prompt,excluded=[]){
  const highest=readable.length?Math.max(...readable):null;
  const difference=hero!==null&&highest!==null?highest-hero:null;
  const complete=ids.every((id,i)=>wagers[i]!==null||(id!=='hero'&&excluded.includes(id)));
+ const retained=ids.some((id,i)=>wagers[i]!==null&&seats?.[id]?.bet?.retained===true);
  const explicit=exact(prompt);
  if(explicit!==null){
   if(difference!==null&&(explicit<difference||(complete&&explicit!==difference)))return {reason:'Call price and wagers disagree'};
   return {value:explicit,source:'call prompt',partial:false};
  }
  if(roundedCallObservation(seats,prompt))return {reason:'Rounded call price; exact amount unavailable'};
- if(difference!==null&&(complete||difference>0))return {value:difference,source:complete?'visible round wagers':'partial round wager difference',partial:!complete};
+ if(difference!==null&&(complete||difference>0))return {value:difference,source:retained?'retained round wager difference':complete?'visible round wagers':'partial round wager difference',partial:retained||!complete};
  return {reason:'Call price unreadable'};
 }
 // Conditional private-practice calculation, with explicit evidence sources.
@@ -104,7 +105,9 @@ export function practicePanelModel({street,pot,prompt,seats,equities,excluded=[]
  const wagers=ids.map(id=>exact(seats?.[id]?.bet));
  const readable=wagers.filter(v=>v!==null);
  const complete=readable.length===ids.length;
+ const retained=ids.some(id=>seats?.[id]?.bet?.retained===true);
  const stack=exact(seats?.hero?.stack);
+ if(stack===0)return {reason:'All-in · no action required'};
  const price=observedCallPrice(seats,prompt,excluded);
  if(price.reason)return price;
  const call=price.value;
@@ -113,7 +116,7 @@ export function practicePanelModel({street,pot,prompt,seats,equities,excluded=[]
  if(amount===null&&street==='Preflop'&&readable.length){
   amount=readable.reduce((a,b)=>a+b,0);
   source=complete?'visible preflop wagers':'partial visible preflop wagers';
-  partial=!complete;
+  partial=!complete||retained;
  }
  if(!whole(amount))return {reason:'Pot unavailable'};
  const model=conditionalCallModel({pot:amount,call,equities});
@@ -190,7 +193,10 @@ export function roundedPracticeScenario(args){
  return {...model,estimated:true,pricePartial:true,source:model.source+' (rounded point estimate)'};
 }
 // Visible price must not disappear while cards or equity are unresolved.
-export function practicePriceHeadline(price,rounded){
+export function practicePriceHeadline(price,rounded,stack=null){
+ if(stack===0)return 'All-in · no action required';
+ if(whole(stack)&&stack>0&&price&&!price.reason&&whole(price.value)&&price.value>stack)return 'Your turn · All-in call cost '+stack.toLocaleString('en-CA');
+ if(whole(stack)&&stack>0&&rounded&&whole(rounded.value)&&rounded.value>stack)return 'Your turn · Call cost up to '+stack.toLocaleString('en-CA');
  if(price&&!price.reason&&whole(price.value)){
   if(price.value===0)return 'Your turn · Check available';
   return 'Your turn · Call cost '+(price.partial?'at least ':'')+price.value.toLocaleString('en-CA');

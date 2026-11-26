@@ -497,3 +497,27 @@ export function conditionalDeck(raw,memory,hand,street,now,previousStable=null){
  if(retained.some(i=>original[i]===null)&&previousStable?.key!==candidate.key)return null;
  return {...candidate,retained};
 }
+
+// Retain accepted same-street evidence without claiming fresh exact OCR.
+export function withRetainedRoundWagers(numeric,state,hand,street){
+ if(!numeric||hand?.phase!=='active'||!street||state?.street!==street||state.boundary||state.uncertain)return numeric;
+ const seats={...numeric.seats};
+ for(const id of BET_SEATS){
+  const s=seats[id]||{},e=state.seats[id];
+  if(s.bet||s.bet_reader_conflict||!e?.observed||e.pending||!Number.isSafeInteger(e.value)||e.value<0)continue;
+  seats[id]={...s,bet:{value:e.value,approximate:!!e.approximate,retained:true}};
+ }
+ return {...numeric,seats};
+}
+export function updateHeroAllIn(previous,result,hand,at,sampled){
+ if(!Number.isFinite(at)||at<0||(previous&&at<=previous.at))return previous;
+ if(hand?.phase!=='active')return null;
+ const old=hand.started?null:previous;
+ if(!sampled)return old;
+ const s=result?.table_observation?.seats?.hero,stack=s?.stack;
+ const exact=stack&&!stack.approximate&&Number.isSafeInteger(stack.value)&&stack.value>=0;
+ if(exact&&stack.value>0)return null;
+ if(!exact)return old;
+ const count=(old?.count||0)+1;
+ return {at,count,confirmed:!!(old?.confirmed||count>=2||s?.status_candidate==='All-in')};
+}

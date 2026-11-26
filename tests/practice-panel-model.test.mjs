@@ -94,3 +94,15 @@ test('price headline is independent of equity availability',()=>{
  assert.equal(practicePriceHeadline({value:0,partial:false},null),'Your turn · Check available');
  assert.equal(practicePriceHeadline(null,null),'Your turn · Price unavailable');
 });
+
+test('highest wager remains the price when preceding player folds',()=>{
+ const s={hero:{bet:c(200),stack:c(1000)},left:{status_candidate:'Fold'},right:{bet:c(600)},upper_left:{bet:c(900)},upper_right:{bet:c(200)}};
+ assert.equal(observedCallPrice(s,null,['left']).value,700);
+ s.upper_left.bet={...c(900),retained:true};
+ assert.deepEqual(observedCallPrice(s,null,['left']),{value:700,source:'retained round wager difference',partial:true});
+});
+test('stack-limited call display does not certify side-pot eligibility',()=>{
+ assert.equal(practicePriceHeadline({value:700,partial:false},null,300),'Your turn · All-in call cost 300');
+ assert.equal(practicePriceHeadline({value:700,partial:false},null,0),'All-in · no action required');
+ assert.equal(practicePanelModel({street:'Preflop',seats:{hero:{stack:c(0)}},equities:[.5]}).reason,'All-in · no action required');
+});

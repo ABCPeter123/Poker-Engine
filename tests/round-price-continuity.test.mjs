@@ -1,0 +1,31 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {withRetainedRoundWagers,updateHeroAllIn,createBetMemory} from '../live-practice.js';
+const hand={phase:'active'},c=value=>({value,approximate:false});
+test('only accepted same-street observations fill missing wager labels',()=>{
+ const s=createBetMemory();s.street='Turn';s.uncertain=false;
+ Object.assign(s.seats.right,{observed:true,value:900,lastSeen:100});
+ Object.assign(s.seats.hero,{observed:true,value:200,lastSeen:100});
+ const numeric={seats:{hero:{stack:c(1000)},left:{status_candidate:'Fold'},right:{}}};
+ const r=withRetainedRoundWagers(numeric,s,hand,'Turn');
+ assert.deepEqual(r.seats.right.bet,{value:900,approximate:false,retained:true});
+ assert.equal(r.seats.hero.bet.value,200);
+ assert.equal(r.seats.left.bet,undefined);
+ assert.equal(numeric.seats.right.bet,undefined);
+ assert.equal(withRetainedRoundWagers(numeric,s,hand,'River'),numeric);
+ assert.equal(withRetainedRoundWagers(numeric,{...s,uncertain:true},hand,'Turn'),numeric);
+ assert.equal(withRetainedRoundWagers(numeric,s,{phase:'ended'},'Turn'),numeric);
+ const conflict={seats:{right:{bet_reader_conflict:true}}};
+ assert.equal(withRetainedRoundWagers(conflict,s,hand,'Turn').seats.right.bet,undefined);
+});
+test('all-in survives missing observations but not a new hand or positive stack',()=>{
+ const frame=(stack,status_candidate)=>({table_observation:{seats:{hero:{stack:stack===null?null:c(stack),status_candidate}}}});
+ let a=updateHeroAllIn(null,frame(0),hand,100,true);
+ assert.equal(a.confirmed,false);
+ a=updateHeroAllIn(a,frame(0),hand,200,true);
+ assert.equal(a.confirmed,true);
+ assert.equal(updateHeroAllIn(a,frame(null),hand,300,true),a);
+ assert.equal(updateHeroAllIn(a,frame(100),hand,300,true),null);
+ assert.equal(updateHeroAllIn(a,frame(null),{...hand,started:true},300,true),null);
+ assert.equal(updateHeroAllIn(a,frame(null),{phase:'ended'},300,true),null);
+ assert.equal(updateHeroAllIn(null,frame(0,'All-in'),hand,100,true).confirmed,true);
+});

@@ -54,7 +54,7 @@ def card_back(image,box):
 
 def status_label(text):
     key=re.sub(r"[^A-Z]","",text.upper())
-    labels={"ALLIN":"All-in","SATOUT":"Sat out","FOLD":"Fold","FOLDED":"Fold","CHECK":"Check","CALL":"Call","RAISE":"Raise","BET":"Bet","BIGBLIND":"Big blind","SMALLBLIND":"Small blind"}
+    labels={"ALLIN":"All-in","SATOUT":"Sat out","FOLD":"Fold","FOLDED":"Fold","CHECK":"Check","CALL":"Call","RAISE":"Raise","BET":"Bet","BIGBLIND":"Big blind","SMALLBLIND":"Small blind","ANTE":"Ante"}
     return labels.get(key)
 
 def scan_labels(image,exe,number_text,cache=None):
@@ -77,6 +77,24 @@ def participation_label(action,visible,turn=False):
     if visible or turn or action in ("Check","Call","Raise","Bet","All-in","Big blind","Small blind"):
         return "Participation evidence"
     return "No participation detected"
+
+def call_prompt(text,confidence,parse):
+    # The central CALL ... or RAISE prompt is distinct from pre-action
+    # checkboxes. Do not infer a price from a bare "Call" label.
+    if not np.isfinite(confidence) or confidence<75:return None
+    m=re.fullmatch(r"\s*CALL\s*[^A-Z0-9]*\s*([0-9][0-9 ,.]*[KM]?)\s+OR\s+RAISE\s*",text.upper())
+    if not m:return None
+    c=parse(m.group(1).strip())
+    return c if c and not c.get("approximate") else None
+
+def read_call_prompt(image,exe,number_text,cache=None):
+    key="hero_call_prompt"
+    rows,error=scan_regions(image,exe,[(key,(635,391,904,415),"prompt")],unrestricted=True,cache=cache)
+    words=rows.get(key,[])
+    lines=text_lines(words)
+    raw=" / ".join(" ".join(w["text"] for w in line) for line in lines)
+    confidence=min((w["confidence"] for w in words),default=-1)
+    return {"candidate":call_prompt(raw,confidence,number_text),"raw":raw,"confidence":confidence,"warning":error}
 
 def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
     labels,error=scan_labels(image,exe,number_text,cache=cache)
@@ -104,6 +122,7 @@ def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
             "dealer_candidate":dealer["candidate"]==seat,
             "participation_candidate":participation_label(action,visible,cues.get("active_band_candidate")==seat),
             "verified":False}
-    return {"dealer":dealer,"turn_candidate":cues.get("active_band_candidate"),
+    prompt=read_call_prompt(image,exe,number_text,cache) if exe and cues.get("active_band_candidate")=="hero" and any(c is not None for c in hole) else None
+    return {"dealer":dealer,"turn_candidate":cues.get("active_band_candidate"),"hero_call_prompt":prompt,
             "seats":seats,"ocr_sampled":bool(exe),"ocr_warning":error,
             "note":"Displayed bets are candidates, not total committed chips. Missing cards or labels do not establish folds or departures."}

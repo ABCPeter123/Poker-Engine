@@ -1,7 +1,8 @@
 import unittest
 from PIL import Image
 from review import RANKS,SUITS,decode,match
-from table_observation import D,dealer_marker,status_label
+from table_observation import D,dealer_marker,status_label,call_prompt
+from amount_text import number_text
 import numpy as np
 class ObservationTests(unittest.TestCase):
     def test_added_ranks(self):
@@ -11,6 +12,13 @@ class ObservationTests(unittest.TestCase):
         a=np.full((355,768),140,dtype=np.uint8)
         a[89:102,412:425]=D.astype(np.uint8)
         self.assertEqual(dealer_marker(Image.fromarray(a).convert("RGB").resize((1536,709)))["candidate"],"upper_right")
+    def test_call_prompt_requires_explicit_price(self):
+        for raw in ("CALL 50 OR RAISE","CALL ♢ 200 OR RAISE"):
+            self.assertIsNotNone(call_prompt(raw,90,number_text))
+        for raw in ("Call","CHECK","CALL 1.2K OR RAISE","CALL 50","BET 50"):
+            self.assertIsNone(call_prompt(raw,90,number_text))
+        self.assertIsNone(call_prompt("CALL 50 OR RAISE",30,number_text))
+        self.assertEqual(status_label("Ante"),"Ante")
     def test_no_marker(self):
         self.assertIsNone(dealer_marker(Image.new("RGB",(1536,709),(90,130,160)))["candidate"])
     def test_status_only_explicit(self):

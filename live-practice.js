@@ -401,3 +401,28 @@ export function observationScenarioCounts(selected,range){
  if(!Number.isInteger(min)||!Number.isInteger(max)||min<0||max>4||min>max)return [];
  return Array.from({length:Math.max(0,max-Math.max(1,min)+1)},(_,i)=>Math.max(1,min)+i);
 }
+
+// Keep last observed actions for display. A persistent action label is not
+// a new wager event; a missing label does not imply a different action.
+export function updateActionEvidence(previous,result,hand,street,at){
+ const old=previous||{at:null,street:null,seats:{}};
+ if(!Number.isFinite(at)||at<0||(old.at!==null&&at<=old.at))return old;
+ const reset=hand?.started||(street&&old.street&&street!==old.street);
+ const seats=reset?{}:{...old.seats};
+ const allowed=new Set(['Check','Call','Raise','Bet','Fold','Sat out','All-in','Big blind','Small blind','Ante']);
+ if(hand?.phase==='active'&&validSlots(result?.hole_slots,2)&&result.hole_slots.some(Boolean)){
+  for(const id of BET_SEATS){
+   const s=result?.table_observation?.seats?.[id],action=s?.status_candidate;
+   if(!allowed.has(action))continue;
+   const p=seats[id];
+   // Fold remains recorded through subsequent missing/status frames.
+   if(p?.action==='Fold'&&action!=='Fold')continue;
+   seats[id]={action,firstSeen:p?.action===action?p.firstSeen:at,lastSeen:at};
+  }
+ }
+ return {at,street:street||old.street,seats};
+}
+export function heroCardPresence(result){
+ if(!validSlots(result?.hole_slots,2))return 'unknown';
+ return result.hole_slots.some(Boolean)?'visible':'absent';
+}

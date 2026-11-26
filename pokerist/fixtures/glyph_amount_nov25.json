@@ -1,0 +1,590 @@
+{
+  "description": "Manually localized visible text in seven supplied 1536x709 screenshots. Grouped by two hands. Missing labels omitted; no zero inferred. 4.7K at showdown is a payout label, not a round bet.",
+  "lines": [
+    {
+      "file": "IMG_0423.jpeg",
+      "group": "hand1",
+      "name": "upper_left",
+      "label": "8850",
+      "box": [
+        541,
+        163,
+        592,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0423.jpeg",
+      "group": "hand1",
+      "name": "upper_right",
+      "label": "800",
+      "box": [
+        966,
+        163,
+        1011,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0423.jpeg",
+      "group": "hand1",
+      "name": "right",
+      "label": "86995",
+      "box": [
+        1170,
+        459,
+        1232,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0423.jpeg",
+      "group": "hand1",
+      "name": "hero",
+      "label": "10000",
+      "box": [
+        701,
+        590,
+        776,
+        611
+      ]
+    },
+    {
+      "file": "IMG_0423.jpeg",
+      "group": "hand1",
+      "name": "pot",
+      "label": "2.3K",
+      "box": [
+        745,
+        203,
+        790,
+        231
+      ]
+    },
+    {
+      "file": "IMG_0424.jpeg",
+      "group": "hand1",
+      "name": "upper_left",
+      "label": "7650",
+      "box": [
+        543,
+        163,
+        591,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0424.jpeg",
+      "group": "hand1",
+      "name": "upper_right",
+      "label": "800",
+      "box": [
+        966,
+        163,
+        1011,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0424.jpeg",
+      "group": "hand1",
+      "name": "left",
+      "label": "20000",
+      "box": [
+        322,
+        459,
+        396,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0424.jpeg",
+      "group": "hand1",
+      "name": "right",
+      "label": "86770",
+      "box": [
+        1170,
+        459,
+        1232,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0424.jpeg",
+      "group": "hand1",
+      "name": "hero",
+      "label": "10000",
+      "box": [
+        701,
+        590,
+        776,
+        611
+      ]
+    },
+    {
+      "file": "IMG_0424.jpeg",
+      "group": "hand1",
+      "name": "pot",
+      "label": "2.3K",
+      "box": [
+        745,
+        203,
+        790,
+        231
+      ]
+    },
+    {
+      "file": "IMG_0424.jpeg",
+      "group": "hand1",
+      "name": "bet_ul",
+      "label": "1.2K",
+      "box": [
+        552,
+        197,
+        597,
+        226
+      ]
+    },
+    {
+      "file": "IMG_0424.jpeg",
+      "group": "hand1",
+      "name": "bet_right",
+      "label": "225",
+      "box": [
+        1016,
+        294,
+        1058,
+        324
+      ]
+    },
+    {
+      "file": "IMG_0425.jpeg",
+      "group": "hand1",
+      "name": "upper_left",
+      "label": "12350",
+      "box": [
+        539,
+        163,
+        600,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0425.jpeg",
+      "group": "hand1",
+      "name": "upper_right",
+      "label": "800",
+      "box": [
+        966,
+        163,
+        1011,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0425.jpeg",
+      "group": "hand1",
+      "name": "left",
+      "label": "20000",
+      "box": [
+        322,
+        459,
+        396,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0425.jpeg",
+      "group": "hand1",
+      "name": "right",
+      "label": "85795",
+      "box": [
+        1170,
+        459,
+        1232,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0425.jpeg",
+      "group": "hand1",
+      "name": "hero",
+      "label": "10000",
+      "box": [
+        701,
+        590,
+        776,
+        611
+      ]
+    },
+    {
+      "file": "IMG_0425.jpeg",
+      "group": "hand1",
+      "name": "showdown_payout_ul",
+      "label": "4.7K",
+      "box": [
+        553,
+        197,
+        598,
+        226
+      ]
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "name": "upper_left",
+      "label": "12350",
+      "box": [
+        539,
+        163,
+        600,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "name": "upper_right",
+      "label": "750",
+      "box": [
+        966,
+        163,
+        1011,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "name": "left",
+      "label": "19950",
+      "box": [
+        325,
+        459,
+        388,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "name": "right",
+      "label": "85770",
+      "box": [
+        1170,
+        459,
+        1232,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "name": "hero",
+      "label": "9950",
+      "box": [
+        707,
+        590,
+        762,
+        611
+      ]
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "name": "bet_ur",
+      "label": "50",
+      "box": [
+        952,
+        197,
+        983,
+        225
+      ]
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "name": "bet_left",
+      "label": "50",
+      "box": [
+        481,
+        293,
+        514,
+        322
+      ]
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "name": "bet_right",
+      "label": "25",
+      "box": [
+        1030,
+        295,
+        1058,
+        323
+      ]
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "name": "bet_hero",
+      "label": "50",
+      "box": [
+        831,
+        424,
+        864,
+        456
+      ]
+    },
+    {
+      "file": "IMG_0427.jpeg",
+      "group": "hand2",
+      "name": "upper_left",
+      "label": "12300",
+      "box": [
+        539,
+        163,
+        600,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0427.jpeg",
+      "group": "hand2",
+      "name": "upper_right",
+      "label": "750",
+      "box": [
+        966,
+        163,
+        1011,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0427.jpeg",
+      "group": "hand2",
+      "name": "left",
+      "label": "19950",
+      "box": [
+        325,
+        459,
+        388,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0427.jpeg",
+      "group": "hand2",
+      "name": "right",
+      "label": "85745",
+      "box": [
+        1170,
+        459,
+        1232,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0427.jpeg",
+      "group": "hand2",
+      "name": "hero",
+      "label": "9950",
+      "box": [
+        707,
+        590,
+        762,
+        611
+      ]
+    },
+    {
+      "file": "IMG_0427.jpeg",
+      "group": "hand2",
+      "name": "pot",
+      "label": "250",
+      "box": [
+        745,
+        203,
+        790,
+        231
+      ]
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "name": "upper_left",
+      "label": "12300",
+      "box": [
+        539,
+        163,
+        600,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "name": "upper_right",
+      "label": "700",
+      "box": [
+        966,
+        163,
+        1011,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "name": "left",
+      "label": "19950",
+      "box": [
+        325,
+        459,
+        388,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "name": "right",
+      "label": "85695",
+      "box": [
+        1170,
+        459,
+        1232,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "name": "hero",
+      "label": "9900",
+      "box": [
+        707,
+        590,
+        762,
+        611
+      ]
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "name": "pot",
+      "label": "250",
+      "box": [
+        745,
+        203,
+        790,
+        231
+      ]
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "name": "bet_ur",
+      "label": "50",
+      "box": [
+        952,
+        197,
+        983,
+        225
+      ]
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "name": "bet_right",
+      "label": "50",
+      "box": [
+        1027,
+        295,
+        1058,
+        323
+      ]
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "name": "bet_hero",
+      "label": "50",
+      "box": [
+        831,
+        424,
+        864,
+        456
+      ]
+    },
+    {
+      "file": "IMG_0429.jpeg",
+      "group": "hand2",
+      "name": "upper_left",
+      "label": "12250",
+      "box": [
+        539,
+        163,
+        600,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0429.jpeg",
+      "group": "hand2",
+      "name": "upper_right",
+      "label": "0",
+      "box": [
+        976,
+        163,
+        993,
+        183
+      ]
+    },
+    {
+      "file": "IMG_0429.jpeg",
+      "group": "hand2",
+      "name": "left",
+      "label": "19900",
+      "box": [
+        325,
+        459,
+        388,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0429.jpeg",
+      "group": "hand2",
+      "name": "right",
+      "label": "96795",
+      "box": [
+        1170,
+        459,
+        1232,
+        481
+      ]
+    },
+    {
+      "file": "IMG_0429.jpeg",
+      "group": "hand2",
+      "name": "hero",
+      "label": "0",
+      "box": [
+        726,
+        590,
+        745,
+        611
+      ]
+    }
+  ],
+  "image_sha256": {
+    "IMG_0423.jpeg": "fdfd10f19b92ab010d4d39a716332a73452dc640cdc97a0d4b4de906962e2e9f",
+    "IMG_0424.jpeg": "e6ebdc2f01fe6adb919b08b42e381baf886dd6f02a01b3689daa38ad92008996",
+    "IMG_0425.jpeg": "51c8c47c40bd65a998e6a095dffb303b70686809385739e87b18d039a94e9d92",
+    "IMG_0426.jpeg": "097b3a9e3676005d0c450a3d128cbad9e1346fe7fba6ac3d3b0ff869e4860bb4",
+    "IMG_0427.jpeg": "c329150da935770c552a5163ab398601224bcac5c4d6fcd11f9a1da7a756ff17",
+    "IMG_0428.jpeg": "c42f5da0cd33b0da9367bc10aa778d996eea85be1b89a5dff8ca34da99e2aa1f",
+    "IMG_0429.jpeg": "bf4bfee064c59cef3aec4abab82f321507cfaafbfa0a90a0deb37c85a7ebaf78"
+  }
+}

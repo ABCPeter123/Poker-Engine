@@ -5,6 +5,7 @@ ground truth selects a segmentation with the right number of characters.
 It is NOT a reader for unlabelled images or a runtime recognition path.
 """
 import argparse
+import hashlib
 from collections import Counter
 import json
 from pathlib import Path
@@ -70,10 +71,16 @@ def evaluate(samples,binary=False):
 
 def read_samples(root,manifest):
     samples=[]
+    checked=set()
+    hashes=manifest.get("image_sha256",{})
     for item in manifest["lines"]:
         file=item["file"]
         if Path(file).name!=file or not item["label"] or not item["group"]:
             raise ValueError("Expected local image filename, label and group")
+        if file in hashes and file not in checked:
+            if hashlib.sha256((root/file).read_bytes()).hexdigest()!=hashes[file]:
+                raise ValueError("Source image hash mismatch: "+file)
+            checked.add(file)
         with Image.open(root/file) as im:
             if "frame_crop" in item:
                 box=item["frame_crop"]

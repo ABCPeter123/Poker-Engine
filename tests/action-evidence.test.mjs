@@ -11,6 +11,8 @@ test('repeated action labels persist without becoming new wager events',()=>{
  m=updateActionEvidence(m,frame('Fold'),active,'Flop',400);
  m=updateActionEvidence(m,frame('Call'),active,'Flop',500);
  assert.equal(m.seats.left.action,'Fold');
+ m=updateActionEvidence(m,frame(null),active,'Turn',550);
+ assert.equal(m.seats.left.action,'Fold');
  m=updateActionEvidence(m,frame(null),{phase:'active',started:true},'Preflop',600);
  assert.equal(m.seats.left,undefined);
 });

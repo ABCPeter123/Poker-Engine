@@ -407,8 +407,7 @@ export function observationScenarioCounts(selected,range){
 export function updateActionEvidence(previous,result,hand,street,at){
  const old=previous||{at:null,street:null,seats:{}};
  if(!Number.isFinite(at)||at<0||(old.at!==null&&at<=old.at))return old;
- const reset=hand?.started||(street&&old.street&&street!==old.street);
- const seats=reset?{}:{...old.seats};
+ const seats=hand?.started?{}:street&&old.street&&street!==old.street?Object.fromEntries(Object.entries(old.seats).filter(([,v])=>v.action==='Fold')):{...old.seats};
  const allowed=new Set(['Check','Call','Raise','Bet','Fold','Sat out','All-in','Big blind','Small blind','Ante']);
  if(hand?.phase==='active'&&validSlots(result?.hole_slots,2)&&result.hole_slots.some(Boolean)){
   for(const id of BET_SEATS){

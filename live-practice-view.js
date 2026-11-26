@@ -108,7 +108,8 @@ export function attachPractice({video,screen,canRun,rotation}){
  }
  function paintDecision(){
   const show=(message,description='')=>{for(const id of ['live-action','decision-status-text']){const el=$(id);if(el.textContent!==message)el.textContent=message;}for(const id of ['live-action-detail','decision-status-detail']){const el=$(id);if(el.textContent!==description)el.textContent=description;}};
-  $('conditional-model-result').textContent='';
+  $('conditional-model-result').textContent='';$('optional-model-result').textContent='';
+  if(!$('practice-consent').checked){show('Practice permission required','Recognition disabled.');return;}
   if(!canRun()){show('No source connected');return;}
   if(!active){show('Recognition stopped');return;}
   const now=performance.now(),fresh=observationAge(lastFrame,now,1000).fresh;

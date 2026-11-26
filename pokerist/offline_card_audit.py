@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 from offline_font_review import read_image
 from offline_ocr_fallback import board_rank_fallback
-from review import RANKS, SUITS, match
+from review import RANKS, SUITS, match, rank_match
 from ocr_runtime import resolve_tesseract
 
 BOARD_X=(547,637,726,815,905)
@@ -108,7 +108,8 @@ def nearest(q,bank):
 def legacy_candidate(q,kind):
     if q is None:return None
     mask=np.asarray(Image.fromarray(np.uint8(q[0]*255)).resize((12,16)))>=128
-    label,_=match(mask,RANKS if kind=='rank' else SUITS,.18 if kind=='rank' else .25)
+    label,_=rank_match(mask) if kind=='rank' else match(mask,SUITS,.25)
+    if kind=='rank' and label=='3' and enclosed_loops(q)>0:return None
     if kind=='rank' and label=='8' and enclosed_loops(q)!=2:return None
     return label
 

@@ -210,6 +210,9 @@ def glyph_holes(mask):
 
 def rank_match(mask):
     label,distance=match(mask,RANKS)
+    # A complete three has open curves, not enclosed counters. A crop
+    # containing a closed loop must not silently become a three.
+    if label=="3" and glyph_holes(mask)>0:return None,distance
     if label=="8" and glyph_holes(mask)!=2:
         # Allow a single missing ink pixel only on a strong existing
         # eight match. Restrict repairs to ink in a nearby eight template.
@@ -343,25 +346,40 @@ def card_region_signature(image,specs,wide_ten=None):
     return (image.size,(left,top,right,bottom),image.crop((left,top,right,bottom)).tobytes())
 
 
+def reconcile_deskewed_hole(primary,rank,suit):
+    """Keep independent 3/8 disagreement visible, not a guessed identity."""
+    if primary and primary.get("candidate"):
+        first=primary["candidate"]
+        if rank and suit and first[0] in "38" and rank in "38" and first!=rank+suit:
+            return {"candidate":None,"rank_candidate":rank if first[0]==rank else None,
+                    "suit_candidate":suit if first[1]==suit else None,
+                    "rank_distance":None,"suit_distance":None,"verified":False,
+                    "source":"conflicting upright and deskewed corner",
+                    "alternatives":[first,rank+suit]}
+        return primary
+    if rank and suit:
+        return {"candidate":rank+suit,"rank_candidate":rank,"suit_candidate":suit,
+                "rank_distance":None,"suit_distance":None,"verified":False,
+                "source":"deskewed corner fallback"}
+    if primary is None:
+        return {"candidate":None,"rank_candidate":rank,"suit_candidate":suit,
+                "rank_distance":None,"suit_distance":None,"verified":False}
+    return primary
+
 def read_cards(image, cache=None):
     def read(key,spec,*alternates,wide_ten=None):
         def recognize():
             primary=card(image,spec,*alternates,wide_ten=wide_ten)
-            # The independently deskewed corner is a fallback, not a reason
-            # to replace a complete recognized card with another guess.
-            if key==("hole",1) and (primary is None or primary.get("candidate") is None):
+            # A complete but vulnerable 3/8 candidate also needs the
+            # deskewed view; previously only missing cards reached it.
+            label=(primary or {}).get("candidate")
+            if key==("hole",1) and (not label or label[0] in "38"):
                 from offline_card_audit import hero_features,legacy_candidate
                 feature=hero_features(image,1)
                 if feature:
                     rank=legacy_candidate(feature[0],"rank")
                     suit=legacy_candidate(feature[1],"suit")
-                    if rank and suit:
-                        return {"candidate":rank+suit,"rank_candidate":rank,"suit_candidate":suit,
-                                "rank_distance":None,"suit_distance":None,"verified":False,
-                                "source":"deskewed corner fallback"}
-                    if primary is None:
-                        return {"candidate":None,"rank_candidate":rank,"suit_candidate":suit,
-                                "rank_distance":None,"suit_distance":None,"verified":False}
+                    return reconcile_deskewed_hole(primary,rank,suit)
             return primary
         if cache is None:
             return recognize()

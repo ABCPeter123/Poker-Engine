@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {practiceOpponentCount,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from '../practice-decision.js';
+import {conditionalCallModel,practiceOpponentCount,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from '../practice-decision.js';
 import {setManual,resolveManual,releaseManual} from '../manual-observations.js';
 const a={turn:'hero',pot:600,'hero.stack':1000,'hero.bet':50,'left.bet':150,'upper_left.participation':'Empty seat','upper_right.status':'Fold','right.status':'Sat out'};
 const exact=new Set(['pot','hero.stack','hero.bet','left.bet']);
@@ -21,4 +21,12 @@ test('opponent count uses explicit selection or fully classified manual seats',(
  assert.deepEqual(practiceOpponentCount('',locks),{count:2,source:'manual seats'});
  assert.equal(practiceOpponentCount('',{...locks,'right.participation':'Folded'}).count,null);
  assert.equal(practiceOpponentCount('',{...locks,'right.status':'Unknown'}).count,null);
+});
+
+test('explicit call-price conditional model does not require every opponent wager',()=>{
+ assert.equal(conditionalCallModel({pot:600,call:100,equities:[.3,.5]}).unanimous,'Call');
+ assert.equal(conditionalCallModel({pot:600,call:100,equities:[.03,.05]}).unanimous,'Fold');
+ assert.equal(conditionalCallModel({pot:600,call:100,equities:[.05,.5]}).unanimous,null);
+ assert.equal(conditionalCallModel({pot:600,call:null,equities:[.5]}),null);
+ assert.equal(conditionalCallModel({pot:600,call:100,equities:[null]}),null);
 });

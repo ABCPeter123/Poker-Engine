@@ -56,3 +56,12 @@ export function practiceOpponentCount(selected,locks={}){
  }
  return {count:count||null,source:'manual seats'};
 }
+
+// Conditional educational calculation using an explicitly observed call price.
+ // The displayed pot is a hypothetical eligible pot, not verified accounting.
+export function conditionalCallModel({pot,call,equities}){
+ if(!whole(pot)||!whole(call)||!Number.isSafeInteger(pot+call)||pot+call<=0||!Array.isArray(equities)||!equities.length||equities.some(e=>!Number.isFinite(e)||e<0||e>1))return null;
+ const odds=call/(pot+call);
+ const outcomes=equities.map(e=>call===0?'Check':e>odds?'Call':e<odds?'Fold':'Indifferent');
+ return {odds,outcomes,unanimous:outcomes.every(x=>x===outcomes[0])?outcomes[0]:null,conditional:true};
+}

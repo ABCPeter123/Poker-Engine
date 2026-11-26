@@ -307,14 +307,18 @@ export function observedHandCommitment(state,id){
 
 // Display-only observations. A missing or contradictory frame never overwrites
 // the last reading. Nothing here upgrades evidence for decision calculations.
-export function updateDisplayEvidence(previous,result,state,prior,{at,sampled=false}={}){
+export function updateDisplayEvidence(previous,result,state,prior,{at,sampled=false,hand=null}={}){
  if(!Number.isFinite(at)||at<0||(previous&&at<=previous.at))return previous;
  let fields={...(previous?.fields||{})};
  const changed=state?.generation!==prior?.generation;
- if(changed&&prior?.street){
-  if(state.street==='Preflop'||!state.closedRounds?.length)fields={};
-  else for(const k of Object.keys(fields))if(k==='pot'||k.endsWith('.bet')||k.endsWith('.status'))delete fields[k];
+ if(hand?.started)fields={};
+ else if(changed&&prior?.street){
+  if(!hand&&(state.street==='Preflop'||!state.closedRounds?.length))fields={};
+  else for(const k of Object.keys(fields))if(k.endsWith('.bet'))delete fields[k];
  }
+ // A completed hand remains visible until the next deal. Ignore new
+ // animation/table values while no hero cards are present.
+ if(hand&&hand.phase!=='active')return {at,fields};
  const incoming={};
  const obs=result?.table_observation;
  if(validSlots(result?.hole_slots,2)&&validSlots(result?.board_slots,5)&&!result.quality?.duplicate_card_candidates){
@@ -326,6 +330,13 @@ export function updateDisplayEvidence(previous,result,state,prior,{at,sampled=fa
   });
  }
  if(result?.street_candidate&&!state?.uncertain)incoming.street=result.street_candidate;
+ if(BET_SEATS.includes(obs?.turn_candidate))incoming.turn=obs.turn_candidate;
+ for(const id of BET_SEATS){
+  const s=obs?.seats?.[id];
+  if(s?.status_candidate)incoming[id+'.status']=s.status_candidate;
+  if(s?.participation_candidate)incoming[id+'.participation']=s.participation_candidate;
+  if(s?.card_visible_candidate===true)incoming[id+'.cards']='Visible';
+ }
  if(BET_SEATS.includes(obs?.dealer?.candidate))incoming.dealer=obs.dealer.candidate;
  if(sampled){
   const put=(key,c)=>{if(c&&Number.isSafeInteger(c.value)&&c.value>=0)incoming[key]={value:c.value,approximate:!!c.approximate};};
@@ -340,7 +351,8 @@ export function updateDisplayEvidence(previous,result,state,prior,{at,sampled=fa
   const old=fields[key],numeric=value!==null&&typeof value==='object';
   const v=numeric?value.value:value,approximate=numeric&&value.approximate;
   const seen=numeric&&Number.isFinite(value.retainedAt)?value.retainedAt:at;
-  if(!old||old.value===null||key.endsWith('.bet')){
+  if(key.endsWith('.status')&&old?.value==='Fold'&&v!=='Fold')continue;
+  if(!old||old.value===null||key.endsWith('.bet')||key==='turn'){
    fields[key]={value:v,approximate,seen,votes:key.endsWith('.bet')?2:old?.value===v?old.votes+1:1,pending:null};
   }else if(old.value===v&&old.approximate===approximate){
    fields[key]={...old,seen,votes:old.votes+1,pending:null};
@@ -417,7 +429,7 @@ export function observationScenarioCounts(selected,range){
 export function updateActionEvidence(previous,result,hand,street,at){
  const old=previous||{at:null,street:null,seats:{}};
  if(!Number.isFinite(at)||at<0||(old.at!==null&&at<=old.at))return old;
- const seats=hand?.started?{}:street&&old.street&&street!==old.street?Object.fromEntries(Object.entries(old.seats).filter(([,v])=>v.action==='Fold')):{...old.seats};
+ const seats=hand?.started?{}:{...old.seats};
  const allowed=new Set(['Check','Call','Raise','Bet','Fold','Sat out','All-in','Big blind','Small blind','Ante']);
  if(hand?.phase==='active'&&validSlots(result?.hole_slots,2)&&result.hole_slots.some(Boolean)){
   for(const id of BET_SEATS){
@@ -426,7 +438,7 @@ export function updateActionEvidence(previous,result,hand,street,at){
    const p=seats[id];
    // Fold remains recorded through subsequent missing/status frames.
    if(p?.action==='Fold'&&action!=='Fold')continue;
-   seats[id]={action,firstSeen:p?.action===action?p.firstSeen:at,lastSeen:at};
+   seats[id]={action,firstSeen:p?.action===action?p.firstSeen:at,lastSeen:at,street:street||old.street};
   }
  }
  return {at,street:street||old.street,seats};
@@ -529,4 +541,10 @@ export function scenarioProgress(cardKey,counts,results){
  if(equities.some(e=>e===undefined))return {state:'pending',equities};
  if(equities.some(e=>!Number.isFinite(e)||e<0||e>1))return {state:'failed',equities};
  return {state:'ready',equities};
+}
+
+// A capture pause is not evidence that both cards disappeared. Restart
+// the absence debounce, preserving the hand identity and phase.
+export function pauseHandPresence(hand){
+ return hand?{...hand,started:false,absentSince:null,absentCount:0}:null;
 }

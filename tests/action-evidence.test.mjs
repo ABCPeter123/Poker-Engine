@@ -5,7 +5,7 @@ const active={phase:'active'};
 test('repeated action labels persist without becoming new wager events',()=>{
  let m=updateActionEvidence(null,frame('Call'),active,'Flop',100);
  m=updateActionEvidence(m,frame('Call'),active,'Flop',200);
- assert.deepEqual(m.seats.left,{action:'Call',firstSeen:100,lastSeen:200});
+ assert.deepEqual(m.seats.left,{action:'Call',firstSeen:100,lastSeen:200,street:'Flop'});
  m=updateActionEvidence(m,frame(null),active,'Flop',300);
  assert.equal(m.seats.left.action,'Call');
  m=updateActionEvidence(m,frame('Fold'),active,'Flop',400);

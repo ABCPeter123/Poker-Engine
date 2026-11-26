@@ -1,0 +1,31 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {createBetMemory,updateDisplayEvidence,displayEvidenceValues,updateHandPresence,pauseHandPresence,updateActionEvidence,interruptBetMemory,observedHandCommitment} from '../live-practice.js';
+const c=candidate=>({candidate}),active={phase:'active'};
+const frame=(street='Preflop')=>({hole_slots:[c('As'),c('Kd')],board_slots:Array(5).fill(null),street_candidate:street,quality:{},number_candidates:{pot:{candidate:{value:250}}},table_observation:{turn_candidate:'left',dealer:{candidate:'right'},seats:{hero:{stack:{value:1000}},left:{status_candidate:'Call'}}}});
+test('confirmed street change retains cards, stack, pot, dealer and last action; round bet only resets',()=>{
+ let state=createBetMemory();state.street='Preflop';state.seats.hero={...state.seats.hero,observed:true,value:50,lastSeen:100};
+ let m=updateDisplayEvidence(null,frame(),state,state,{at:100,sampled:true,hand:active});
+ m=updateDisplayEvidence(m,frame(),state,state,{at:200,sampled:true,hand:active});
+ const next={...state,street:'Flop',generation:state.generation+1,closedRounds:[{street:'Preflop',seats:state.seats}],seats:createBetMemory().seats};
+ const missing={hole_slots:[c(null),c(null)],board_slots:Array(5).fill(null),street_candidate:'Flop',table_observation:{seats:{}}};
+ m=updateDisplayEvidence(m,missing,next,state,{at:300,sampled:false,hand:active});
+ const d=displayEvidenceValues(m,9000);
+ assert.equal(d.values['hole.0'],'As');assert.equal(d.values['hero.stack'],1000);assert.equal(d.values.pot,250);
+ assert.equal(d.values.dealer,'right');assert.equal(d.values.turn,'left');assert.equal(d.values['left.status'],'Call');
+ assert.equal(d.values['hero.bet'],undefined);
+ assert.equal(observedHandCommitment(interruptBetMemory(next),'hero').value,50);
+ const ended=updateDisplayEvidence(m,frame(),next,next,{at:400,sampled:true,hand:{phase:'ended'}});
+ assert.deepEqual(ended.fields,m.fields);
+ const newHand=updateDisplayEvidence(ended,missing,next,next,{at:500,sampled:false,hand:{phase:'active',started:true}});
+ assert.equal(displayEvidenceValues(newHand,500).values.pot,undefined);
+});
+test('capture interruption cannot finish the hand or erase the last action',()=>{
+ let h=updateHandPresence(null,frame(),100);
+ h=updateHandPresence(h,{...frame(),hole_slots:[null,null]},200);
+ h=pauseHandPresence(h);
+ assert.equal(h.phase,'active');assert.equal(h.absentCount,0);
+ h=updateHandPresence(h,frame(),10000);assert.equal(h.started,false);
+ let actions=updateActionEvidence(null,frame(),active,'Preflop',100);
+ actions=updateActionEvidence(actions,{...frame('Flop'),table_observation:{seats:{}}},active,'Flop',200);
+ assert.equal(actions.seats.left.action,'Call');assert.equal(actions.seats.left.street,'Preflop');
+});

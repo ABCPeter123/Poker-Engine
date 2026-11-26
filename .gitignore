@@ -12,3 +12,7 @@ amount-glyph-validation.json
 hybrid-amount-validation.json
 
 synthetic-hybrid-validation.json
+
+automatic-font-report.json
+offline-card-report.json
+offline-ring-report.json

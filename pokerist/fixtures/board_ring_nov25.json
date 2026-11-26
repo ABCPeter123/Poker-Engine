@@ -1,0 +1,315 @@
+{
+  "description": "Five hand groups, saved screenshot board and ring annotations. Ring labels are visual markers, not action or outcome verification.",
+  "image_sha256": {
+    "IMG_0423.jpeg": "fdfd10f19b92ab010d4d39a716332a73452dc640cdc97a0d4b4de906962e2e9f",
+    "IMG_0424.jpeg": "e6ebdc2f01fe6adb919b08b42e381baf886dd6f02a01b3689daa38ad92008996",
+    "IMG_0425.jpeg": "51c8c47c40bd65a998e6a095dffb303b70686809385739e87b18d039a94e9d92",
+    "IMG_0426.jpeg": "097b3a9e3676005d0c450a3d128cbad9e1346fe7fba6ac3d3b0ff869e4860bb4",
+    "IMG_0427.jpeg": "c329150da935770c552a5163ab398601224bcac5c4d6fcd11f9a1da7a756ff17",
+    "IMG_0428.jpeg": "c42f5da0cd33b0da9367bc10aa778d996eea85be1b89a5dff8ca34da99e2aa1f",
+    "IMG_0429.jpeg": "bf4bfee064c59cef3aec4abab82f321507cfaafbfa0a90a0deb37c85a7ebaf78",
+    "IMG_0435.jpeg": "4ea3274ee15df84f6815778b0d2e82583d035b3c016cec3673a9aafd7fb78f4c",
+    "IMG_0436.jpeg": "47d64e3ec568e2affd6415536c3574d7295b1bbc6c3acaab5db147338a62ecd4",
+    "IMG_0437.jpeg": "a734574178b2573024c0c6116672578bd4a774d59e2676364c45b5fce02df6dc",
+    "IMG_0438.jpeg": "f45cce9bdaf5159f3efcc68562cb0a0cc731d4a7d760595ac5a24bdfec599954",
+    "IMG_0439.jpeg": "2c3e7f9c56ce2076b3ab3a249d1489096b65f83a4023c4cf736b9957655fcab4",
+    "IMG_0440.jpeg": "93c804ec7b05e75f2050ecaa978801a1bda15eccaf87641dbac6d236fada8596",
+    "IMG_0441.jpeg": "e321273449cec41782498c9aec67ffc10605b390c966ef1d735f1252f821f7d0",
+    "IMG_0442.jpeg": "10b00ff4df5a02c07f799262b5643e00af89e814f4bb19ebccd9e6755dca181c",
+    "IMG_0443.jpeg": "2ec6e329796f6d7978772147f09a11822c9f5b9f80ade54c7fd70d6a431a3c",
+    "IMG_0444.jpeg": "d998a5e306725a59ac4acdb95d85b03b2ffe2075f6c5bb3a14c54f1ad2213207",
+    "IMG_0430.jpeg": "5582cef2ab739d7e86ea8af42c247b7ea6f23d7c7fd4753e6ed2f55bdb74c415",
+    "IMG_0431.jpeg": "5928408e5375170677756df9e83257b6df1bc7818f4ea550c40f77ba241f485c",
+    "IMG_0432.jpeg": "21176dfafbb1a38954a1475e79e282b9e760c0558fded72f70adfd64e0fa392d",
+    "IMG_0433.jpeg": "296594bd879b70fe37990598ffd72a52877c180b7713629e37483a6a598f9241",
+    "IMG_0434.jpeg": "886998d1136038700706ce69f1cea9ba9085a9099b12095d7f9fca77f119c765"
+  },
+  "frames": [
+    {
+      "file": "IMG_0423.jpeg",
+      "group": "hand1",
+      "board": [
+        "8s",
+        "6h",
+        "Qs",
+        "Td",
+        "4s"
+      ],
+      "active": null,
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0424.jpeg",
+      "group": "hand1",
+      "board": [
+        "8s",
+        "6h",
+        "Qs",
+        "Td",
+        "4s"
+      ],
+      "active": "right",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0425.jpeg",
+      "group": "hand1",
+      "board": [
+        "8s",
+        "6h",
+        "Qs",
+        "Td",
+        "4s"
+      ],
+      "active": null,
+      "winner_ring": "upper_left"
+    },
+    {
+      "file": "IMG_0426.jpeg",
+      "group": "hand2",
+      "board": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "active": null,
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0427.jpeg",
+      "group": "hand2",
+      "board": [
+        "9d",
+        "8s",
+        "Qh",
+        null,
+        null
+      ],
+      "active": "right",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0428.jpeg",
+      "group": "hand2",
+      "board": [
+        "9d",
+        "8s",
+        "Qh",
+        null,
+        null
+      ],
+      "active": "left",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0429.jpeg",
+      "group": "hand2",
+      "board": [
+        "9d",
+        "8s",
+        "Qh",
+        "4d",
+        "2d"
+      ],
+      "active": null,
+      "winner_ring": "right"
+    },
+    {
+      "file": "IMG_0430.jpeg",
+      "group": "hand5",
+      "board": [
+        "Th",
+        "6h",
+        "Kh",
+        "Td",
+        null
+      ],
+      "active": "left",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0431.jpeg",
+      "group": "hand5",
+      "board": [
+        "Th",
+        "6h",
+        "Kh",
+        "Td",
+        "5d"
+      ],
+      "active": "hero",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0432.jpeg",
+      "group": "hand3",
+      "board": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "active": "upper_right",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0433.jpeg",
+      "group": "hand3",
+      "board": [
+        "Ts",
+        "7c",
+        "Kd",
+        null,
+        null
+      ],
+      "active": "right",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0434.jpeg",
+      "group": "hand3",
+      "board": [
+        "Ts",
+        "7c",
+        "Kd",
+        "Ad",
+        null
+      ],
+      "active": "left",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0435.jpeg",
+      "group": "hand3",
+      "board": [
+        "Ts",
+        "7c",
+        "Kd",
+        "Ad",
+        "7d"
+      ],
+      "active": null,
+      "winner_ring": "upper_right"
+    },
+    {
+      "file": "IMG_0436.jpeg",
+      "group": "hand4",
+      "board": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "active": "hero",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0437.jpeg",
+      "group": "hand4",
+      "board": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "active": "right",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0438.jpeg",
+      "group": "hand4",
+      "board": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "active": null,
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0439.jpeg",
+      "group": "hand4",
+      "board": [
+        "3c",
+        "Jh",
+        "9c",
+        null,
+        null
+      ],
+      "active": "right",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0440.jpeg",
+      "group": "hand4",
+      "board": [
+        "3c",
+        "Jh",
+        "9c",
+        "4d",
+        null
+      ],
+      "active": "right",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0441.jpeg",
+      "group": "hand4",
+      "board": [
+        "3c",
+        "Jh",
+        "9c",
+        "4d",
+        null
+      ],
+      "active": "left",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0442.jpeg",
+      "group": "hand4",
+      "board": [
+        "3c",
+        "Jh",
+        "9c",
+        "4d",
+        "Td"
+      ],
+      "active": "right",
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0443.jpeg",
+      "group": "hand4",
+      "board": [
+        "3c",
+        "Jh",
+        "9c",
+        "4d",
+        "Td"
+      ],
+      "active": null,
+      "winner_ring": null
+    },
+    {
+      "file": "IMG_0444.jpeg",
+      "group": "hand4",
+      "board": [
+        "3c",
+        "Jh",
+        "9c",
+        "4d",
+        "Td"
+      ],
+      "active": null,
+      "winner_ring": "left"
+    }
+  ]
+}

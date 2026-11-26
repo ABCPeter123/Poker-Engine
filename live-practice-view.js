@@ -171,6 +171,15 @@ export function attachPractice({video,screen,canRun,rotation}){
  }
  function paint(){
   const now=performance.now(),a=autoValues(),history=displayEvidenceValues(displayMemory,now),effective=resolveManual({...a,...history.values},locks),age=observationAge(lastOcrAt,now,1000),direct=directNumericSnapshot(lastResult,lastOcrState?.state,lastFrame,now);
+  // A visible wager is useful even before hand/round confirmation. It is
+  // display-only; never substitute it into the accepted hand ledger.
+  for(const id of Object.keys(SEATS)){
+   const raw=direct?.seats?.[id]?.bet;
+   if(raw&&Number.isSafeInteger(raw.value)&&raw.value>=0&&!isLocked(locks,id+'.bet')&&effective[id+'.bet']===undefined){
+    effective[id+'.bet']=raw.value;
+    history.details[id+'.bet']={state:'visible candidate',approximate:!!raw.approximate,ageMs:now-lastFrame};
+   }
+  }
   for(const map of [editors,inlineEditors,popupEditors])for(const [key,e] of map){
    const locked=isLocked(locks,key),v=effective[key];
    e.box.classList.toggle('manual-locked',locked);e.auto.disabled=!locked;e.lock.textContent=locked?'Update':'Lock';
@@ -194,14 +203,14 @@ export function attachPractice({video,screen,canRun,rotation}){
   const body=$('live-table-body');body.replaceChildren();
   for(const [id,label] of Object.entries(SEATS)){
    const n=direct?.seats?.[id]||{},row=document.createElement('tr'),held=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=observedHandCommitment(betMemory,id);if(effective.turn===id)row.className='active-observation';
-   const values=[label,effective.dealer===id?'D':'—',effective.turn===id?'Turn cue':'—',show(id+'.stack'),n.stack?.display??'?',n.bet?.display??'?',isLocked(locks,id+'.bet')?show(id+'.bet'):held?trackedBetLabel(held)+(a[id+'.bet']===undefined||betMemory.uncertain?' (last seen)':''):'? (unobserved)',total?(total.approximate?'≈':'')+total.value.toLocaleString('en-CA')+' ('+total.observedRounds+'/'+total.rounds+' rounds observed)':'?',(n.status_candidate||actionEvidence?.seats?.[id]?.action||show(id+'.status'))+(n.status_candidate?'':actionEvidence?.seats?.[id]?' [last observed]':''),show(id+'.cards'),show(id+'.participation')+' · profile '+(observationAge(lastFrame,now,1000).fresh?lastResult?.seat_evidence?.seats?.[id]?.avatar_appearance?.candidate??'unknown':'unknown'),[n.stack_raw,n.bet_raw,n.status_raw].filter(Boolean).join(' / ')||'—'];
+   const values=[label,effective.dealer===id?'D':'—',effective.turn===id?'Turn cue':'—',show(id+'.stack'),n.stack_reader_conflict?'Conflict: font '+(n.stack_font_candidate?.display??'?')+' / OCR '+(n.stack_raw||'?'):n.stack?.display??'?',n.bet_reader_conflict?'Conflict: font '+(n.bet_font_candidate?.display??'?')+' / OCR '+(n.bet_raw||'?'):n.bet?.display??'?',isLocked(locks,id+'.bet')?show(id+'.bet'):held?trackedBetLabel(held)+(a[id+'.bet']===undefined||betMemory.uncertain?' (last seen)':''):'? (unobserved)',total?(total.approximate?'≈':'')+total.value.toLocaleString('en-CA')+' ('+total.observedRounds+'/'+total.rounds+' rounds observed)':'?',(n.status_candidate||actionEvidence?.seats?.[id]?.action||show(id+'.status'))+(n.status_candidate?'':actionEvidence?.seats?.[id]?' [last observed]':''),show(id+'.cards'),show(id+'.participation')+' · profile '+(observationAge(lastFrame,now,1000).fresh?lastResult?.seat_evidence?.seats?.[id]?.avatar_appearance?.candidate??'unknown':'unknown'),[n.stack_raw,n.bet_raw,n.status_raw].filter(Boolean).join(' / ')||'—'];
    values.forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i===6)td.title=isLocked(locks,id+'.bet')?'Manual lock':betMemory.seats[id].warning||betMemory.seats[id].source;row.append(td);});body.append(row);
   }
   const cardLabel=key=>{const v=effective[key];return (v===null?'·':v??'?')+(isLocked(locks,key)?' [L]':history.details[key]&&history.details[key].state!=='repeated'?'*':'');};
   $('manual-effective-cards').textContent=CARD_KEYS.slice(0,2).map(cardLabel).join(' ')+' | '+CARD_KEYS.slice(2).map(cardLabel).join(' ');
   $('live-cards').textContent=$('manual-effective-cards').textContent;
   $('live-street').textContent=show('street');
-  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=observedHandCommitment(betMemory,id);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?'TURN · ':'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');n.total.textContent=total?'Hand total observed: '+(total.approximate?'≈':'')+total.value.toLocaleString('en-CA'):'Hand total: ?';}
+  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=observedHandCommitment(betMemory,id);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?'TURN · ':'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');const raw=direct?.seats?.[id]?.bet;const conflict=direct?.seats?.[id]?.bet_reader_conflict;if(conflict)n.note.textContent+=' · wager readers disagree';else if(raw&&(!retained||raw.value!==retained.value))n.note.textContent+=' · visible B '+raw.display;n.total.textContent=total?'Hand total observed: '+(total.approximate?'≈':'')+total.value.toLocaleString('en-CA'):'Hand total: ?';}
   paintDecision();
  }
  function render(result,ocr,ocrStatus,capturedAt){

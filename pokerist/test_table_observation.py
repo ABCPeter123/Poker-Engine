@@ -5,6 +5,9 @@ from table_observation import D,dealer_marker,status_label,call_prompt
 from amount_text import number_text
 import numpy as np
 class ObservationTests(unittest.TestCase):
+    def test_new_rank_masks(self):
+        for name in ('6_nov25_424_1536','6_nov25_424_960','T_nov25_424_720','T_nov25_433_1536'):
+            self.assertEqual(match(decode(RANKS[name]),RANKS)[0],name[0])
     def test_added_ranks(self):
         for k in ("8_sample","7_sample","6_sample","T_sample","9_sample"):
             self.assertEqual(match(decode(RANKS[k]),RANKS)[0],k.split("_")[0])

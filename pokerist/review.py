@@ -66,6 +66,8 @@ SUITS.update({"s_capture0":"060,0f0,0f0,1f8,3fc,7fe,ffe,fff,fff,fff,ffe,7fe,060,
 # Gold-bordered pair from the supplied saved screenshot, sampled at the actual glyphs.
 RANKS.update({"5_gold_red":"1f8,00c,014,016,036,3fe,ffe,f1e,b80,b80,b80,b8e,f0e,f7e,3fe,1fc","5_gold_black":"770,038,018,018,03c,1fc,79c,700,700,700,382,183,183,1c7,0fe,078"})
 SUITS.update({"d_gold":"040,078,0f8,178,1fc,3fe,7fe,fff,fff,7fe,3fe,1fc,1f8,0f8,070,060","s_gold":"040,0e0,0f8,1fe,1fe,3fe,7fe,7ff,fff,fff,7ff,7ff,7fc,100,018,018"})
+# Additional rank masks extracted from saved 6 and 10 corners at native and reduced resolutions.
+RANKS.update({"6_nov25_424_1536":"1f8,7fe,f8f,f0f,00f,0ef,7ff,fdf,f0f,f0f,70f,70f,f0f,f9f,7fe,1f8","6_nov25_424_960":"0fc,7fc,f0e,f1e,00e,0fe,3fe,ffe,f1e,f0e,f1f,f1e,f0e,f9e,7fc,1f8","6_nov25_424_720":"0f4,3fe,7de,70f,007,0d7,3ff,7de,71f,f0f,f07,f07,70f,7be,3fe,0f0","T_nov25_424_1536":"384,7cc,ecf,ccf,cec,cec,cec,cec,cec,cec,cec,cec,ccc,ecc,7cc,300","T_nov25_424_960":"300,7cc,ecf,ccf,ccc,ccc,c6c,c6c,c6c,ccc,ccc,ccc,ccc,ecc,7cc,384","T_nov25_424_720":"384,7cc,eef,e6e,c4c,c4c,c4c,c4c,c4c,c4c,c4c,c4c,e6c,eec,7cc,380","T_nov25_433_1536":"7e0,662,c33,c33,c33,c33,c33,c33,c33,c33,c33,c33,c33,e73,7e3,3c3","T_nov25_433_720":"7e0,e62,c33,c33,c33,c33,c33,c33,c33,c33,c33,c33,c33,e73,7e3,3c1"})
 BOARD = [
     ((552,244,575,281),(550,282,576,309),(548,242,628,353)),
     ((642,244,666,281),(641,282,668,310),(638,242,719,353)),
@@ -152,6 +154,14 @@ def glyph(image, box, color=None):
     m=m[ys.min():ys.max()+1,xs.min():xs.max()+1]
     return np.asarray(Image.fromarray(np.uint8(m*255)).resize((12,16)))>=128
 
+def separate_ten_columns(image,box,color):
+    """Two tall glyph groups in a complete upright rank strip."""
+    red,black=ink_masks(np.asarray(image.crop(box),dtype=np.int16))
+    mask=red if color=="red" else black
+    runs=np.flatnonzero(np.diff(np.r_[False,mask.sum(0)>=3,False])).reshape(-1,2)
+    tall=[(int(l),int(r)) for l,r in runs if r-l>=3 and (mask[:,l:r].any(1)).sum()>=.65*mask.shape[0]]
+    return len(tall)==2 and tall[1][0]-tall[0][1]>=1
+
 def _pack_mask(mask):
     return int.from_bytes(np.packbits(mask).tobytes(),"big")
 
@@ -223,6 +233,9 @@ def card(image, spec, *alternates, wide_ten=None):
             rank,rd=recognized(r,color,"rank")
             suit,sd=recognized(s,color,"suit")
             if rank=="T" and suit:
+                # A confidently matched two-character ten disambiguates a K
+                # obtained from a narrower, truncated rank window.
+                if separate_ten_columns(image,r,color):readings.pop('K'+suit,None)
                 label=rank+suit
                 reading=(rd+sd,rank,suit,rd,sd)
                 if label not in readings or reading[0]<readings[label][0]:

@@ -81,8 +81,12 @@ export function attachPractice({video,screen,canRun,rotation}){
   const tile=document.createElement('div');tile.className='screen-seat';
   const header=document.createElement('button');header.type='button';header.className='screen-seat-title';header.setAttribute('aria-label','Edit '+name);header.textContent=name;header.onclick=()=>openPopup(id);
   const note=document.createElement('small');note.className='screen-seat-note';tile.append(header);
-  for(const f of FIELDS.filter(f=>f.key===id+'.stack'||f.key===id+'.bet'))editor(f,tile,inlineEditors,true);
-  const total=document.createElement('small');total.className='screen-seat-note';tile.append(note,total);$('screen-seat-layer').append(tile);seatNodes.set(id,{tile,header,note,total});
+  for(const f of FIELDS.filter(f=>f.key===id+'.stack'))editor(f,tile,inlineEditors,true);
+  const contribution=document.createElement('div');contribution.className='screen-amount';
+  const contributionLabel=document.createElement('label');contributionLabel.textContent='B total';
+  const contributionValue=document.createElement('input');contributionValue.readOnly=true;contributionValue.setAttribute('aria-label',name+' cumulative observed hand contribution');contributionValue.value='0';
+  contributionLabel.append(contributionValue);contribution.append(contributionLabel);tile.append(contribution);
+  const total=document.createElement('small');total.className='screen-seat-note';tile.append(note,total);$('screen-seat-layer').append(tile);seatNodes.set(id,{tile,header,note,total,contributionValue});
  }
  function closePopup(){popupEditors.clear();$('screen-edit-fields').replaceChildren();$('screen-edit').hidden=true;}
  function openPopup(id){
@@ -231,7 +235,9 @@ export function attachPractice({video,screen,canRun,rotation}){
   $('manual-effective-cards').textContent=CARD_KEYS.slice(0,2).map(cardLabel).join(' ')+' | '+CARD_KEYS.slice(2).map(cardLabel).join(' ');
   $('live-cards').textContent=$('manual-effective-cards').textContent;
   $('live-street').textContent=show('street');
-  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=handContributionDisplay(betMemory,id,handPresence);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?'TURN · ':'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');const raw=direct?.seats?.[id]?.bet;const conflict=direct?.seats?.[id]?.bet_reader_conflict;if(conflict)n.note.textContent+=' · wager readers disagree';else if(raw&&(!retained||raw.value!==retained.value))n.note.textContent+=' · visible B '+raw.display;else if(callHypotheses[id]&&!raw)n.note.textContent+=' · inferred call ~'+callHypotheses[id].value.toLocaleString('en-CA');n.total.textContent=total?'Hand total observed: '+(total.approximate?'≈':'')+total.value.toLocaleString('en-CA')+(total.initialized?' (initial)':''):'Hand total: ?';}
+  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=handContributionDisplay(betMemory,id,handPresence);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?'TURN · ':'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');const raw=direct?.seats?.[id]?.bet;const conflict=direct?.seats?.[id]?.bet_reader_conflict;if(conflict)n.note.textContent+=' · wager readers disagree';else if(raw&&(!retained||raw.value!==retained.value))n.note.textContent+=' · visible B '+raw.display;else if(callHypotheses[id]&&!raw)n.note.textContent+=' · inferred call ~'+callHypotheses[id].value.toLocaleString('en-CA');n.contributionValue.value=total?(total.approximate?'≈':'')+total.value.toLocaleString('en-CA'):'0';
+   n.contributionValue.title=total?.initialized?'Initial zero; unobserved wagers may be missing':'Cumulative observed hand contribution; incomplete if any wagers were missed';
+   n.total.textContent='Round wager: '+(retained?trackedBetLabel(retained):raw?raw.display+' (candidate)':'0 (unobserved)');}
   paintDecision();
  }
  function render(result,ocr,ocrStatus,capturedAt){

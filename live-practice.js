@@ -174,7 +174,7 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false,hand=null
  state.status=state.street+' · tracked candidates';
  if(!ocr)return state;
  for(const id of BET_SEATS){
-  const e=state.seats[id],s=r?.table_observation?.seats?.[id],b=amount(s?.bet,s?.bet?.ocr_confidence??s?.bet_confidence);
+  const e=state.seats[id],s=r?.table_observation?.seats?.[id],b=s?.bet_chip_present===false?null:amount(s?.bet,s?.bet?.ocr_confidence??s?.bet_confidence);
   const stack=amount(s?.stack,s?.stack?.ocr_confidence??s?.stack_confidence,85);
   if(!b){
    if(!hand||!e.pending||t-e.pending.last>2000)e.pending=null;
@@ -202,7 +202,7 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false,hand=null
    // or refund. Require stronger repeated evidence, never treat absence as zero.
    const need=supported?3:4;
    e.warning='Disputed: lower reading '+v+' ('+count+'/'+need+')';
-   if(count>=need&&!approximate)state.seats[id]=accept(e,b,stack,t,'correction');
+   if(count>=need&&!approximate&&(!hand||supported))state.seats[id]=accept(e,b,stack,t,'correction');
   }
  }
  return state;

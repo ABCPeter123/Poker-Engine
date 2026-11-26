@@ -1,7 +1,7 @@
 import unittest
 from PIL import Image
 from review import RANKS,SUITS,decode,match
-from table_observation import D,dealer_marker,status_label,call_prompt,action_prompt_panel,observe_table
+from table_observation import D,dealer_marker,status_label,call_prompt,action_prompt_panel,observe_table,wager_chip_present,scan_labels,CHIP_CENTERS
 from amount_text import number_text
 import numpy as np
 class ObservationTests(unittest.TestCase):
@@ -46,6 +46,25 @@ class ObservationTests(unittest.TestCase):
             self.assertIsNone(observe_table(im,"test",number_text,{},dict(base,active_band_conflict=True),[{}])["turn_candidate"])
             self.assertIsNone(observe_table(im,"test",number_text,{},base,[None,None])["turn_candidate"])
             self.assertEqual(reader.call_count,1)
+    def test_wager_region_requires_chip_not_isolated_digit(self):
+        from PIL import ImageDraw
+        from unittest.mock import patch
+        im=Image.new("RGB",(1536,709),(90,130,160))
+        ImageDraw.Draw(im).text((840,430),"1",fill="white")
+        self.assertFalse(wager_chip_present(im,"hero"))
+        with patch("table_observation.scan_regions",return_value=({},None)) as reader:
+            result,_=scan_labels(im,"test",number_text)
+            self.assertIsNone(result[("hero","bet")]["candidate"])
+            self.assertFalse(result[("hero","bet")]["chip_present"])
+            self.assertTrue(all(kind=="status" for _,_,kind in reader.call_args.args[2]))
+        x,y=CHIP_CENTERS["hero"]
+        draw=ImageDraw.Draw(im)
+        draw.ellipse((x-16,y-16,x+16,y+16),fill=(80,80,80))
+        for i in range(8):
+            a=i*np.pi/4
+            cx=x+int(13*np.cos(a));cy=y+int(13*np.sin(a))
+            draw.ellipse((cx-2,cy-2,cx+2,cy+2),fill="white")
+        self.assertTrue(wager_chip_present(im,"hero"))
     def test_no_marker(self):
         self.assertIsNone(dealer_marker(Image.new("RGB",(1536,709),(90,130,160)))["candidate"])
     def test_status_only_explicit(self):

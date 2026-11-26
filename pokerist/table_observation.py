@@ -58,16 +58,37 @@ def status_label(text):
     labels={"ALLIN":"All-in","SATOUT":"Sat out","FOLD":"Fold","FOLDED":"Fold","CHECK":"Check","CALL":"Call","RAISE":"Raise","BET":"Bet","BIGBLIND":"Big blind","SMALLBLIND":"Small blind","ANTE":"Ante"}
     return labels.get(key)
 
+# Normalized wager-chip positions in the five-seat layout. White rim pips
+# occur around a real chip; isolated OCR ink from cards/avatars does not.
+CHIP_CENTERS={"hero":(815,438),"left":(465,307),"upper_left":(536,211),"upper_right":(999,211),"right":(1073,308)}
+_yy,_xx=np.indices((37,37))
+_radius=np.hypot(_xx-18,_yy-18)
+_annulus=(_radius>=10)&(_radius<=16)
+_angles=(np.arctan2(_yy-18,_xx-18)+np.pi)/(2*np.pi)
+_sectors=tuple(_annulus&(_angles>=i/8)&(_angles<(i+1)/8) for i in range(8))
+
+def wager_chip_present(image,seat):
+    x,y=CHIP_CENTERS[seat]
+    a=np.asarray(image.crop((x-18,y-18,x+19,y+19)),dtype=np.int16)
+    lo=a.min(2);hi=a.max(2)
+    white=(lo>145)&(hi-lo<65)
+    return bool((white&_annulus).sum()>=30 and
+                sum((white&sector).sum()>=3 for sector in _sectors)>=5)
+
 def scan_labels(image,exe,number_text,cache=None):
-    entries=[((seat,kind),REGIONS[seat][kind],kind) for seat in SEAT_ORDER for kind in ("bet","status")]
+    chips={seat:wager_chip_present(image,seat) for seat in SEAT_ORDER}
+    entries=[((seat,kind),REGIONS[seat][kind],kind) for seat in SEAT_ORDER for kind in ("bet","status") if kind=="status" or chips[seat]]
     rows,error=scan_regions(image,exe,entries,cache=cache)
     data={}
+    for seat in SEAT_ORDER:
+        if not chips[seat]:
+            data[(seat,"bet")]={"candidate":None,"chip_present":False,"raw":"","warning":"No wager chip evidence"}
     for seat,kind in (entry[0] for entry in entries):
         words=rows.get((seat,kind),[])
         if kind=="bet":
             primary=select_amount(words,number_text)
             glyph,bounds=font_amount(image,BET_KEYS[seat],cache) if exe else (None,None)
-            data[(seat,kind)]=combine_amount(primary,glyph,bounds)
+            data[(seat,kind)]={**combine_amount(primary,glyph,bounds),"chip_present":True}
         else:
             lines=text_lines(words)
             data[(seat,kind)]={"raw":" / ".join(" ".join(w["text"] for w in line) for line in lines),
@@ -140,7 +161,7 @@ def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
         seats[seat]={"stack":numbers.get(seat,{}).get("candidate"),
             "stack_raw":numbers.get(seat,{}).get("raw",""),
             "stack_confidence":numbers.get(seat,{}).get("ocr_confidence"),
-            "bet":value,"bet_raw":bet.get("raw",""),
+            "bet":value,"bet_raw":bet.get("raw",""),"bet_chip_present":bet.get("chip_present"),
             "bet_font_candidate":bet.get("font_candidate"),"bet_reader_conflict":bool(bet.get("reader_conflict")),
             "stack_font_candidate":numbers.get(seat,{}).get("font_candidate"),"stack_reader_conflict":bool(numbers.get(seat,{}).get("reader_conflict")),"bet_confidence":bet.get("ocr_confidence"),
             "bet_text_bounds":bet.get("text_bounds"),

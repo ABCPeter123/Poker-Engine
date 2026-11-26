@@ -53,3 +53,19 @@ test('zero baseline, check, repeated labels, raise and street contributions stay
  assert.equal(handContributionDisplay(s,'hero',hand).value,250);
  assert.equal(handContributionDisplay(createBetMemory(),'hero',hand).value,0);
 });
+
+test('positive numeric reading without physical chip evidence never enters the hand ledger',()=>{
+ let s=seed();
+ const hand={phase:'active'};
+ for(const t of [400,500,600,700]){
+  const f=r(1,'Preflop');f.table_observation.seats.hero.bet_chip_present=false;
+  s=updateBetMemory(s,f,{capturedAt:t,now:t+1,ocr:true,hand});
+ }
+ assert.equal(s.seats.hero.value,50);
+ for(const t of [800,900,1000,1100]){
+  const f=r(1,'Flop');f.table_observation.seats.hero.bet_chip_present=false;
+  s=updateBetMemory(s,f,{capturedAt:t,now:t+1,ocr:true,hand});
+ }
+ assert.equal(s.seats.hero.value,0);
+ assert.equal(handContributionDisplay(s,'hero',hand).value,50);
+});

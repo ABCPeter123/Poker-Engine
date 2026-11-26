@@ -66,24 +66,38 @@ export function conditionalCallModel({pot,call,equities}){
  return {odds,outcomes,unanimous:outcomes.every(x=>x===outcomes[0])?outcomes[0]:null,conditional:true};
 }
 
+// Calculate from the current betting street only. Missing wagers cannot
+// establish a zero call; a positive partial difference is a lower bound.
+export function observedCallPrice(seats,prompt,excluded=[]){
+ const exact=c=>c&&!c.approximate&&whole(c.value)?c.value:null;
+ const ids=Object.keys(SEAT_ANCHORS),hero=exact(seats?.hero?.bet);
+ const wagers=ids.map(id=>exact(seats?.[id]?.bet));
+ const readable=wagers.filter(v=>v!==null);
+ const highest=readable.length?Math.max(...readable):null;
+ const difference=hero!==null&&highest!==null?highest-hero:null;
+ const complete=ids.every((id,i)=>wagers[i]!==null||(id!=='hero'&&excluded.includes(id)));
+ const explicit=exact(prompt);
+ if(explicit!==null){
+  if(difference!==null&&(explicit<difference||(complete&&explicit!==difference)))return {reason:'Call price and wagers disagree'};
+  return {value:explicit,source:'call prompt',partial:false};
+ }
+ if(difference!==null&&(complete||difference>0))return {value:difference,source:complete?'visible round wagers':'partial round wager difference',partial:!complete};
+ return {reason:'Call price unreadable'};
+}
 // Conditional private-practice calculation, with explicit evidence sources.
-export function practicePanelModel({street,pot,prompt,seats,equities}){
+export function practicePanelModel({street,pot,prompt,seats,equities,excluded=[]}){
  const exact=c=>c&&!c.approximate&&whole(c.value)?c.value:null;
  const ids=Object.keys(SEAT_ANCHORS);
  const wagers=ids.map(id=>exact(seats?.[id]?.bet));
  const readable=wagers.filter(v=>v!==null);
  const complete=readable.length===ids.length;
- const hero=exact(seats?.hero?.bet),stack=exact(seats?.hero?.stack);
- const visibleMax=readable.length?Math.max(...readable):null;
- const inferredCall=complete&&hero!==null?visibleMax-hero:null;
- const explicitCall=exact(prompt);
- if(explicitCall!==null&&hero!==null&&visibleMax!==null&&explicitCall<visibleMax-hero)return {reason:'Call price and wagers disagree'};
- if(explicitCall!==null&&inferredCall!==null&&explicitCall!==inferredCall)return {reason:'Call price and wagers disagree'};
- const call=explicitCall??inferredCall;
- if(call===null)return {reason:'Call price unreadable'};
+ const stack=exact(seats?.hero?.stack);
+ const price=observedCallPrice(seats,prompt,excluded);
+ if(price.reason)return price;
+ const call=price.value;
  if(stack===0||stack!==null&&call>stack)return {reason:'All-in eligibility unresolved'};
  let amount=exact(pot),source='displayed pot',partial=false;
- if(amount===null&&street==='Preflop'&&readable.length&&(complete||explicitCall!==null)){
+ if(amount===null&&street==='Preflop'&&readable.length){
   amount=readable.reduce((a,b)=>a+b,0);
   source=complete?'visible preflop wagers':'partial visible preflop wagers';
   partial=!complete;
@@ -91,7 +105,7 @@ export function practicePanelModel({street,pot,prompt,seats,equities}){
  if(!whole(amount))return {reason:'Pot unavailable'};
  const model=conditionalCallModel({pot:amount,call,equities});
  if(!model)return {reason:'Equity unavailable'};
- return {...model,pot:amount,call,source,partial,wagerCount:readable.length,priceSource:explicitCall!==null?'call prompt':'visible wagers'};
+ return {...model,pot:amount,call,source,partial,pricePartial:price.partial,wagerCount:readable.length,priceSource:price.source};
 }
 
 // A deterministic conservative practice baseline is a conditional result,
@@ -99,7 +113,7 @@ export function practicePanelModel({street,pot,prompt,seats,equities}){
 export function practiceHeadline(model){
  if(!model||model.reason||!Array.isArray(model.outcomes)||!model.outcomes.length)return null;
  const outcome=model.unanimous??(model.outcomes.includes('Fold')?'Fold':model.outcomes.includes('Indifferent')?'Indifferent':model.outcomes[0]);
- return {action:outcome==='Indifferent'?'Fold':outcome,sensitive:!!model.partial||!model.unanimous||outcome==='Indifferent',policy:model.unanimous?'all scenarios agree':'conservative scenario'};
+ return {action:outcome==='Indifferent'?'Fold':outcome,sensitive:!!model.partial||!!model.pricePartial||!model.unanimous||outcome==='Indifferent',policy:model.unanimous?'all scenarios agree':'conservative scenario'};
 }
 
 // Compare a hypothetical extra unit invested beyond the call. Each scenario
@@ -112,7 +126,7 @@ export function conditionalRaiseComparison({model,counts,equities,stack,raiseVis
  const edges=equities.map((e,i)=>e*(counts[i]+1)-1);
  const allPositive=edges.every(e=>e>0);
  const baseline=practiceHeadline(model);
- const raise=allPositive&&!model.partial&&baseline&&['Check','Call'].includes(baseline.action);
+ const raise=allPositive&&!model.partial&&!model.pricePartial&&baseline&&['Check','Call'].includes(baseline.action);
  return {action:raise?'Raise':null,edges,assumption:'All opponents match extra chips; unchanged showdown equity; no side pots',sizeVerified:false};
 }
 

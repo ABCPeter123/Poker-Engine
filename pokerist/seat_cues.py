@@ -10,7 +10,7 @@ import numpy as np
 # Layout calibrated only for the supplied 1536x709 five-seat frame.
 # Each seat has a profile base, avatar, label, and possible bet/label region.
 SEATS = {
-    "hero": {"bar":(652,526,795,568),"avatar":(674,420,768,527),"label":(682,568,771,611),"bet":(620,366,800,420)},
+    "hero": {"bar":(646,528,802,571),"avatar":(674,420,768,527),"label":(682,568,771,611),"bet":(620,366,800,420)},
     "left": {"bar":(278,389,416,434),"avatar":(301,296,389,389),"label":(305,437,398,481),"bet":(415,352,546,414)},
     "upper_left": {"bar":(493,100,634,145),"avatar":(515,20,599,100),"label":(526,144,589,183),"bet":(582,180,708,237)},
     "upper_right": {"bar":(904,99,1043,144),"avatar":(931,20,1017,100),"label":(946,144,1030,183),"bet":(825,180,951,237)},
@@ -45,6 +45,21 @@ def bar_evidence(a):
     return {"multicolor_band_candidate":bool(green and warm),
             "bright_pixels":counts,"colored_columns":spans,
             "verified":False}
+
+def hero_bar_evidence(a):
+    """Supplement the multicolor detector for a partially elapsed hero ring.
+    Require substantial green spatial evidence in the calibrated lower arc;
+    a yellow winner border alone never qualifies.
+    """
+    evidence=bar_evidence(a)
+    green=colors(a)["green"]
+    rows=int((green.sum(axis=1)>=2).sum())
+    strong=bool(evidence["bright_pixels"]["green"]>=65
+        and evidence["colored_columns"]["green"]>=12 and rows>=4)
+    evidence["green_rows"]=rows
+    evidence["hero_green_fallback"]=strong and not evidence["multicolor_band_candidate"]
+    evidence["multicolor_band_candidate"]=bool(evidence["multicolor_band_candidate"] or strong)
+    return evidence
 
 def label_candidate(raw):
     # Require actual label text. Yellow pixels alone are not an all-in.
@@ -113,7 +128,8 @@ def seat_evidence(image, executable=None, previous=None, cache=None):
     for name,spec in SEATS.items():
         avatar=pixels(image,spec["avatar"])
         brightness=float(avatar.mean())
-        item={"bar":bar_evidence(pixels(image,spec["bar"])),
+        bar=pixels(image,spec["bar"])
+        item={"bar":hero_bar_evidence(bar) if name=="hero" else bar_evidence(bar),
               "all_in_label":labels[name],"avatar_mean_brightness":round(brightness,2),
               "brightness_change":None,"darkened_candidate":None,
               "appearance_change_candidate":None,"folded":None,"departed":None,

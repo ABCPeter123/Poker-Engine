@@ -16,7 +16,8 @@ test('ledger survives a false preflop, skipped street and confirmed disappearanc
  assert.equal(observedHandCommitment(b,'hero').value,50);
  step(frame('Preflop',[c('As'),c('Kd')],50,'left'),400);assert.equal(b.seats.hero.value,50);
  step(frame('Turn',undefined,100),500);step(frame('Turn',undefined,100),600);step(frame('Turn',undefined,100),700);
- assert.equal(observedHandCommitment(b,'hero').value,150);
+ assert.deepEqual(observedHandCommitment(b,'hero'),{value:150,observedRounds:2,rounds:3,approximate:false,complete:false});
+ assert.equal(b.closedRounds[1].skipped,true);
  step(frame('Preflop',[null,null],null),800);step(frame('Preflop',[null,null],null),1300);step(frame('Preflop',[null,null],null),1800);
  assert.equal(h.phase,'ended');assert.equal(observedHandCommitment(b,'hero').value,150);
  step(frame('Preflop',[c('Qs'),c('Jh')],null),2000);assert.equal(h.started,true);assert.equal(observedHandCommitment(b,'hero'),null);

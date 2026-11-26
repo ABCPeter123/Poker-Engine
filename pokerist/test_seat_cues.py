@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 from PIL import Image
-from seat_cues import SEATS, bar_evidence, label_candidate, seat_evidence
+from seat_cues import SEATS, bar_evidence, hero_bar_evidence, label_candidate, seat_evidence
 
 class CueTests(unittest.TestCase):
     def test_gray(self):
@@ -16,6 +16,17 @@ class CueTests(unittest.TestCase):
         a=np.full((40,140,3),100,dtype=np.int16)
         a[20:24,20:90]=[240,180,35]
         self.assertFalse(bar_evidence(a)["multicolor_band_candidate"])
+    def test_partial_hero_ring_requires_strong_green_span(self):
+        a=np.full((43,156,3),100,dtype=np.int16)
+        a[20:26,105:130]=[40,240,50]
+        self.assertFalse(bar_evidence(a)["multicolor_band_candidate"])
+        self.assertTrue(hero_bar_evidence(a)["hero_green_fallback"])
+        a[:]=100
+        a[20:26,105:130]=[240,180,35]
+        self.assertFalse(hero_bar_evidence(a)["multicolor_band_candidate"])
+        a[:]=100
+        a[20:30,105:110]=[40,240,50]
+        self.assertFalse(hero_bar_evidence(a)["multicolor_band_candidate"])
     def test_label_requires_text(self):
         self.assertTrue(label_candidate("ALL-IN"))
         self.assertTrue(label_candidate("All in"))

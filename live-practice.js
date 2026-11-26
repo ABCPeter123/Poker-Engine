@@ -165,7 +165,7 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false,hand=null
   state.boundary={key,count:p?.key===key&&t-p.last<=6000?p.count+1:1,last:t};
   if(state.boundary.count<2){state.status='Checking round change';for(const e of Object.values(state.seats))e.pending=null;return state;}
   const forward=state.street&&streets.indexOf(street)>streets.indexOf(state.street)&&!newHole&&!newDealer;
-  const closedRounds=forward?[...(state.closedRounds||[]),{street:state.street,seats:Object.fromEntries(BET_SEATS.map(id=>[id,{...state.seats[id]}]))}]:[];
+  const closedRounds=forward?[...(state.closedRounds||[]),{street:state.street,seats:Object.fromEntries(BET_SEATS.map(id=>[id,{...state.seats[id]}]))},...streets.slice(streets.indexOf(state.street)+1,streets.indexOf(street)).map(skipped=>({street:skipped,seats:seats(),skipped:true}))]:[];
   state={...state,street,hole,dealer,boundary:null,generation:state.generation+1,closedRounds,seats:seats()};
  }else{
   state.boundary=null;state.hole=state.hole||hole;state.dealer=state.dealer||dealer;

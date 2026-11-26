@@ -65,3 +65,26 @@ export function conditionalCallModel({pot,call,equities}){
  const outcomes=equities.map(e=>call===0?'Check':e>odds?'Call':e<odds?'Fold':'Indifferent');
  return {odds,outcomes,unanimous:outcomes.every(x=>x===outcomes[0])?outcomes[0]:null,conditional:true};
 }
+
+// Conditional private-practice calculation, with explicit evidence sources.
+export function practicePanelModel({street,pot,prompt,seats,equities}){
+ const exact=c=>c&&!c.approximate&&whole(c.value)?c.value:null;
+ const wagers=Object.keys(SEAT_ANCHORS).map(id=>exact(seats?.[id]?.bet));
+ const complete=wagers.every(v=>v!==null);
+ const hero=exact(seats?.hero?.bet),stack=exact(seats?.hero?.stack);
+ const inferredCall=complete&&hero!==null?Math.max(...wagers)-hero:null;
+ const explicitCall=exact(prompt);
+ if(explicitCall!==null&&inferredCall!==null&&explicitCall!==inferredCall)return {reason:'Call price and wagers disagree'};
+ const call=explicitCall??inferredCall;
+ if(call===null)return {reason:'Call price unreadable'};
+ if(stack===0||stack!==null&&call>stack)return {reason:'All-in eligibility unresolved'};
+ let amount=exact(pot),source='displayed pot';
+ if(amount===null&&street==='Preflop'&&complete){
+  amount=wagers.reduce((a,b)=>a+b,0);
+  source='visible preflop wagers';
+ }
+ if(!whole(amount))return {reason:'Pot unavailable'};
+ const model=conditionalCallModel({pot:amount,call,equities});
+ if(!model)return {reason:'Equity unavailable'};
+ return {...model,pot:amount,call,source,priceSource:explicitCall!==null?'call prompt':'visible wagers'};
+}

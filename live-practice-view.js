@@ -1,6 +1,6 @@
 import {CurrentStateQueue} from './frame-queue.js';
 import {observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
-import {conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
+import {practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
@@ -124,20 +124,21 @@ export function attachPractice({video,screen,canRun,rotation}){
   const primary=summary.pot?'Pot '+pot:wager?'Visible wagers '+wagerText:'Pot label unavailable';
   const extra=summary.pot?' · Visible wagers '+wagerText:wager?' · Collected pot label unavailable':'';
   show('Opponents '+opponents+' · '+primary,'Stacks '+summary.stackCount+'/5 · Wagers '+summary.betCount+'/5 · '+(fresh&&turn?'Turn cue: '+SEATS[turn]:fresh?'No unique turn cue':'Last observed values; snapshot stale')+extra);
-  // Only a freshly observed call prompt is used here. Unknown opponent
-  // wagers are not converted into exact amounts.
   const prompt=numeric&&lastResult?.table_observation?.hero_call_prompt?.candidate;
-  const observedPot=numeric?.pot;
   const currentCards=fresh?candidateCards(effectiveCards(lastResult,locks)):null;
   const scenario=reading?.stable&&currentCards&&scenarioResults?.cardKey===currentCards.key&&scenarioResults.key===requestedKey?scenarioResults:null;
-  const call=prompt&&!prompt.approximate?prompt.value:null;
+  const label=$('conditional-model-result');
   if(fresh&&turn==='hero'&&heroCardPresence(lastResult)==='visible'){
-   const label=$('conditional-model-result');
-   if(call!==null)label.textContent='Visible call price: '+call.toLocaleString('en-CA');
-   if(call!==null&&observedPot&&!observedPot.approximate&&scenario){
-    const model=conditionalCallModel({pot:observedPot.value,call,equities:scenario.equities});
-    if(model)label.textContent+=' · Conditional practice result: '+(model.unanimous||'varies by opponent scenario')+' · break-even equity '+(model.odds*100).toFixed(1)+'% · assumes displayed pot is eligible and no side pots; random opponent hands.';
-   }
+   const context='Opponents '+opponents+' · '+primary;
+   if(prompt&&!prompt.approximate)label.textContent='Visible call price: '+prompt.value.toLocaleString('en-CA');
+   if(scenario&&numeric){
+    const model=practicePanelModel({street:currentCards.street??lastResult.street_candidate,pot:numeric.pot,prompt,seats:numeric.seats,equities:scenario.equities});
+    if(!model.reason){
+     const headline=model.unanimous?(model.unanimous==='Call'?'Call '+model.call.toLocaleString('en-CA'):model.unanimous):'Varies by opponent count';
+     show('Conditional: '+headline,context+' · Break-even '+(model.odds*100).toFixed(1)+'%');
+     label.textContent='Practice model · '+model.source+' · '+model.priceSource+' · assumes eligible pot, no side pots and random opponent hands.';
+    }else label.textContent+=(label.textContent?' · ':'')+model.reason;
+   }else if(!scenario)label.textContent+=(label.textContent?' · ':'')+'Waiting for current card equity';
   }
   // The optional explicitly configured practice model never hides the
   // independent observation summary or asks for missing data.
@@ -154,7 +155,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   }
   const input=decisionInputs(a,exact,{confirmed:true,opponents:practiceOpponentCount($('live-opponents').value,locks).count});
   const rec=decisionFromEquity(input,equityResult);
-  if(rec.action)action.textContent='Optional practice model: '+rec.action+' · equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'%';
+  if(rec.action){action.textContent='Optional practice model: '+rec.action+' · equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'%';show('Practice model: '+rec.action,'Equity '+(rec.equity*100).toFixed(1)+'% · pot odds '+(rec.potOdds*100).toFixed(1)+'% · '+primary);}
  }
  function autoValues(){
   const now=performance.now(),result=observationAge(lastFrame,now,1000).fresh?lastResult:null,obs=result?.table_observation,age=observationAge(lastOcrAt,now,1000),num=age.fresh?lastTable:null;

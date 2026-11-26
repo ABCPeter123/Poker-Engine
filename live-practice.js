@@ -116,7 +116,7 @@ function holeOf(r){
 }
 const fresh=(t,now)=>Number.isFinite(t)&&Number.isFinite(now)&&t>=0&&now>=t&&now-t<=5000;
 function amount(c,confidence,minimum=75){
- return c&&Number.isSafeInteger(c.value)&&c.value>=0&&Number.isFinite(confidence)&&confidence>=minimum?c:null;
+ return c&&Number.isSafeInteger(c.value)&&c.value>=0&&(c.glyph_candidate===true||Number.isFinite(confidence)&&confidence>=minimum)?c:null;
 }
 function accept(e,b,stack,t,source){
  return {...e,value:b.value,observed:true,approximate:!!b.approximate,stack:stack&&!stack.approximate?stack.value:null,lastSeen:t,pending:null,warning:source==='correction'?'Corrected from repeated lower readings':null,source};
@@ -324,7 +324,7 @@ export function updateDisplayEvidence(previous,result,state,prior,{at,sampled=fa
  if(sampled){
   const put=(key,c)=>{if(c&&Number.isSafeInteger(c.value)&&c.value>=0)incoming[key]={value:c.value,approximate:!!c.approximate};};
   put('pot',result?.number_candidates?.pot?.candidate);
-  for(const id of BET_SEATS)put(id+'.stack',obs?.seats?.[id]?.stack);
+  for(const id of BET_SEATS){put(id+'.stack',obs?.seats?.[id]?.stack);}
  }
  for(const id of BET_SEATS){
   const e=state?.seats?.[id];

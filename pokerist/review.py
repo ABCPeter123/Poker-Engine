@@ -23,6 +23,7 @@ from seat_cues import seat_evidence
 from frame_crop import game_bounds
 from table_observation import observe_table
 from adaptive_labels import scan_regions, select_amount, reconcile_amount
+from calibrated_amounts import candidate as font_amount, combine as combine_amount
 from ocr_runtime import resolve_tesseract
 from card_geometry import gold_mask, face_bounds, corner_regions
 
@@ -249,6 +250,10 @@ def read_numbers(image, executable, cache=None):
         if not alt_error:
             for key,_,_ in retry:
                 results[key]=reconcile_amount(results[key],select_amount(alternate.get(key,[]),number_text),number_text)
+    if executable:
+        for key in results:
+            glyph,bounds=font_amount(image,key,cache)
+            results[key]=combine_amount(results[key],glyph,bounds)
     return results,error
 
 def normalize(original):

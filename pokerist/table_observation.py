@@ -7,6 +7,7 @@ import numpy as np
 from PIL import Image
 from numpy.lib.stride_tricks import sliding_window_view
 from adaptive_labels import scan_regions, select_amount, text_lines
+from calibrated_amounts import BET_KEYS, candidate as font_amount, combine as combine_amount
 
 SEAT_ORDER=("hero","left","upper_left","upper_right","right")
 # Normalized 1536x709 coordinates. Other seats/layouts are not calibrated.
@@ -64,7 +65,9 @@ def scan_labels(image,exe,number_text,cache=None):
     for seat,kind in (entry[0] for entry in entries):
         words=rows.get((seat,kind),[])
         if kind=="bet":
-            data[(seat,kind)]=select_amount(words,number_text)
+            primary=select_amount(words,number_text)
+            glyph,bounds=font_amount(image,BET_KEYS[seat],cache) if exe else (None,None)
+            data[(seat,kind)]=combine_amount(primary,glyph,bounds)
         else:
             lines=text_lines(words)
             data[(seat,kind)]={"raw":" / ".join(" ".join(w["text"] for w in line) for line in lines),
@@ -113,7 +116,9 @@ def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
         seats[seat]={"stack":numbers.get(seat,{}).get("candidate"),
             "stack_raw":numbers.get(seat,{}).get("raw",""),
             "stack_confidence":numbers.get(seat,{}).get("ocr_confidence"),
-            "bet":value,"bet_raw":bet.get("raw",""),"bet_confidence":bet.get("ocr_confidence"),
+            "bet":value,"bet_raw":bet.get("raw",""),
+            "bet_font_candidate":bet.get("font_candidate"),"bet_reader_conflict":bool(bet.get("reader_conflict")),
+            "stack_font_candidate":numbers.get(seat,{}).get("font_candidate"),"stack_reader_conflict":bool(numbers.get(seat,{}).get("reader_conflict")),"bet_confidence":bet.get("ocr_confidence"),
             "bet_text_bounds":bet.get("text_bounds"),
             "stack_text_bounds":numbers.get(seat,{}).get("text_bounds"),
             "status_candidate":action,"status_raw":status.get("raw",""),

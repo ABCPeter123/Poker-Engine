@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {practicePanelModel,practiceHeadline,conditionalRaiseComparison,observedCallPrice,roundedCallObservation} from '../practice-decision.js';
+import {practicePanelModel,practiceHeadline,conditionalRaiseComparison,observedCallPrice,roundedCallObservation,roundedPracticeScenario,practicePriceHeadline} from '../practice-decision.js';
 const c=value=>({value,approximate:false});
 const seats=Object.fromEntries(['hero','left','upper_left','upper_right','right'].map(id=>[id,{bet:c(id==='hero'?50:500),stack:c(20000)}]));
 test('complete visible preflop wager subtotal supports explicitly conditional calculation',()=>{
@@ -67,7 +67,7 @@ test('four visible wagers and a missing seat recover the reported 400 call price
 });
 test('missing or rounded hero wager cannot establish a difference; partial equal bets cannot establish a check',()=>{
  assert.equal(observedCallPrice({hero:{bet:c(200)},right:{bet:c(200)}},null).reason,'Call price unreadable');
- assert.equal(observedCallPrice({hero:{bet:{value:200,approximate:true}},right:{bet:c(600)}},null).reason,'Call price unreadable');
+ assert.equal(observedCallPrice({hero:{bet:{value:200,approximate:true}},right:{bet:c(600)}},null).reason,'Rounded call price; exact amount unavailable');
  assert.equal(observedCallPrice({right:{bet:c(600)}},null).reason,'Call price unreadable');
  assert.equal(observedCallPrice({hero:{bet:c(0),total:1000},right:{bet:c(50),total:150}},null).value,50);
 });
@@ -78,4 +78,19 @@ test('rounded larger wager cannot silently become a smaller exact call price',()
  assert.equal(observedCallPrice(s,null,['left']).reason,'Rounded call price; exact amount unavailable');
  assert.deepEqual(roundedCallObservation(s,{value:1400,approximate:true}),{value:1400,source:'rounded call prompt'});
  assert.equal(observedCallPrice(s,c(1400),['left']).value,1400);
+});
+
+test('rounded wager scenarios remain explicitly estimates and do not authorize raise sizing',()=>{
+ const s={hero:{bet:c(200),stack:c(23800)},upper_left:{bet:c(900)},upper_right:{bet:c(900)},right:{bet:{value:1600,approximate:true}}};
+ const args={street:'Preflop',seats:s,prompt:{value:1400,approximate:true},excluded:['left'],equities:[.386]};
+ const r=roundedPracticeScenario(args);
+ assert.equal(r.call,1400);assert.equal(r.pot,3600);assert.equal(r.estimated,true);assert.equal(r.pricePartial,true);
+ assert.equal(conditionalRaiseComparison({model:r,counts:[3],equities:[.386],stack:23800,raiseVisible:true}).action,null);
+ assert.equal(roundedPracticeScenario({...args,prompt:c(500)}),null);
+});
+test('price headline is independent of equity availability',()=>{
+ assert.equal(practicePriceHeadline({value:400,partial:false},null),'Your turn · Call cost 400');
+ assert.equal(practicePriceHeadline({reason:'Rounded call price; exact amount unavailable'},{value:1400}),'Your turn · Call cost ≈1,400');
+ assert.equal(practicePriceHeadline({value:0,partial:false},null),'Your turn · Check available');
+ assert.equal(practicePriceHeadline(null,null),'Your turn · Price unavailable');
 });

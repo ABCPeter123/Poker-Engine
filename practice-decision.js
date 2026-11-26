@@ -175,3 +175,26 @@ export function observePracticeBlind(previous,result,hand,at){
  const count=old?.value===value?old.count+1:1;
  return {value,count,confirmed:count>=2,at};
 }
+
+// Point-estimate scenario for a rounded display, never an exact wager or
+// verified legal size. Do not use this fallback to override conflicts.
+export function roundedPracticeScenario(args){
+ const first=practicePanelModel(args);
+ if(!['Rounded call price; exact amount unavailable','Pot unavailable'].includes(first.reason))return null;
+ const hasRounded=[args.pot,args.prompt,...Object.values(args.seats||{}).map(s=>s?.bet)].some(c=>c?.approximate&&whole(c.value));
+ if(!hasRounded)return null;
+ const point=c=>c?.approximate&&whole(c.value)?{...c,approximate:false}:c;
+ const seats=Object.fromEntries(Object.entries(args.seats||{}).map(([id,s])=>[id,{...s,bet:point(s?.bet)}]));
+ const model=practicePanelModel({...args,seats,pot:point(args.pot),prompt:point(args.prompt)});
+ if(model.reason)return null;
+ return {...model,estimated:true,pricePartial:true,source:model.source+' (rounded point estimate)'};
+}
+// Visible price must not disappear while cards or equity are unresolved.
+export function practicePriceHeadline(price,rounded){
+ if(price&&!price.reason&&whole(price.value)){
+  if(price.value===0)return 'Your turn · Check available';
+  return 'Your turn · Call cost '+(price.partial?'at least ':'')+price.value.toLocaleString('en-CA');
+ }
+ if(rounded&&whole(rounded.value))return 'Your turn · Call cost ≈'+rounded.value.toLocaleString('en-CA');
+ return 'Your turn · Price unavailable';
+}

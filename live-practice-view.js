@@ -1,6 +1,6 @@
 import {CurrentStateQueue} from './frame-queue.js';
 import {updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
-import {roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
+import {roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
@@ -142,16 +142,17 @@ export function attachPractice({video,screen,canRun,rotation}){
     label.textContent='Explicit CHECK or RAISE prompt detected.';
    }
    const price=numeric?observedCallPrice(numeric.seats,prompt,r.excluded):null;
+   const rounded=numeric&&(!price||price.reason)?roundedCallObservation(numeric.seats,prompt):null;
+   show(practicePriceHeadline(price,rounded),context);
    if(price&&!price.reason)label.textContent=(price.partial?'At least ':'Call price: ')+price.value.toLocaleString('en-CA')+' · '+price.source;
-   else if(numeric){
-    const rounded=roundedCallObservation(numeric.seats,prompt);
-    if(rounded)label.textContent='Call price ≈'+rounded.value.toLocaleString('en-CA')+' · '+rounded.source;
-   }
+   else if(rounded)label.textContent='Call price ≈'+rounded.value.toLocaleString('en-CA')+' · '+rounded.source;
    if(scenario&&numeric){
-    const model=practicePanelModel({street:currentCards.street??lastResult.street_candidate,pot:numeric.pot,prompt,seats:numeric.seats,equities:scenario.equities,excluded:r.excluded});
+    const args={street:currentCards.street??lastResult.street_candidate,pot:numeric.pot,prompt,seats:numeric.seats,equities:scenario.equities,excluded:r.excluded};
+    const exactModel=practicePanelModel(args);
+    const model=exactModel.reason?roundedPracticeScenario(args)||exactModel:exactModel;
     if(!model.reason){
      const recommendation=practiceHeadline(model);
-     const raise=conditionalRaiseComparison({model,counts:scenario.counts,equities:scenario.equities,stack:numeric.seats?.hero?.stack?.approximate?null:numeric.seats?.hero?.stack?.value,raiseVisible:!!prompt&&/\bOR\s+RAISE\b/i.test(lastResult?.table_observation?.hero_call_prompt?.raw||'')});
+     const raise=model.estimated?null:conditionalRaiseComparison({model,counts:scenario.counts,equities:scenario.equities,stack:numeric.seats?.hero?.stack?.approximate?null:numeric.seats?.hero?.stack?.value,raiseVisible:!!prompt&&/\bOR\s+RAISE\b/i.test(lastResult?.table_observation?.hero_call_prompt?.raw||'')});
      const hero=numeric.seats?.hero;
      const bounds=raise?.action?conservativeRaiseBounds({
        street:currentCards.street??lastResult.street_candidate,
@@ -159,9 +160,9 @@ export function attachPractice({video,screen,canRun,rotation}){
        stack:hero?.stack&&!hero.stack.approximate?hero.stack.value:null,
        call:model.call,bigBlind:blindEvidence?.confirmed?blindEvidence.value:null,raiseVisible:true
      }):null;
-     const headline=raise?.action?(bounds?'Raise to '+bounds.safeTo.toLocaleString('en-CA')+' (conditional)':'Raise (size unavailable)'):recommendation.action==='Call'?'Call '+(model.pricePartial?'at least ':'')+model.call.toLocaleString('en-CA'):recommendation.action;
-     show('Conditional: '+headline,context+' · Break-even '+(model.odds*100).toFixed(1)+'%');
-     label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+(model.pricePartial?' (minimum observed price; unseen wagers can change result)':'')+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'')+(raise?' Raise scenario: '+raise.assumption+'. '+(raise.action?(bounds?'Add '+bounds.additional.toLocaleString('en-CA')+' chips; conservative full-raise bound, not exact room minimum.':'Exact wager/blind/stack evidence insufficient for sizing.'):'Raise not favored across all scenarios.'):'');
+     const headline=raise?.action?(bounds?'Raise to '+bounds.safeTo.toLocaleString('en-CA')+' (conditional)':'Raise (size unavailable)'):recommendation.action==='Call'?'Call '+(model.estimated?'≈':model.pricePartial?'at least ':'')+model.call.toLocaleString('en-CA'):recommendation.action;
+     show((model.estimated?'Conditional estimate: ':'Conditional: ')+headline,context+' · Break-even '+(model.odds*100).toFixed(1)+'%');
+     label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+(model.estimated?' (rounded point estimate, not an exact price or legal raise size)':model.pricePartial?' (minimum observed price; unseen wagers can change result)':'')+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'')+(raise?' Raise scenario: '+raise.assumption+'. '+(raise.action?(bounds?'Add '+bounds.additional.toLocaleString('en-CA')+' chips; conservative full-raise bound, not exact room minimum.':'Exact wager/blind/stack evidence insufficient for sizing.'):'Raise not favored across all scenarios.'):'');
     }else label.textContent+=(label.textContent?' · ':'')+model.reason;
    }else if(!scenario)label.textContent+=(label.textContent?' · ':'')+'Waiting for current card equity';
   }

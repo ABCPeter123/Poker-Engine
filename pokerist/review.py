@@ -210,7 +210,21 @@ def glyph_holes(mask):
 
 def rank_match(mask):
     label,distance=match(mask,RANKS)
-    if label=="8" and glyph_holes(mask)!=2:return None,distance
+    if label=="8" and glyph_holes(mask)!=2:
+        # Allow a single missing ink pixel only on a strong existing
+        # eight match. Restrict repairs to ink in a nearby eight template.
+        if distance is None or distance>.08:return None,distance
+        candidates=np.zeros_like(mask)
+        for key,value in RANKS.items():
+            if key.split("_")[0]!="8":continue
+            template=decode(value)
+            if np.count_nonzero(mask!=template)/192<=.08:
+                candidates|=template&~mask
+        for y,x in zip(*np.where(candidates)):
+            repaired=mask.copy()
+            repaired[y,x]=True
+            if glyph_holes(repaired)==2:return label,distance
+        return None,distance
     return label,distance
 
 def face_present(image, box):

@@ -391,7 +391,11 @@ export function observationSummary(result,locks,memory,now,fresh,numericFresh){
  const pot=choose('pot',fresh&&numericFresh?result?.number_candidates?.pot?.candidate:null);
  const stakes=BET_SEATS.map(id=>({id,stack:choose(id+'.stack',fresh&&numericFresh?result?.table_observation?.seats?.[id]?.stack:null),bet:choose(id+'.bet',fresh&&numericFresh?result?.table_observation?.seats?.[id]?.bet:null)}));
  const stackCount=stakes.filter(s=>s.stack!==null).length,betCount=stakes.filter(s=>s.bet!==null).length;
- return {range,pot,stakes,stackCount,betCount};
+ const visibleBets=BET_SEATS.map(id=>fresh&&numericFresh?result?.table_observation?.seats?.[id]?.bet:null);
+ const readable=visibleBets.filter(c=>c&&Number.isSafeInteger(c.value)&&c.value>=0);
+ const subtotal=readable.reduce((sum,c)=>sum+c.value,0);
+ const visibleWagers=readable.length&&Number.isSafeInteger(subtotal)?{value:subtotal,count:readable.length,approximate:readable.some(c=>!!c.approximate),complete:readable.length===BET_SEATS.length}:null;
+ return {range,pot,stakes,stackCount,betCount,visibleWagers};
 }
 
 // Conditional random-hand simulations, not a confirmed participant count.

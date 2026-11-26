@@ -304,15 +304,33 @@ def card_region_signature(image,specs,wide_ten=None):
 
 def read_cards(image, cache=None):
     def read(key,spec,*alternates,wide_ten=None):
+        def recognize():
+            primary=card(image,spec,*alternates,wide_ten=wide_ten)
+            # The independently deskewed corner is a fallback, not a reason
+            # to replace a complete recognized card with another guess.
+            if key==("hole",1) and (primary is None or primary.get("candidate") is None):
+                from offline_card_audit import hero_features,legacy_candidate
+                feature=hero_features(image,1)
+                if feature:
+                    rank=legacy_candidate(feature[0],"rank")
+                    suit=legacy_candidate(feature[1],"suit")
+                    if rank and suit:
+                        return {"candidate":rank+suit,"rank_candidate":rank,"suit_candidate":suit,
+                                "rank_distance":None,"suit_distance":None,"verified":False,
+                                "source":"deskewed corner fallback"}
+                    if primary is None:
+                        return {"candidate":None,"rank_candidate":rank,"suit_candidate":suit,
+                                "rank_distance":None,"suit_distance":None,"verified":False}
+            return primary
         if cache is None:
-            return card(image,spec,*alternates,wide_ten=wide_ten)
+            return recognize()
         signature=card_region_signature(image,(spec,*alternates),wide_ten)
         if not hasattr(cache,"cards"):
             cache.cards={}
         old=cache.cards.get(key)
         if old is not None and old[0]==signature:
             return old[1]
-        result=card(image,spec,*alternates,wide_ten=wide_ten)
+        result=recognize()
         cache.cards[key]=(signature,result)
         return result
     board=[read(("board",i),spec,lower_corner(spec),narrow_suit(spec),wide_ten=ten_corner(spec)) for i,spec in enumerate(BOARD)]

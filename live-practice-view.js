@@ -119,7 +119,11 @@ export function attachPractice({video,screen,canRun,rotation}){
   const pot=summary.pot?summary.pot.value.toLocaleString('en-CA')+' ('+summary.pot.source+')':'unknown';
   const turn=lastResult?.table_observation?.turn_candidate;
   if(fresh&&heroCardPresence(lastResult)==='absent'){show('Not playing · no hole cards visible','Table observations remain available.');$('optional-model-result').textContent='';return;}
-  show('Opponents '+opponents+' · Pot '+pot,'Stacks '+summary.stackCount+'/5 · Wagers '+summary.betCount+'/5 · '+(fresh&&turn?'Turn cue: '+SEATS[turn]:fresh?'No unique turn cue':'Last observed values; snapshot stale'));
+  const wager=summary.visibleWagers;
+  const wagerText=wager?(wager.approximate?'≈':'')+wager.value.toLocaleString('en-CA')+' ('+wager.count+'/5 seats)':'unavailable';
+  const primary=summary.pot?'Pot '+pot:wager?'Visible wagers '+wagerText:'Pot label unavailable';
+  const extra=summary.pot?' · Visible wagers '+wagerText:wager?' · Collected pot label unavailable':'';
+  show('Opponents '+opponents+' · '+primary,'Stacks '+summary.stackCount+'/5 · Wagers '+summary.betCount+'/5 · '+(fresh&&turn?'Turn cue: '+SEATS[turn]:fresh?'No unique turn cue':'Last observed values; snapshot stale')+extra);
   // Only a freshly observed call prompt is used here. Unknown opponent
   // wagers are not converted into exact amounts.
   const prompt=numeric&&lastResult?.table_observation?.hero_call_prompt?.candidate;

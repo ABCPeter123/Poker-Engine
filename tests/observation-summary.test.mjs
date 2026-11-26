@@ -24,3 +24,20 @@ test('unresolved opponent counts produce conditional scenarios without pretendin
  assert.deepEqual(observationScenarioCounts(2,{min:0,max:4}),[2]);
  assert.deepEqual(observationScenarioCounts(null,{min:4,max:1}),[]);
 });
+
+test('unrendered central pot does not hide the visible wager subtotal',()=>{
+ const seats=Object.fromEntries(['hero','left','upper_left','upper_right','right'].map(id=>[id,{bet:{value:id==='hero'?50:500,approximate:false}}]));
+ const result={street_candidate:'Preflop',table_observation:{seats}};
+ let s=observationSummary(result,{},null,100,true,true);
+ assert.equal(s.pot,null);
+ assert.deepEqual(s.visibleWagers,{value:2050,count:5,approximate:false,complete:true});
+ // A separately displayed pot is not added to outstanding wagers.
+ result.number_candidates={pot:{candidate:{value:2000,approximate:false}}};
+ s=observationSummary(result,{},null,100,true,true);
+ assert.equal(s.pot.value,2000);assert.equal(s.visibleWagers.value,2050);
+ delete seats.right.bet;seats.left.bet.approximate=true;
+ s=observationSummary(result,{},null,100,true,true);
+ assert.deepEqual(s.visibleWagers,{value:1550,count:4,approximate:true,complete:false});
+ assert.equal(observationSummary(result,{},null,100,false,false).visibleWagers,null);
+ assert.equal(observationSummary(result,{},null,100,true,false).visibleWagers,null);
+});

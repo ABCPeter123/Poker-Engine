@@ -425,3 +425,23 @@ export function heroCardPresence(result){
  if(!validSlots(result?.hole_slots,2))return 'unknown';
  return result.hole_slots.some(Boolean)?'visible':'absent';
 }
+
+// Conditional retrospective wager hypothesis. Never promotes an estimate to
+// observed chips. A passed turn alone is not proof of a call.
+export function observedCallHypothesis(previous,current,previousAt,currentAt){
+ if(!previous||!current||!Number.isFinite(previousAt)||!Number.isFinite(currentAt)||currentAt<=previousAt||currentAt-previousAt>1000)return null;
+ const street=streetOf(previous);
+ if(!street||street!==streetOf(current)||!holeOf(previous)||holeOf(previous)!==holeOf(current))return null;
+ const a=previous.table_observation,b=current.table_observation,id=a?.turn_candidate;
+ if(!BET_SEATS.includes(id)||!BET_SEATS.includes(b?.turn_candidate)||id===b.turn_candidate)return null;
+ const seat=b.seats?.[id],old=a.seats?.[id];
+ if(seat?.status_candidate!=='Call'||old?.status_candidate==='Call'||seat?.bet||seat?.bet_reader_conflict||seat?.stack?.value===0)return null;
+ // Without a new observed Call there is no safe amount inference. Even
+ // here the preceding largest visible bet may be smaller than the true max.
+ const candidates=BET_SEATS.filter(k=>k!==id).map(k=>a.seats?.[k]?.bet).filter(c=>c&&Number.isSafeInteger(c.value)&&c.value>0);
+ if(!candidates.length)return null;
+ const target=candidates.reduce((p,c)=>c.value>p.value?c:p);
+ if(old?.bet&&old.bet.value>target.value)return null;
+ if(BET_SEATS.some(k=>k!==id&&b.seats?.[k]?.bet?.value>target.value))return null;
+ return {seat:id,value:target.value,approximate:!!target.approximate,street,at:currentAt,source:'Call hypothesis · assumes highest visible prior wager was the actual price'};
+}

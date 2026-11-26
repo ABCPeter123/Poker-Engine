@@ -346,6 +346,28 @@ def card_region_signature(image,specs,wide_ten=None):
     return (image.size,(left,top,right,bottom),image.crop((left,top,right,bottom)).tobytes())
 
 
+def highlighted_red_glyph(image,box):
+    # Gold exclusion can remove antialiased red ink where the red rank
+    # overlaps the gold classifier's RGB range. Use independent chroma.
+    a=np.asarray(image.crop(box).convert("RGB"),dtype=np.int16)
+    r,g,b=np.moveaxis(a,-1,0)
+    m=(r>95)&(r-g>45)&(r-b>35)&(g<r*.63)
+    ys,xs=np.where(m)
+    if len(ys)<15:return None
+    m=m[ys.min():ys.max()+1,xs.min():xs.max()+1]
+    return np.asarray(Image.fromarray(np.uint8(m*255)).resize((12,16)))>=128
+
+def highlighted_board_corner(image,spec):
+    rankbox,suitbox,body=spec
+    a=np.asarray(image.crop(body),dtype=np.int16)
+    if not face_present(image,body) or gold_mask(a).mean()<.035:return None
+    rank,rd=rank_match(highlighted_red_glyph(image,rankbox))
+    suit,sd=match(highlighted_red_glyph(image,suitbox),{k:v for k,v in SUITS.items() if k[0] in "dh"},.18)
+    if not rank or not suit or rd>.15:return None
+    return {"candidate":rank+suit,"rank_candidate":rank,"suit_candidate":suit,
+            "rank_distance":rd,"suit_distance":sd,"verified":False,
+            "source":"fixed highlighted red corner"}
+
 def reconcile_deskewed_hole(primary,rank,suit):
     """Keep independent 3/8 disagreement visible, not a guessed identity."""
     if primary and primary.get("candidate"):
@@ -373,6 +395,9 @@ def read_cards(image, cache=None):
             # A complete but vulnerable 3/8 candidate also needs the
             # deskewed view; previously only missing cards reached it.
             label=(primary or {}).get("candidate")
+            if key[0]=="board" and not label:
+                alternate=highlighted_board_corner(image,spec)
+                if alternate:return alternate
             if key==("hole",1) and (not label or label[0] in "38"):
                 from offline_card_audit import hero_features,legacy_candidate
                 feature=hero_features(image,1)

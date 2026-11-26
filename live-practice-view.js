@@ -199,6 +199,7 @@ export function attachPractice({video,screen,canRun,rotation}){
    }else{
     const blocker=!currentCards?'Card recognition incomplete':!reading?.stable?'Waiting for repeated card reading':simulationState==='failed'?'Equity calculation failed':simulationState==='no opponents'?'No opponent scenario available':!scenario?'Calculating current card equity':!numeric?'Numeric snapshot unavailable ('+(lastOcrState?.state||'waiting')+')':'Model inputs unavailable';
     label.textContent+=(label.textContent?' · ':'')+blocker;
+    if(!currentCards||!reading?.stable)show('NO SUGGESTION',blocker+(prompt?.value===0&&!prompt.approximate?' · Check available (cost 0)':''));
    }
   }
   // The optional explicitly configured practice model never hides the

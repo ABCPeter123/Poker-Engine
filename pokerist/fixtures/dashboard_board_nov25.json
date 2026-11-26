@@ -1,0 +1,60 @@
+{
+  "description": "Dashboard screenshots with manually cropped source viewports. Community cards only; hero corners partly hidden by dashboard panels.",
+  "frames": [
+    {
+      "file": "image(7).png",
+      "sha256": "ab037f7ccd606a97552c581ff91ab8c88ff093fa0d947c26b360122bf41b147f",
+      "crop": [
+        30,
+        44,
+        986,
+        486
+      ],
+      "board": [
+        "Qh",
+        "2c",
+        "4d",
+        "2s",
+        "3s"
+      ]
+    },
+    {
+      "file": "image(8).png",
+      "sha256": "febadbb41147e7eb39c8a309dd6a607ac6ecfe02ad7dec0525d3ee713d7f6bcf",
+      "crop": [
+        42,
+        40,
+        999,
+        482
+      ],
+      "board": [
+        "Kc",
+        "2d",
+        "9c",
+        "Jh",
+        "3h"
+      ]
+    },
+    {
+      "file": "image(9).png",
+      "sha256": "81bc41c4a4895fc37e949e7308d8551f5a7aa015fde6c3c2105dbd45e4283b1c",
+      "crop": [
+        43,
+        35,
+        1001,
+        477
+      ],
+      "board": [
+        "6c",
+        "7c",
+        "9s",
+        "5d",
+        "8s"
+      ],
+      "calibration_slots": [
+        0,
+        1
+      ]
+    }
+  ]
+}

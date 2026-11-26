@@ -61,7 +61,7 @@ def hero_bar_evidence(a):
     evidence["multicolor_band_candidate"]=bool(evidence["multicolor_band_candidate"] or strong)
     return evidence
 
-def avatar_appearance(a):
+def avatar_appearance(a,seat=None):
     """Appearance only: distinguish blue-grey overlays from normal profiles.
     Default blue silhouettes and card-covered profiles remain ambiguous.
     Thresholds calibrated on the supplied five-seat saved screenshots.
@@ -73,15 +73,28 @@ def avatar_appearance(a):
     blue=float(((b-r>10)&(b>g+3)).mean())
     white=float(((lo>120)&(hi-lo<30)).mean())
     cyan=float(((b>140)&(g>100)&(g-r>55)&(b-r>65)).mean())
+    gray=a.mean(2)
+    brightness=float(gray.mean())
+    texture=float((np.abs(np.diff(gray,axis=0)).mean()+np.abs(np.diff(gray,axis=1)).mean())/2)
     if white>.35:kind="obscured"
     elif cyan>.025 and warm<.02 and blue>.5:kind="empty"
-    elif blue>.97 and warm<.02:kind="silhouette"
+    elif warm<.02 and ((blue>.97 and brightness>60) or (seat=="left" and blue>.94 and brightness>65 and texture<3.5)):kind="silhouette"
     elif blue>.45 and warm<.015:kind="dimmed"
     elif warm>.15:kind="colored"
     else:kind="unknown"
     return {"candidate":kind,"warm_fraction":round(warm,4),
             "blue_fraction":round(blue,4),"white_fraction":round(white,4),
-            "cyan_fraction":round(cyan,4),"verified":False}
+            "cyan_fraction":round(cyan,4),"brightness":round(brightness,2),"texture":round(texture,3),"verified":False}
+
+def profile_appearance(image,seat):
+    evidence=avatar_appearance(pixels(image,SEATS[seat]["avatar"]),seat)
+    if seat=="hero":
+        r,g,b=np.moveaxis(pixels(image,(695,545,755,605)),-1,0)
+        cyan=(b>140)&(g>100)&(g-r>55)&(b-r>65)
+        evidence["empty_chair_cyan_pixels"]=int(cyan.sum())
+        if cyan.sum()>=350 and evidence["warm_fraction"]<.02:
+            evidence["candidate"]="empty"
+    return evidence
 
 def label_candidate(raw):
     # Require actual label text. Yellow pixels alone are not an all-in.
@@ -153,7 +166,7 @@ def seat_evidence(image, executable=None, previous=None, cache=None):
         bar=pixels(image,spec["bar"])
         item={"bar":hero_bar_evidence(bar) if name=="hero" else bar_evidence(bar),
               "all_in_label":labels[name],"avatar_mean_brightness":round(brightness,2),
-              "avatar_appearance":avatar_appearance(avatar),
+              "avatar_appearance":profile_appearance(image,name),
               "brightness_change":None,"darkened_candidate":None,
               "appearance_change_candidate":None,"folded":None,"departed":None,
               "verified":False}

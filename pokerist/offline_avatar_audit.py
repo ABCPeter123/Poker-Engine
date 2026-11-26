@@ -4,14 +4,14 @@ from pathlib import Path
 from collections import Counter
 from PIL import Image
 from offline_font_review import read_image
-from seat_cues import SEATS,pixels,avatar_appearance
+from seat_cues import SEATS,pixels,profile_appearance
 def audit(root,manifest,width=1536):
     rows=[]
     for frame in manifest["frames"]:
         image=Image.fromarray(read_image(root,frame["file"],manifest.get("image_sha256",{})))
         if width!=1536:image=image.resize((width,round(709*width/1536))).resize((1536,709))
         for seat,expected in frame.get("avatar_appearance",{}).items():
-            observed=avatar_appearance(pixels(image,SEATS[seat]["avatar"]))
+            observed=profile_appearance(image,seat)
             candidate=observed["candidate"]
             rows.append({"file":frame["file"],"seat":seat,"expected":expected,"observed":observed,
                          "status":"correct" if candidate==expected else "unknown" if candidate=="unknown" else "incorrect"})

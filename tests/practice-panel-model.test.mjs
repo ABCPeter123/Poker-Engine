@@ -15,3 +15,21 @@ test('missing or contradictory evidence does not invent a price or pot',()=>{
  assert.equal(r.unanimous,null);
  assert.equal(r.source,'displayed pot');
 });
+
+test('first-to-act and folded seats do not block an explicit price with partial visible preflop wagers',()=>{
+ const partial={hero:{stack:c(20000)},left:{bet:c(25)},right:{bet:c(50)},upper_left:{status_candidate:'Fold'}};
+ const result=practicePanelModel({street:'Preflop',seats:partial,prompt:c(50),equities:[.5,.6]});
+ assert.equal(result.pot,75);
+ assert.equal(result.call,50);
+ assert.equal(result.partial,true);
+ assert.equal(result.wagerCount,2);
+ assert.equal(result.unanimous,'Call');
+ assert.equal(result.source,'partial visible preflop wagers');
+ assert.equal(practicePanelModel({street:'Preflop',seats:partial,equities:[.5]}).reason,'Call price unreadable');
+});
+test('an explicit price needs no opponent wagers when the pot is displayed',()=>{
+ const r=practicePanelModel({street:'Flop',pot:c(1000),prompt:c(0),seats:{hero:{stack:c(1000)}},equities:[.1,.2]});
+ assert.equal(r.unanimous,'Check');
+ assert.equal(r.partial,false);
+ assert.equal(r.wagerCount,0);
+});

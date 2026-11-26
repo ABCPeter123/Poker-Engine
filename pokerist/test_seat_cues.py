@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 from PIL import Image
-from seat_cues import SEATS, avatar_appearance, bar_evidence, hero_bar_evidence, label_candidate, seat_evidence
+from seat_cues import SEATS, avatar_appearance, bar_evidence, hero_bar_evidence, profile_appearance, label_candidate, seat_evidence
 
 class CueTests(unittest.TestCase):
     def test_avatar_appearance(self):
@@ -19,6 +19,19 @@ class CueTests(unittest.TestCase):
         self.assertEqual(avatar_appearance(a)["candidate"],"empty")
         a[:]=[25,25,25]
         self.assertEqual(avatar_appearance(a)["candidate"],"unknown")
+    def test_dark_blue_profile_and_left_silhouette(self):
+        a=np.full((80,80,3),[35,50,70],dtype=np.int16)
+        self.assertEqual(avatar_appearance(a,"upper_left")["candidate"],"dimmed")
+        a[:]=[65,85,105]
+        a[:2]=[85,85,85]
+        self.assertEqual(avatar_appearance(a,"left")["candidate"],"silhouette")
+    def test_empty_hero_chair_marker(self):
+        a=np.full((709,1536,3),[50,80,110],dtype=np.uint8)
+        a[550:570,700:730]=[10,145,230]
+        self.assertEqual(profile_appearance(Image.fromarray(a),"hero")["candidate"],"empty")
+        x,y,X,Y=SEATS["hero"]["avatar"]
+        a[y:Y,x:X]=[180,125,85]
+        self.assertEqual(profile_appearance(Image.fromarray(a),"hero")["candidate"],"colored")
     def test_gray(self):
         a=np.full((40,140,3),100,dtype=np.int16)
         self.assertFalse(bar_evidence(a)["multicolor_band_candidate"])

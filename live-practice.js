@@ -357,7 +357,7 @@ export function displayEvidenceValues(memory,now){
 // Count only positive/explicit negative participation evidence. Unknown seats
 // are reported as a range; absence of a red card back is not proof of a fold.
 export function observedOpponentRange(result,locks={}){
- const active=new Set(['Playing','Check','Call','Raise','Bet','All-in','Big blind','Small blind','Participation evidence']);
+ const active=new Set(['Playing','Check','Call','Raise','Bet','All-in','Big blind','Small blind','Ante','Participation evidence']);
  const inactive=new Set(['Fold','Folded','Sat out','Left table','Empty seat']);
  const participants=[],excluded=[],unknown=[];
  for(const id of BET_SEATS.filter(id=>id!=='hero')){

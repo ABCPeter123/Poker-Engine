@@ -69,22 +69,27 @@ export function conditionalCallModel({pot,call,equities}){
 // Conditional private-practice calculation, with explicit evidence sources.
 export function practicePanelModel({street,pot,prompt,seats,equities}){
  const exact=c=>c&&!c.approximate&&whole(c.value)?c.value:null;
- const wagers=Object.keys(SEAT_ANCHORS).map(id=>exact(seats?.[id]?.bet));
- const complete=wagers.every(v=>v!==null);
+ const ids=Object.keys(SEAT_ANCHORS);
+ const wagers=ids.map(id=>exact(seats?.[id]?.bet));
+ const readable=wagers.filter(v=>v!==null);
+ const complete=readable.length===ids.length;
  const hero=exact(seats?.hero?.bet),stack=exact(seats?.hero?.stack);
- const inferredCall=complete&&hero!==null?Math.max(...wagers)-hero:null;
+ const visibleMax=readable.length?Math.max(...readable):null;
+ const inferredCall=complete&&hero!==null?visibleMax-hero:null;
  const explicitCall=exact(prompt);
+ if(explicitCall!==null&&hero!==null&&visibleMax!==null&&explicitCall<visibleMax-hero)return {reason:'Call price and wagers disagree'};
  if(explicitCall!==null&&inferredCall!==null&&explicitCall!==inferredCall)return {reason:'Call price and wagers disagree'};
  const call=explicitCall??inferredCall;
  if(call===null)return {reason:'Call price unreadable'};
  if(stack===0||stack!==null&&call>stack)return {reason:'All-in eligibility unresolved'};
- let amount=exact(pot),source='displayed pot';
- if(amount===null&&street==='Preflop'&&complete){
-  amount=wagers.reduce((a,b)=>a+b,0);
-  source='visible preflop wagers';
+ let amount=exact(pot),source='displayed pot',partial=false;
+ if(amount===null&&street==='Preflop'&&readable.length&&(complete||explicitCall!==null)){
+  amount=readable.reduce((a,b)=>a+b,0);
+  source=complete?'visible preflop wagers':'partial visible preflop wagers';
+  partial=!complete;
  }
  if(!whole(amount))return {reason:'Pot unavailable'};
  const model=conditionalCallModel({pot:amount,call,equities});
  if(!model)return {reason:'Equity unavailable'};
- return {...model,pot:amount,call,source,priceSource:explicitCall!==null?'call prompt':'visible wagers'};
+ return {...model,pot:amount,call,source,partial,wagerCount:readable.length,priceSource:explicitCall!==null?'call prompt':'visible wagers'};
 }

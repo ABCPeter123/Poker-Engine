@@ -1,0 +1,29 @@
+{
+  "description": "Two additional avatar reference screenshots. Appearance only, not participation or hand-state ground truth.",
+  "image_sha256": {
+    "IMG_0445.jpeg": "8c31b8fbca13c923e8a1f51553a822c71432fea61f619bbb66b8509a0be3828f",
+    "IMG_0446.jpeg": "e6e4e4c628dcf37905a4e9123b249f0a6ba2f38e6d77758f18764fcc903cc0bf"
+  },
+  "frames": [
+    {
+      "file": "IMG_0445.jpeg",
+      "avatar_appearance": {
+        "hero": "empty",
+        "left": "silhouette",
+        "upper_left": "dimmed",
+        "upper_right": "colored",
+        "right": "colored"
+      }
+    },
+    {
+      "file": "IMG_0446.jpeg",
+      "avatar_appearance": {
+        "hero": "empty",
+        "left": "silhouette",
+        "upper_left": "colored",
+        "upper_right": "colored",
+        "right": "colored"
+      }
+    }
+  ]
+}

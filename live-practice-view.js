@@ -134,9 +134,9 @@ export function attachPractice({video,screen,canRun,rotation}){
    if(scenario&&numeric){
     const model=practicePanelModel({street:currentCards.street??lastResult.street_candidate,pot:numeric.pot,prompt,seats:numeric.seats,equities:scenario.equities});
     if(!model.reason){
-     const headline=model.unanimous?(model.unanimous==='Call'?'Call '+model.call.toLocaleString('en-CA'):model.unanimous):'Varies by opponent count';
+     const headline=model.partial&&model.unanimous==='Fold'?'Depends on missing pot':model.unanimous?(model.unanimous==='Call'?'Call '+model.call.toLocaleString('en-CA'):model.unanimous):'Varies by opponent count';
      show('Conditional: '+headline,context+' · Break-even '+(model.odds*100).toFixed(1)+'%');
-     label.textContent='Practice model · '+model.source+' · '+model.priceSource+' · assumes eligible pot, no side pots and random opponent hands.';
+     label.textContent='Practice model · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; omitted wagers unknown)':'')+' · '+model.priceSource+' · assumes eligible pot, no side pots and random opponent hands.';
     }else label.textContent+=(label.textContent?' · ':'')+model.reason;
    }else if(!scenario)label.textContent+=(label.textContent?' · ':'')+'Waiting for current card equity';
   }

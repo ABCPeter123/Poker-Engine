@@ -1,9 +1,24 @@
 import unittest
 import numpy as np
 from PIL import Image
-from seat_cues import SEATS, bar_evidence, hero_bar_evidence, label_candidate, seat_evidence
+from seat_cues import SEATS, avatar_appearance, bar_evidence, hero_bar_evidence, label_candidate, seat_evidence
 
 class CueTests(unittest.TestCase):
+    def test_avatar_appearance(self):
+        a=np.full((80,80,3),[85,100,125],dtype=np.int16)
+        # Uniform blue default profiles are ambiguous, not folds.
+        self.assertEqual(avatar_appearance(a)["candidate"],"silhouette")
+        a[:25]=[50,50,50]
+        self.assertEqual(avatar_appearance(a)["candidate"],"dimmed")
+        a[25:45]=[185,120,90]
+        self.assertEqual(avatar_appearance(a)["candidate"],"colored")
+        a[:]=[200,200,200]
+        self.assertEqual(avatar_appearance(a)["candidate"],"obscured")
+        a[:]=[60,85,105]
+        a[:8]=[20,150,220]
+        self.assertEqual(avatar_appearance(a)["candidate"],"empty")
+        a[:]=[25,25,25]
+        self.assertEqual(avatar_appearance(a)["candidate"],"unknown")
     def test_gray(self):
         a=np.full((40,140,3),100,dtype=np.int16)
         self.assertFalse(bar_evidence(a)["multicolor_band_candidate"])

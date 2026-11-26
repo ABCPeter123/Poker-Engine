@@ -364,7 +364,14 @@ export function observedOpponentRange(result,locks={}){
   const s=result?.table_observation?.seats?.[id];
   const manual=[locks[id+'.status'],locks[id+'.participation']].filter(v=>active.has(v)||inactive.has(v));
   const evidence=manual.length?manual:[s?.status_candidate,s?.participation_candidate,s?.card_visible_candidate===true?'Participation evidence':null,s?.turn_candidate===true?'Participation evidence':null];
-  const yes=evidence.some(v=>active.has(v)),no=evidence.some(v=>inactive.has(v));
+  let yes=evidence.some(v=>active.has(v)),no=evidence.some(v=>inactive.has(v));
+  if(!manual.length){
+   const appearance=result?.seat_evidence?.seats?.[id]?.avatar_appearance?.candidate;
+   // A colored avatar alone is not proof of participation: a newly joined
+   // player may be waiting for the next deal. Card backs/status/turn support it.
+   // A blue default avatar is not the same as a dimmed player.
+   if(appearance==='dimmed'||appearance==='empty')no=true;
+  }
   (yes&&!no?participants:no&&!yes?excluded:unknown).push(id);
  }
  return {min:participants.length,max:participants.length+unknown.length,participants,excluded,unknown};

@@ -21,3 +21,15 @@ test('participant observations do not invent empty or folded seats',()=>{
  const b=observedOpponentRange(r(10),{'right.participation':'Empty seat','upper_right.status':'Playing'});
  assert.deepEqual([b.min,b.max],[2,2]);
 });
+
+test('greyed avatars and empty chairs narrow the count, silhouettes do not',()=>{
+ const f=r(10);f.seat_evidence={seats:{right:{avatar_appearance:{candidate:'dimmed'}},upper_right:{avatar_appearance:{candidate:'silhouette'}}}};
+ let result=observedOpponentRange(f);
+ assert.deepEqual([result.min,result.max],[1,2]);
+ assert.ok(result.excluded.includes('right'));
+ f.table_observation.seats.upper_right={card_visible_candidate:true};
+ result=observedOpponentRange(f);assert.deepEqual([result.min,result.max],[2,2]);
+ f.table_observation.seats.right={turn_candidate:true};
+ result=observedOpponentRange(f);assert.deepEqual([result.min,result.max],[2,3]);assert.ok(result.unknown.includes('right'));
+ assert.deepEqual(observedOpponentRange(f,{'right.status':'Fold'}).excluded.sort(),['right','upper_left']);
+});

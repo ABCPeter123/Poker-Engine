@@ -61,6 +61,28 @@ def hero_bar_evidence(a):
     evidence["multicolor_band_candidate"]=bool(evidence["multicolor_band_candidate"] or strong)
     return evidence
 
+def avatar_appearance(a):
+    """Appearance only: distinguish blue-grey overlays from normal profiles.
+    Default blue silhouettes and card-covered profiles remain ambiguous.
+    Thresholds calibrated on the supplied five-seat saved screenshots.
+    """
+    r,g,b=np.moveaxis(a.astype(np.int16,copy=False),-1,0)
+    lo=np.minimum(np.minimum(r,g),b)
+    hi=np.maximum(np.maximum(r,g),b)
+    warm=float(((r-b>18)&(r>g+8)&(r>70)).mean())
+    blue=float(((b-r>10)&(b>g+3)).mean())
+    white=float(((lo>120)&(hi-lo<30)).mean())
+    cyan=float(((b>140)&(g>100)&(g-r>55)&(b-r>65)).mean())
+    if white>.35:kind="obscured"
+    elif cyan>.025 and warm<.02 and blue>.5:kind="empty"
+    elif blue>.97 and warm<.02:kind="silhouette"
+    elif blue>.45 and warm<.015:kind="dimmed"
+    elif warm>.15:kind="colored"
+    else:kind="unknown"
+    return {"candidate":kind,"warm_fraction":round(warm,4),
+            "blue_fraction":round(blue,4),"white_fraction":round(white,4),
+            "cyan_fraction":round(cyan,4),"verified":False}
+
 def label_candidate(raw):
     # Require actual label text. Yellow pixels alone are not an all-in.
     normalized=re.sub(r"[^A-Z]","",raw.upper())
@@ -131,6 +153,7 @@ def seat_evidence(image, executable=None, previous=None, cache=None):
         bar=pixels(image,spec["bar"])
         item={"bar":hero_bar_evidence(bar) if name=="hero" else bar_evidence(bar),
               "all_in_label":labels[name],"avatar_mean_brightness":round(brightness,2),
+              "avatar_appearance":avatar_appearance(avatar),
               "brightness_change":None,"darkened_candidate":None,
               "appearance_change_candidate":None,"folded":None,"departed":None,
               "verified":False}

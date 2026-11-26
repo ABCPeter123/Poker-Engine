@@ -1,5 +1,5 @@
 {
-  "description": "Five hand groups, saved screenshot board and ring annotations. Ring labels are visual markers, not action or outcome verification. Hero labels describe the calibrated lower-right position only. IMG_0429 relocates cards at showdown and is intentionally excluded from the hero audit.",
+  "description": "Five hand groups, saved screenshot board and ring annotations. Ring labels are visual markers, not action or outcome verification. Hero labels describe the calibrated lower-right position only. IMG_0429 relocates cards at showdown and is intentionally excluded from the hero audit. Avatar annotations describe visual appearance only; they are not independent participation ground truth.",
   "image_sha256": {
     "IMG_0423.jpeg": "fdfd10f19b92ab010d4d39a716332a73452dc640cdc97a0d4b4de906962e2e9f",
     "IMG_0424.jpeg": "e6ebdc2f01fe6adb919b08b42e381baf886dd6f02a01b3689daa38ad92008996",
@@ -40,7 +40,14 @@
       "hero": [
         null,
         null
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "dimmed",
+        "left": "dimmed",
+        "upper_left": "colored",
+        "upper_right": "dimmed",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0424.jpeg",
@@ -57,7 +64,14 @@
       "hero": [
         null,
         null
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "dimmed",
+        "left": "dimmed",
+        "upper_left": "colored",
+        "upper_right": "dimmed",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0425.jpeg",
@@ -74,7 +88,14 @@
       "hero": [
         null,
         null
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "dimmed",
+        "left": "dimmed",
+        "upper_left": "obscured",
+        "upper_right": "dimmed",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0426.jpeg",
@@ -91,7 +112,14 @@
       "hero": [
         null,
         "Qc"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "colored",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0427.jpeg",
@@ -108,7 +136,14 @@
       "hero": [
         "Th",
         "Qc"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "colored",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0428.jpeg",
@@ -125,7 +160,14 @@
       "hero": [
         "Th",
         "Qc"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "colored",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0429.jpeg",
@@ -138,7 +180,14 @@
         "2d"
       ],
       "active": null,
-      "winner_ring": "right"
+      "winner_ring": "right",
+      "avatar_appearance": {
+        "hero": "obscured",
+        "left": "dimmed",
+        "upper_left": "dimmed",
+        "upper_right": "obscured",
+        "right": "obscured"
+      }
     },
     {
       "file": "IMG_0430.jpeg",
@@ -155,7 +204,14 @@
       "hero": [
         "7s",
         "4s"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "silhouette",
+        "upper_right": "colored",
+        "right": "dimmed"
+      }
     },
     {
       "file": "IMG_0431.jpeg",
@@ -172,7 +228,14 @@
       "hero": [
         "7s",
         "4s"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "dimmed",
+        "upper_left": "silhouette",
+        "upper_right": "colored",
+        "right": "dimmed"
+      }
     },
     {
       "file": "IMG_0432.jpeg",
@@ -189,7 +252,14 @@
       "hero": [
         "5c",
         "Td"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "silhouette",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0433.jpeg",
@@ -206,7 +276,14 @@
       "hero": [
         "5c",
         "Td"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "dimmed",
+        "left": "colored",
+        "upper_left": "silhouette",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0434.jpeg",
@@ -223,7 +300,14 @@
       "hero": [
         "5c",
         "Td"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "dimmed",
+        "left": "colored",
+        "upper_left": "empty",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0435.jpeg",
@@ -240,7 +324,14 @@
       "hero": [
         "5c",
         "Td"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "dimmed",
+        "left": "dimmed",
+        "upper_left": "empty",
+        "upper_right": "obscured",
+        "right": "obscured"
+      }
     },
     {
       "file": "IMG_0436.jpeg",
@@ -257,7 +348,14 @@
       "hero": [
         "8h",
         "2d"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "empty",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0437.jpeg",
@@ -274,7 +372,14 @@
       "hero": [
         "8h",
         "2d"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "empty",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0438.jpeg",
@@ -291,7 +396,14 @@
       "hero": [
         "8h",
         "2d"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "empty",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0439.jpeg",
@@ -308,7 +420,14 @@
       "hero": [
         "8h",
         "2d"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "empty",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0440.jpeg",
@@ -325,7 +444,14 @@
       "hero": [
         "8h",
         "2d"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "silhouette",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0441.jpeg",
@@ -342,7 +468,14 @@
       "hero": [
         "8h",
         "2d"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "silhouette",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0442.jpeg",
@@ -359,7 +492,14 @@
       "hero": [
         "8h",
         "2d"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "silhouette",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0443.jpeg",
@@ -376,7 +516,14 @@
       "hero": [
         "8h",
         "2d"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "colored",
+        "upper_left": "silhouette",
+        "upper_right": "colored",
+        "right": "colored"
+      }
     },
     {
       "file": "IMG_0444.jpeg",
@@ -393,7 +540,14 @@
       "hero": [
         "8h",
         "2d"
-      ]
+      ],
+      "avatar_appearance": {
+        "hero": "colored",
+        "left": "obscured",
+        "upper_left": "silhouette",
+        "upper_right": "colored",
+        "right": "obscured"
+      }
     }
   ]
 }

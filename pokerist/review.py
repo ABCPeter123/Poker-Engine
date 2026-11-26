@@ -188,6 +188,31 @@ def match(m, templates, threshold=.18):
     margin=scores[1][0]-distance if len(scores)>1 else 1.0
     return (label if distance<=threshold and margin>=.025 else None),round(distance,3)
 
+def glyph_holes(mask):
+    """Count enclosed background components on the normalized rank mask."""
+    if mask is None:return 0
+    bg=np.pad(~mask,1,constant_values=True)
+    h,w=bg.shape
+    seen=set()
+    holes=0
+    for y,x in zip(*np.where(bg)):
+        point=(int(y),int(x))
+        if point in seen:continue
+        stack=[point];seen.add(point);size=0;edge=False
+        while stack:
+            j,i=stack.pop();size+=1
+            edge|=j in (0,h-1) or i in (0,w-1)
+            for J,I in ((j-1,i),(j+1,i),(j,i-1),(j,i+1)):
+                if 0<=J<h and 0<=I<w and bg[J,I] and (J,I) not in seen:
+                    seen.add((J,I));stack.append((J,I))
+        if not edge and size>=4:holes+=1
+    return holes
+
+def rank_match(mask):
+    label,distance=match(mask,RANKS)
+    if label=="8" and glyph_holes(mask)!=2:return None,distance
+    return label,distance
+
 def face_present(image, box):
     a=np.asarray(image.crop(box),dtype=np.int16)
     # Require sustained bright neutral card stock, not pale lettering on blue felt.
@@ -213,7 +238,7 @@ def card(image, spec, *alternates, wide_ten=None):
     @lru_cache(maxsize=None)
     def recognized(box,color,kind):
         if kind=="rank":
-            return match(glyph(image,box,color),RANKS)
+            return rank_match(glyph(image,box,color))
         allowed="dh" if color=="red" else "cs"
         return match(glyph(image,box,color),{k:v for k,v in SUITS.items() if k[0] in allowed},.25)
     for r,s in sorted(regions):

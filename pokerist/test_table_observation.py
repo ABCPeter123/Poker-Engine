@@ -18,8 +18,10 @@ class ObservationTests(unittest.TestCase):
     def test_call_prompt_requires_explicit_price(self):
         for raw in ("CALL 50 OR RAISE","CALL ♢ 200 OR RAISE"):
             self.assertIsNotNone(call_prompt(raw,90,number_text))
-        for raw in ("Call","CHECK","CALL 1.2K OR RAISE","CALL 50","BET 50"):
+        for raw in ("Call","CHECK","CALL 50","BET 50"):
             self.assertIsNone(call_prompt(raw,90,number_text))
+        self.assertEqual(call_prompt("CALL 1.4K OR RAISE",90,number_text)["value"],1400)
+        self.assertTrue(call_prompt("CALL 1.4K OR RAISE",90,number_text)["approximate"])
         self.assertIsNone(call_prompt("CALL 50 OR RAISE",30,number_text))
         self.assertEqual(status_label("Ante"),"Ante")
         self.assertEqual(call_prompt("CHECK or RAISE",90,number_text)["value"],0)

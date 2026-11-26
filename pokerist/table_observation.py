@@ -111,7 +111,7 @@ def call_prompt(text,confidence,parse):
     m=re.fullmatch(r"\s*CALL\s*[^A-Z0-9]*\s*([0-9][0-9 ,.]*[KM]?)\s+OR\s+RAISE\s*",text.upper())
     if not m:return None
     c=parse(m.group(1).strip())
-    return c if c and not c.get("approximate") else None
+    return c
 
 def action_prompt_panel(image):
     # The central blue prompt has two long pale horizontal borders.

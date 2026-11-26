@@ -68,6 +68,18 @@ export function conditionalCallModel({pot,call,equities}){
 
 // Calculate from the current betting street only. Missing wagers cannot
 // establish a zero call; a positive partial difference is a lower bound.
+// Rounded labels are useful display evidence, but not exact prices.
+export function roundedCallObservation(seats,prompt){
+ const valid=c=>c&&whole(c.value);
+ if(valid(prompt)&&prompt.approximate)return {value:prompt.value,source:'rounded call prompt'};
+ const hero=seats?.hero?.bet;
+ if(!valid(hero))return null;
+ const amounts=Object.values(seats||{}).map(s=>s?.bet).filter(valid);
+ if(!amounts.length)return null;
+ const highest=amounts.reduce((a,b)=>a.value>=b.value?a:b);
+ if(!(highest.approximate||hero.approximate)||highest.value<=hero.value)return null;
+ return {value:highest.value-hero.value,source:'rounded current-round wager difference'};
+}
 export function observedCallPrice(seats,prompt,excluded=[]){
  const exact=c=>c&&!c.approximate&&whole(c.value)?c.value:null;
  const ids=Object.keys(SEAT_ANCHORS),hero=exact(seats?.hero?.bet);
@@ -81,6 +93,7 @@ export function observedCallPrice(seats,prompt,excluded=[]){
   if(difference!==null&&(explicit<difference||(complete&&explicit!==difference)))return {reason:'Call price and wagers disagree'};
   return {value:explicit,source:'call prompt',partial:false};
  }
+ if(roundedCallObservation(seats,prompt))return {reason:'Rounded call price; exact amount unavailable'};
  if(difference!==null&&(complete||difference>0))return {value:difference,source:complete?'visible round wagers':'partial round wager difference',partial:!complete};
  return {reason:'Call price unreadable'};
 }

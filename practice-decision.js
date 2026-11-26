@@ -101,3 +101,17 @@ export function practiceHeadline(model){
  const outcome=model.unanimous??(model.outcomes.includes('Fold')?'Fold':model.outcomes.includes('Indifferent')?'Indifferent':model.outcomes[0]);
  return {action:outcome==='Indifferent'?'Fold':outcome,sensitive:!!model.partial||!model.unanimous||outcome==='Indifferent',policy:model.unanimous?'all scenarios agree':'conservative scenario'};
 }
+
+// Compare a hypothetical extra unit invested beyond the call. Each scenario
+// assumes every opponent matches that unit, unchanged showdown equity, no
+// further action, no side pots. No legal minimum raise or size is inferred.
+export function conditionalRaiseComparison({model,counts,equities,stack,raiseVisible}){
+ if(!raiseVisible||!model||model.reason||!whole(model.call)||!whole(stack)||stack<=model.call||
+    !Array.isArray(counts)||!Array.isArray(equities)||!counts.length||counts.length!==equities.length||
+    !counts.every(n=>Number.isInteger(n)&&n>=1&&n<=4)||!equities.every(e=>Number.isFinite(e)&&e>=0&&e<=1))return null;
+ const edges=equities.map((e,i)=>e*(counts[i]+1)-1);
+ const allPositive=edges.every(e=>e>0);
+ const baseline=practiceHeadline(model);
+ const raise=allPositive&&!model.partial&&baseline&&['Check','Call'].includes(baseline.action);
+ return {action:raise?'Raise':null,edges,assumption:'All opponents match extra chips; unchanged showdown equity; no side pots',sizeVerified:false};
+}

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {practicePanelModel,practiceHeadline} from '../practice-decision.js';
+import {practicePanelModel,practiceHeadline,conditionalRaiseComparison} from '../practice-decision.js';
 const c=value=>({value,approximate:false});
 const seats=Object.fromEntries(['hero','left','upper_left','upper_right','right'].map(id=>[id,{bet:c(id==='hero'?50:500),stack:c(20000)}]));
 test('complete visible preflop wager subtotal supports explicitly conditional calculation',()=>{
@@ -43,4 +43,15 @@ test('disagreeing scenarios use the conservative model baseline and mark sensiti
  const result=practicePanelModel({street:'Flop',pot:c(200),prompt:c(50),seats:{},equities:[.3,.1]});
  assert.deepEqual(practiceHeadline(result),{action:'Fold',sensitive:true,policy:'conservative scenario'});
  assert.equal(practiceHeadline({reason:'Pot unavailable'}),null);
+});
+
+test('raise comparison is conditional on visible raise and consistent positive extra-chip EV',()=>{
+ const model=practicePanelModel({street:'Turn',pot:c(250),prompt:c(50),seats:{hero:{stack:c(1000)}},equities:[.65,.50]});
+ const args={model,counts:[2,3],equities:[.65,.50],stack:1000,raiseVisible:true};
+ const r=conditionalRaiseComparison(args);
+ assert.equal(r.action,'Raise');assert.equal(r.sizeVerified,false);
+ assert.equal(conditionalRaiseComparison({...args,raiseVisible:false}),null);
+ assert.equal(conditionalRaiseComparison({...args,stack:50}),null);
+ assert.equal(conditionalRaiseComparison({...args,equities:[.65,.1]}).action,null);
+ assert.equal(conditionalRaiseComparison({...args,model:{...model,partial:true}}).action,null);
 });

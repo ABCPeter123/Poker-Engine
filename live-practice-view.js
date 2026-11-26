@@ -1,6 +1,6 @@
 import {CurrentStateQueue} from './frame-queue.js';
 import {updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
-import {practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
+import {conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
@@ -136,6 +136,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   const label=$('conditional-model-result');
   if(fresh&&turn==='hero'&&heroCardPresence(lastResult)==='visible'){
    const context='Opponents '+opponents+' · '+primary;
+   show('Your turn',context);
    if(prompt?.value===0&&!prompt.approximate){
     show('Your turn · Check available',context+' · No additional chips required');
     label.textContent='Explicit CHECK or RAISE prompt detected.';
@@ -145,9 +146,10 @@ export function attachPractice({video,screen,canRun,rotation}){
     const model=practicePanelModel({street:currentCards.street??lastResult.street_candidate,pot:numeric.pot,prompt,seats:numeric.seats,equities:scenario.equities});
     if(!model.reason){
      const recommendation=practiceHeadline(model);
-     const headline=recommendation.action==='Call'?'Call '+model.call.toLocaleString('en-CA'):recommendation.action;
+     const raise=conditionalRaiseComparison({model,counts:scenario.counts,equities:scenario.equities,stack:numeric.seats?.hero?.stack?.approximate?null:numeric.seats?.hero?.stack?.value,raiseVisible:!!prompt&&/\bOR\s+RAISE\b/i.test(lastResult?.table_observation?.hero_call_prompt?.raw||'')});
+     const headline=raise?.action?'Raise (size unverified)':recommendation.action==='Call'?'Call '+model.call.toLocaleString('en-CA'):recommendation.action;
      show('Conditional: '+headline,context+' · Break-even '+(model.odds*100).toFixed(1)+'%');
-     label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'');
+     label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'')+(raise?' Raise scenario: '+raise.assumption+'. '+(raise.action?'Sizing not verified.':'Raise not favored across all scenarios.'):'');
     }else label.textContent+=(label.textContent?' · ':'')+model.reason;
    }else if(!scenario)label.textContent+=(label.textContent?' · ':'')+'Waiting for current card equity';
   }
@@ -238,7 +240,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   $('manual-effective-cards').textContent=CARD_KEYS.slice(0,2).map(cardLabel).join(' ')+' | '+CARD_KEYS.slice(2).map(cardLabel).join(' ');
   $('live-cards').textContent=$('manual-effective-cards').textContent;
   $('live-street').textContent=show('street');
-  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=handContributionDisplay(betMemory,id,handPresence);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?(lastResult?.table_observation?.turn_candidate===id?'TURN · ':'LAST TURN · '):'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');const raw=direct?.seats?.[id]?.bet;const conflict=direct?.seats?.[id]?.bet_reader_conflict;if(conflict)n.note.textContent+=' · wager readers disagree';else if(raw&&(!retained||raw.value!==retained.value))n.note.textContent+=' · visible B '+raw.display;else if(callHypotheses[id]&&!raw)n.note.textContent+=' · inferred call ~'+callHypotheses[id].value.toLocaleString('en-CA');n.contributionValue.value=total?(total.approximate?'≈':'')+total.value.toLocaleString('en-CA'):'0';
+  for(const [id,n] of seatNodes){const [x,y]=overlayPosition(SEAT_ANCHORS[id],lastResult?.capture_crop);n.tile.style.left=x+'%';n.tile.style.top=y+'%';n.tile.classList.toggle('screen-seat-active',effective.turn===id);const retained=betMemory.seats[id]?.observed?betMemory.seats[id]:null,total=handContributionDisplay(betMemory,id,handPresence);n.note.textContent=(effective.dealer===id?'D · ':'')+(effective.turn===id?(observationAge(lastFrame,now,1000).fresh&&lastResult?.table_observation?.turn_candidate===id?'TURN · ':'LAST TURN · '):'')+(lastResult?.table_observation?.seats?.[id]?.status_candidate|| (actionEvidence?.seats?.[id]?.action?actionEvidence.seats[id].action+' (last)':'')||displayValue(id+'.status',effective[id+'.status']))+(retained&&(a[id+'.bet']===undefined||betMemory.uncertain)?' · last B '+trackedBetLabel(retained):'');const raw=direct?.seats?.[id]?.bet;const conflict=direct?.seats?.[id]?.bet_reader_conflict;if(conflict)n.note.textContent+=' · wager readers disagree';else if(raw&&(!retained||raw.value!==retained.value))n.note.textContent+=' · visible B '+raw.display;else if(callHypotheses[id]&&!raw)n.note.textContent+=' · inferred call ~'+callHypotheses[id].value.toLocaleString('en-CA');n.contributionValue.value=total?(total.approximate?'≈':'')+total.value.toLocaleString('en-CA'):'0';
    n.contributionValue.title=total?.initialized?'Initial zero; unobserved wagers may be missing':'Cumulative observed hand contribution; incomplete if any wagers were missed';
    n.total.textContent='Round wager: '+(retained?trackedBetLabel(retained):raw?raw.display+' (candidate)':'0 (unobserved)');}
   paintDecision();

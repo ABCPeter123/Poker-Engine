@@ -376,3 +376,20 @@ export function observedOpponentRange(result,locks={}){
  }
  return {min:participants.length,max:participants.length+unknown.length,participants,excluded,unknown};
 }
+
+// Read-only field inventory: no assumed pot convention, missing bets are not
+// zero, and retained readings remain explicitly historical.
+export function observationSummary(result,locks,memory,now,fresh,numericFresh){
+ const range=observedOpponentRange(fresh?result:null,locks);
+ const history=displayEvidenceValues(memory,now);
+ const choose=(key,raw)=>{
+  if(Object.hasOwn(locks,key))return {value:locks[key],source:'manual'};
+  if(raw&&Number.isSafeInteger(raw.value)&&raw.value>=0)return {value:raw.value,source:raw.approximate?'approximate candidate':'current candidate'};
+  const old=history.details[key];
+  return old&&Number.isSafeInteger(old.value)&&old.value>=0?{value:old.value,source:'last observed'}:null;
+ };
+ const pot=choose('pot',fresh&&numericFresh?result?.number_candidates?.pot?.candidate:null);
+ const stakes=BET_SEATS.map(id=>({id,stack:choose(id+'.stack',fresh&&numericFresh?result?.table_observation?.seats?.[id]?.stack:null),bet:choose(id+'.bet',fresh&&numericFresh?result?.table_observation?.seats?.[id]?.bet:null)}));
+ const stackCount=stakes.filter(s=>s.stack!==null).length,betCount=stakes.filter(s=>s.bet!==null).length;
+ return {range,pot,stakes,stackCount,betCount};
+}

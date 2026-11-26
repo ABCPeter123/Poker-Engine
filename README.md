@@ -256,3 +256,7 @@ Audit an existing completed-image benchmark report with `py pokerist/audit_field
 ### 60 FPS receiver request
 
 Restart the AirPlay receiver as well as the browser/server. The Windows launcher now requests 60 FPS by default (`py start_mirror.py --fps 60`); use `--fps 30` for compatibility. Disconnect and reconnect iPhone mirroring and choose Smooth · 60 FPS in the browser. The negotiated frame rate may still be lower. Existing browser preferences are preserved.
+
+### Windows mirror audio stability
+
+Browser screen sharing is video-only; UxPlay renders audio directly to the Windows output device. The launcher now probes the installed GStreamer audio sinks in order (wasapi2sink, wasapisink, directsoundsink), uses the normal shared-mode defaults, and defaults to UxPlay's documented `-vsync no` live screen-mirroring mode. Timestamp-based playback remains available with `--audio-sync timestamp` if audiovisual synchronization is more important. Restart the receiver with `py start_mirror.py`; if audio still cuts out, try `py start_mirror.py --audio-sink directsoundsink` (or `--audio-sink wasapisink`). Audio-related GStreamer warnings are visible in the launcher terminal. The probe checks plugin availability, not physical device health; it does not recover a disconnected iPhone session or guarantee uninterrupted sound. Upstream reference: https://github.com/FDH2/UxPlay#readme . No browser audio capture or duplicated audio output is introduced.

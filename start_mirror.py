@@ -123,12 +123,49 @@ def auth_options(mode, password=None):
         raise ValueError("Choose a dedicated AirPlay password of at least 8 ASCII letters/digits.")
     return ["-pw", password]
 
+AUDIO_SINKS = ("wasapi2sink", "wasapisink", "directsoundsink")
+
+def inspect_audio_sink(inspector, sink, env):
+    """Probe installed GStreamer elements, not the Windows endpoint itself."""
+    try:
+        result = subprocess.run([str(inspector), sink], env=env, capture_output=True,
+                                text=True, encoding="utf-8", errors="replace", timeout=8)
+        return result.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+def audio_options(exe, env, sink="auto", sync="live", probe=inspect_audio_sink):
+    """Prefer an installed Windows audio backend; preserve a manual fallback."""
+    if sink not in ("auto", "default", *AUDIO_SINKS) or sync not in ("live", "timestamp"):
+        raise ValueError("Invalid audio settings")
+    inspector = Path(exe).parent / "gst-inspect-1.0.exe"
+    if sink == "auto":
+        chosen = next((name for name in AUDIO_SINKS if probe(inspector, name, env) is True), "autoaudiosink")
+    elif sink == "default":
+        chosen = "autoaudiosink"
+    else:
+        if probe(inspector, sink, env) is False:
+            raise ValueError(f"{sink} is not installed. Use --audio-sink auto or install its GStreamer plugin.")
+        chosen = sink
+    # Avoid forcing low-latency/exclusive device access or unsupported
+    # version-specific properties. GStreamer uses its normal shared defaults.
+    return ["-as", chosen, "-vsync", "no"] if sync == "live" else ["-as", chosen, "-vsync"]
+
+def audio_warning(line):
+    """Classify reported audio faults without assuming that silence is a fault."""
+    return bool(re.search(r"(?i)\b(?:warn(?:ing)?|error|failed|failure|discontinuity|underrun)\b", line)
+                and re.search(r"(?i)audio|wasapi|directsound|clock skew|sound device", line))
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", default=r"C:\msys64\ucrt64\bin\uxplay.exe")
     parser.add_argument("--max-width", type=int, default=1100)
     parser.add_argument("--fps", type=int, choices=(30,60), default=60,
                         help="Requested AirPlay receiver frame rate (default 60; actual rate is negotiated)")
+    parser.add_argument("--audio-sink", choices=("auto","default",*AUDIO_SINKS), default="auto",
+                        help="Audio backend; auto probes installed Windows sinks, default uses autoaudiosink")
+    parser.add_argument("--audio-sync", choices=("live","timestamp"), default="live",
+                        help="Live mirroring without timestamp synchronization (default), or synchronized video playback")
     parser.add_argument("--software", action="store_true", help="Force software decoding if GPU rotation fails")
     parser.add_argument("--landscape", action="store_true", help="Force a wide receiver window (fallback if stream geometry events are missing)")
     parser.add_argument("--auth", choices=("password","random","pin"), default="password",
@@ -148,26 +185,37 @@ def main():
     env = dict(os.environ)
     env["PATH"] = str(exe.parent) + os.pathsep + env.get("PATH", "")
     # Limit debug output to the renderer whose negotiated dimensions we need.
-    env["GST_DEBUG"] = "d3d11videosink:5"
+    env["GST_DEBUG"] = "2,d3d11videosink:5"
     env["GST_DEBUG_NO_COLOR"] = "1"
     password = getpass.getpass("AirPlay password (reuse the same dedicated password each launch): ") if args.auth == "password" else None
     try:
         auth = auth_options(args.auth, password)
     except ValueError as exc:
         parser.error(str(exc))
+    try:
+        audio = audio_options(exe, env, args.audio_sink, args.audio_sync)
+    except ValueError as exc:
+        parser.error(str(exc))
     name = "Private Mirror Secure" if args.auth == "password" else "Private Mirror " + args.auth.title()
     command = [str(exe), "-n", name, "-nh", "-m", receiver_id(uuid.getnode(), args.auth), *auth,
-               "-s", "1920x1080", "-fps", str(args.fps), "-vs", "d3d11videosink force-aspect-ratio=true"]
+               "-s", "1920x1080", "-fps", str(args.fps), "-vs", "d3d11videosink force-aspect-ratio=true", *audio]
     if args.software:
         command.append("-avdec")
     print(f"Starting {name}. Select this receiver on your iPhone. Authentication: {args.auth}. Requested stream: {args.fps} FPS.", flush=True)
+    print(f"Audio: {audio[1]} · {args.audio_sync} synchronization. If audio drops, check the receiver warnings below.", flush=True)
     if args.auth == "password":
         print("Use the dedicated password you just entered if iOS prompts.", flush=True)
     process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, encoding="utf-8", errors="replace", bufsize=1)
     updates = queue.Queue()
     def read_output():
+        last_audio_hint = -float("inf")
         for line in process.stdout:
+            if audio_warning(line):
+                now = time.monotonic()
+                if now - last_audio_hint >= 15:
+                    last_audio_hint = now
+                    print("Audio pipeline warning. If sound is lost, try --audio-sink directsoundsink on the next receiver launch.", flush=True)
             sink_size = parse_sink_geometry(line)
             value = sink_size or parse_geometry(line)
             if value:

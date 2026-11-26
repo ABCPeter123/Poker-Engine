@@ -115,3 +115,36 @@ export function conditionalRaiseComparison({model,counts,equities,stack,raiseVis
  const raise=allPositive&&!model.partial&&baseline&&['Check','Call'].includes(baseline.action);
  return {action:raise?'Raise':null,edges,assumption:'All opponents match extra chips; unchanged showdown equity; no side pots',sizeVerified:false};
 }
+
+// A screen snapshot cannot establish the last full raise increment. For
+// authorized practice only, compute a conservative upper bound on the
+// minimum full raise, conditional on the exact observed values and the
+// standard no-limit rules. The actual room may impose other chip steps.
+export function conservativeRaiseBounds({street,heroBet,stack,call,bigBlind,raiseVisible}){
+ if(!raiseVisible||!whole(heroBet)||!whole(stack)||!whole(call)||!Number.isSafeInteger(heroBet+call)||!Number.isSafeInteger(heroBet+stack)||stack<=call)return null;
+ const highest=heroBet+call,maxTo=heroBet+stack;
+ // A full preflop price includes at least the nominal big blind.
+ // Postflop a small all-in may be below the blind; do not guess it.
+ const bb=whole(bigBlind)&&bigBlind>0?bigBlind:street==='Preflop'&&highest>0?highest:null;
+ if(bb===null)return null;
+ const increment=Math.max(bb,highest);
+ const safeTo=highest+increment;
+ if(!Number.isSafeInteger(safeTo)||safeTo>maxTo)return null;
+ return {safeTo,maxTo,additional:safeTo-heroBet,highest,increment,
+         exactMinimum:false,conditional:true};
+}
+// Use only explicit, exact, non-all-in big-blind observations. Two
+// matching snapshots are required and the evidence never crosses hands.
+export function observePracticeBlind(previous,result,hand,at){
+ if(!Number.isFinite(at)||at<0||(previous&&at<=previous.at))return previous;
+ const old=hand?.started?null:previous;
+ if(hand?.phase!=='active')return null;
+ if(result?.street_candidate!=='Preflop')return old;
+ const candidates=Object.values(result?.table_observation?.seats||{}).filter(s=>s.status_candidate==='Big blind'&&s.bet_chip_present===true&&s.bet&&!s.bet.approximate&&whole(s.bet.value)&&s.bet.value>0&&s.stack&&!s.stack.approximate&&whole(s.stack.value)&&s.stack.value>0);
+ if(candidates.length!==1)return old;
+ const value=candidates[0].bet.value;
+ if(old?.confirmed&&old.value!==value)return {value:null,count:0,confirmed:false,conflict:true,at};
+ if(old?.conflict)return old;
+ const count=old?.value===value?old.count+1:1;
+ return {value,count,confirmed:count>=2,at};
+}

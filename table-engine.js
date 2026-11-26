@@ -48,10 +48,20 @@ const factory = function tableEngine(){
   for(const [i,n,label] of [[small,sb,"SB"],[big,bb,"BB"]]){const p=s.players[i],v=Math.min(p.stack,n);pay(p,v);p.last=label+" "+v;log(s,i,label,v);}
   s.pending=s.players.map((p,i)=>can(p)?i:-1).filter(i=>i>=0);advance(s,big);return s;
  }
- function legal(s){if(s.phase!=="betting"||s.actor===null)return null;const p=s.players[s.actor],due=Math.max(0,s.bet-p.street),call=Math.min(p.stack,due),maxTo=p.street+p.stack,minTo=s.bet<s.bb?s.bb:s.bet+s.minIncrement;
-  const reopened=p.actedAt===null||s.bet-p.actedAt>=s.minIncrement;
-  const raise=reopened&&maxTo>s.bet&&s.players.some((x,i)=>i!==s.actor&&can(x));
-  return {due,call,check:due===0,fold:due>0,raise,minTo,maxTo,allIn:p.stack<=due||raise};
+ // Exact bounds for this local simulator's no-limit rules. The nominal
+ // big blind and last full increment are explicit inputs, never OCR defaults.
+ function raiseBounds({bet,committed,stack,bb,minIncrement,actedAt,opponentCanAct}){
+  if(![bet,committed,stack,bb,minIncrement].every(int)||bb===0||minIncrement<bb||committed>bet||
+     !(actedAt===null||int(actedAt)&&actedAt<=bet)||typeof opponentCanAct!=="boolean"||
+     !Number.isSafeInteger(committed+stack)||!Number.isSafeInteger(bet+minIncrement))throw Error("Invalid raise state");
+  const maxTo=committed+stack,minTo=bet<bb?bb:bet+minIncrement;
+  const reopened=actedAt===null||bet-actedAt>=minIncrement;
+  const raise=reopened&&maxTo>bet&&opponentCanAct;
+  return {minTo,maxTo,reopened,raise,shortAllInOnly:raise&&maxTo<minTo,
+          legalMinTo:raise?Math.min(minTo,maxTo):null};
+ }
+ function legal(s){if(s.phase!=="betting"||s.actor===null)return null;const p=s.players[s.actor],due=Math.max(0,s.bet-p.street),call=Math.min(p.stack,due),bounds=raiseBounds({bet:s.bet,committed:p.street,stack:p.stack,bb:s.bb,minIncrement:s.minIncrement,actedAt:p.actedAt,opponentCanAct:s.players.some((x,i)=>i!==s.actor&&can(x))});
+  return {due,call,check:due===0,fold:due>0,raise:bounds.raise,minTo:bounds.minTo,maxTo:bounds.maxTo,allIn:p.stack<=due||bounds.raise};
  }
  function act(prev,type,to){const s=copy(prev),i=s.actor,p=s.players[i],l=legal(s);if(!l)throw Error("No active player");let n=0,label=type;
   if(type==="fold"){if(!l.fold)throw Error("Check is available; folding is disabled");p.folded=true;}
@@ -72,6 +82,6 @@ const factory = function tableEngine(){
  function settle(prev,winners){const s=copy(prev);if(s.phase!=="result")throw Error("Hand has not ended");const layers=pots(s),payouts=s.players.map(()=>0);if(!Array.isArray(winners)||winners.length!==layers.length)throw Error("Select winners for every pot");
   layers.forEach((layer,j)=>{const selected=layer.eligible.length===1?layer.eligible:winners[j];if(!Array.isArray(selected)||!selected.length||new Set(selected).size!==selected.length||selected.some(i=>!layer.eligible.includes(i)))throw Error("Select eligible winners for each pot");const share=Math.floor(layer.amount/selected.length);selected.forEach(i=>payouts[i]+=share);let odd=layer.amount%selected.length;for(const i of order(s,s.button))if(odd&&selected.includes(i)){payouts[i]++;odd--;}});
   s.players.forEach((p,i)=>p.stack+=payouts[i]);s.payouts=payouts;s.phase="settled";return s;}
- return {STREETS,draft,blindSeats,editDraft,correctStack,prepareNext,launch,start,legal,act,setCards,nextStreet,pot,pots,eligibleAfterCall,settle};
+ return {STREETS,draft,blindSeats,editDraft,correctStack,prepareNext,launch,start,raiseBounds,legal,act,setCards,nextStreet,pot,pots,eligibleAfterCall,settle};
 };
-export const {STREETS,draft,blindSeats,editDraft,correctStack,prepareNext,launch,start,legal,act,setCards,nextStreet,pot,pots,eligibleAfterCall,settle}=factory();
+export const {STREETS,draft,blindSeats,editDraft,correctStack,prepareNext,launch,start,raiseBounds,legal,act,setCards,nextStreet,pot,pots,eligibleAfterCall,settle}=factory();

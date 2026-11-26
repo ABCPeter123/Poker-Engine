@@ -431,13 +431,16 @@ export function updateActionEvidence(previous,result,hand,street,at){
  if(!Number.isFinite(at)||at<0||(old.at!==null&&at<=old.at))return old;
  const seats=hand?.started?{}:{...old.seats};
  const allowed=new Set(['Check','Call','Raise','Bet','Fold','Sat out','All-in','Big blind','Small blind','Ante']);
- if(hand?.phase==='active'&&validSlots(result?.hole_slots,2)&&result.hole_slots.some(Boolean)){
+ if(hand?.phase==='active'&&validSlots(result?.hole_slots,2)){
   for(const id of BET_SEATS){
    const s=result?.table_observation?.seats?.[id],action=s?.status_candidate;
-   if(!allowed.has(action))continue;
+   if(!allowed.has(action)||s?.status_reader_conflict)continue;
+   if(!result.hole_slots.some(Boolean)&&!(id==='hero'&&action==='Fold'))continue;
    const p=seats[id];
    // Fold remains recorded through subsequent missing/status frames.
    if(p?.action==='Fold'&&action!=='Fold')continue;
+   // A lingering same-label animation is not a new action on a new street.
+   if(p?.action===action&&p.street!==street)continue;
    seats[id]={action,firstSeen:p?.action===action?p.firstSeen:at,lastSeen:at,street:street||old.street};
   }
  }
@@ -547,4 +550,16 @@ export function scenarioProgress(cardKey,counts,results){
 // the absence debounce, preserving the hand identity and phase.
 export function pauseHandPresence(hand){
  return hand?{...hand,started:false,absentSince:null,absentCount:0}:null;
+}
+
+// Record the hero's accepted wager changes independently of action text.
+ // A chip delta does not by itself establish whether the action was a call
+ // or a raise; preserve the observed facts without naming a guessed action.
+export function updateHeroWagerEvidence(previous,prior,next,hand,at){
+ const old=hand?.started?null:previous;
+ if(hand?.phase!=='active'||!Number.isFinite(at)||next?.uncertain||next?.boundary||!next?.street)return old;
+ const b=next.seats?.hero,a=prior?.seats?.hero;
+ if(!b?.observed||!Number.isSafeInteger(b.value)||b.value<0||b.lastSeen!==at)return old;
+ if(prior?.generation!==next.generation||!a?.observed||a.approximate||b.approximate||b.value<=a.value)return old;
+ return {street:next.street,before:a.value,after:b.value,added:b.value-a.value,at};
 }

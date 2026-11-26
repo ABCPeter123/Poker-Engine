@@ -58,6 +58,23 @@ def status_label(text):
     labels={"ALLIN":"All-in","SATOUT":"Sat out","FOLD":"Fold","FOLDED":"Fold","CHECK":"Check","CALL":"Call","RAISE":"Raise","BET":"Bet","BIGBLIND":"Big blind","SMALLBLIND":"Small blind","ANTE":"Ante"}
     return labels.get(key)
 
+def select_status(words,threshold=65):
+    """Match entire individual text lines; do not concatenate nearby labels."""
+    lines=text_lines(words)
+    raw=" / ".join(" ".join(w["text"] for w in line) for line in lines)
+    readings=[]
+    plausible=set()
+    for line in lines:
+        label=status_label(" ".join(w["text"] for w in line))
+        if label is None:continue
+        plausible.add(label)
+        confidence=min((w["confidence"] for w in line),default=-1)
+        if np.isfinite(confidence) and confidence>=threshold:
+            readings.append((label,float(confidence)))
+    conflict=len(plausible)>1
+    best=max(readings,key=lambda x:x[1]) if readings and not conflict else (None,-1)
+    return {"raw":raw,"confidence":round(best[1],1),"candidate":best[0],"conflict":conflict,"plausible":sorted(plausible)}
+
 # Normalized wager-chip positions in the five-seat layout. White rim pips
 # occur around a real chip; isolated OCR ink from cards/avatars does not.
 CHIP_CENTERS={"hero":(815,438),"left":(465,307),"upper_left":(536,211),"upper_right":(999,211),"right":(1073,308)}
@@ -90,9 +107,29 @@ def scan_labels(image,exe,number_text,cache=None):
             glyph,bounds=font_amount(image,BET_KEYS[seat],cache) if exe else (None,None)
             data[(seat,kind)]={**combine_amount(primary,glyph,bounds),"chip_present":True}
         else:
-            lines=text_lines(words)
-            data[(seat,kind)]={"raw":" / ".join(" ".join(w["text"] for w in line) for line in lines),
-                "confidence":round(min((w["confidence"] for w in words),default=-1),1)}
+            data[(seat,kind)]=select_status(words)
+    # A second color mask can recover pale labels or weak yellow ink.
+    # Exact region caching keeps unchanged crops out of repeated OCR.
+    if exe:
+        alternate=[]
+        for seat in SEAT_ORDER:
+            primary=data[(seat,"status")]
+            if primary["candidate"] or primary["conflict"]:continue
+            box=REGIONS[seat]["status"]
+            crop=np.asarray(image.crop(box),dtype=np.int16)
+            pale=(crop.min(2)>165)&(crop.max(2)-crop.min(2)<40)
+            if pale.sum()>=15:
+                alternate.append(((seat,"status_alt"),box,"status_alt"))
+        if alternate:
+            rows2,error2=scan_regions(image,exe,alternate,cache=cache)
+            for (seat,kind),_,_ in alternate:
+                primary=data[(seat,"status")]
+                other=select_status(rows2.get((seat,kind),[]))
+                conflict=other["conflict"] or len(set(primary["plausible"]+other["plausible"]))>1
+                data[(seat,"status")]={**primary,"alternate_raw":other["raw"],"conflict":conflict,
+                    "candidate":None if conflict else other["candidate"],"confidence":other["confidence"],
+                    "source":"alternate color mask" if other["candidate"] and not conflict else None}
+            # A failed optional scan should not discard accepted primary reads.
     return data,error
 
 def participation_label(action,visible,turn=False):
@@ -152,7 +189,7 @@ def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
         bet=labels.get((seat,"bet"),{})
         status=labels.get((seat,"status"),{})
         value=bet.get("candidate")
-        action=status_label(status.get("raw","")) if status.get("confidence",-1)>=65 else None
+        action=status.get("candidate")
         cue=cues["seats"].get(seat,{})
         if cue.get("all_in_label",{}).get("candidate") is True:
             action="All-in"
@@ -167,6 +204,8 @@ def observe_table(image,exe,number_text,numbers,cues,hole,cache=None):
             "bet_text_bounds":bet.get("text_bounds"),
             "stack_text_bounds":numbers.get(seat,{}).get("text_bounds"),
             "status_candidate":action,"status_raw":status.get("raw",""),
+            "status_alternate_raw":status.get("alternate_raw",""),"status_reader_conflict":bool(status.get("conflict")),
+            "status_confidence":status.get("confidence"),"status_source":status.get("source") or ("primary line" if action else None),
             "card_visible_candidate":True if visible else None,
             "turn_candidate":turn==seat,
             "dealer_candidate":dealer["candidate"]==seat,

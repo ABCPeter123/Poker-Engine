@@ -105,7 +105,12 @@ def prepared_region_mask(image,box,kind,*,crop=None):
     crop=image.crop(box) if crop is None else crop
     a=np.asarray(crop if crop.mode=="RGB" else crop.convert("RGB"),dtype=np.int16)
     r,g,b=np.moveaxis(a,-1,0)
-    return ((r>145)&(g>115)&(b<np.minimum(r,g)-35)) if kind=="status" else numeric_mask(a,kind)
+    if kind in ("status","status_alt"):
+        yellow=(r>145)&(g>115)&(b<np.minimum(r,g)-35)
+        if kind=="status":return yellow
+        pale=(a.min(2)>165)&(a.max(2)-a.min(2)<40)
+        return yellow|pale
+    return numeric_mask(a,kind)
 
 
 class RegionOCRCache:
@@ -191,8 +196,8 @@ def scan_regions(image, executable, regions, *, unrestricted=False, cache=None,p
         return cache.scan(image,executable,regions,unrestricted=unrestricted)
     # Separate numeric and language OCR. Applying a numeric whitelist to
     # status labels would silently destroy words such as Call and All-in.
-    numeric=[entry for entry in regions if entry[2]!="status"]
-    status=[entry for entry in regions if entry[2]=="status"]
+    numeric=[entry for entry in regions if entry[2] not in ("status","status_alt")]
+    status=[entry for entry in regions if entry[2] in ("status","status_alt")]
     if numeric and status:
         a,ea=scan_regions(image,executable,numeric,unrestricted=unrestricted,persistent=persistent,prepared_masks=prepared_masks)
         b,eb=scan_regions(image,executable,status,unrestricted=unrestricted,persistent=persistent,prepared_masks=prepared_masks)

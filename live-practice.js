@@ -121,24 +121,50 @@ function amount(c,confidence,minimum=75){
 function accept(e,b,stack,t,source){
  return {...e,value:b.value,observed:true,approximate:!!b.approximate,stack:stack&&!stack.approximate?stack.value:null,lastSeen:t,pending:null,warning:source==='correction'?'Corrected from repeated lower readings':null,source};
 }
-export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false}={}){
- const old=previous||createBetMemory();
+// A missing rank is not a missing card. End the observed hero hand only
+// after sustained explicit absence of both physical slots. Keep its ledger
+// until a subsequent visible hand is established.
+export function updateHandPresence(previous,result,at){
+ const old=previous||{phase:'waiting',last:null,absentSince:null,absentCount:0,pair:null,street:null,started:false};
+ if(!Number.isFinite(at)||at<0||(old.last!==null&&at<=old.last))return old;
+ let s={...old,last:at,started:false};
+ const slots=result?.hole_slots;
+ if(!validSlots(slots,2))return {...s,absentSince:null,absentCount:0};
+ const visible=slots.some(Boolean),pair=holeOf(result),street=streetOf(result);
+ if(visible){
+  const newHand=old.phase==='waiting'||(old.phase==='ended'&&(
+    street==='Preflop'||(pair&&old.pair&&pair!==old.pair)));
+  // A relocated or temporarily hidden showdown pair may return. That is
+  // not evidence of a new deal unless a fresh preflop or changed pair appears.
+  return {...s,phase:'active',started:newHand,absentSince:null,absentCount:0,
+    pair:newHand?pair:old.pair||pair,street:street||old.street};
+ }
+ if(old.phase!=='active')return s;
+ const continued=old.absentSince!==null&&at-old.last<=1500;
+ const absentSince=continued?old.absentSince:at,absentCount=continued?old.absentCount+1:1;
+ return {...s,absentSince,absentCount,phase:absentCount>=3&&at-absentSince>=1000?'ended':'active'};
+}
+
+export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false,hand=null}={}){
+ let old=previous||createBetMemory();
  if(!fresh(t,now)||(old.last!==null&&t<=old.last))return old;
+ if(hand&&hand.phase!=='active')return {...old,last:t,uncertain:true,status:hand.phase==='ended'?'Hero cards absent; previous hand contributions retained':'Waiting for visible hero cards'};
+ if(hand?.started)old={...createBetMemory(),generation:old.generation+1};
  let state={...old,last:t,seats:Object.fromEntries(BET_SEATS.map(s=>[s,{...old.seats[s]}]))};
  const street=streetOf(r),hole=holeOf(r),d=r?.table_observation?.dealer?.candidate,dealer=BET_SEATS.includes(d)?d:null;
- if(!street||(state.street&&street!=='Preflop'&&streets.indexOf(street)<streets.indexOf(state.street))){
+ if(!street||(state.street&&(street!=='Preflop'||hand)&&streets.indexOf(street)<streets.indexOf(state.street))){
   state.boundary=null;state.uncertain=true;state.status='Round uncertain; holding prior values';
   for(const e of Object.values(state.seats))e.pending=null;
   return state;
  }
- const newHole=street==='Preflop'&&state.street==='Preflop'&&hole&&state.hole&&hole!==state.hole;
- const newDealer=street==='Preflop'&&state.street==='Preflop'&&dealer&&state.dealer&&dealer!==state.dealer;
+ const newHole=!hand&&street==='Preflop'&&state.street==='Preflop'&&hole&&state.hole&&hole!==state.hole;
+ const newDealer=!hand&&street==='Preflop'&&state.street==='Preflop'&&dealer&&state.dealer&&dealer!==state.dealer;
  if(street!==state.street||newHole||newDealer){
   const key=[street,newHole?hole:null,newDealer?dealer:null].join('|'),p=state.boundary;
   state.uncertain=true;
   state.boundary={key,count:p?.key===key&&t-p.last<=6000?p.count+1:1,last:t};
   if(state.boundary.count<2){state.status='Checking round change';for(const e of Object.values(state.seats))e.pending=null;return state;}
-  const forward=state.street&&streets.indexOf(street)===streets.indexOf(state.street)+1&&!newHole&&!newDealer;
+  const forward=state.street&&streets.indexOf(street)>streets.indexOf(state.street)&&!newHole&&!newDealer;
   const closedRounds=forward?[...(state.closedRounds||[]),{street:state.street,seats:Object.fromEntries(BET_SEATS.map(id=>[id,{...state.seats[id]}]))}]:[];
   state={...state,street,hole,dealer,boundary:null,generation:state.generation+1,closedRounds,seats:seats()};
  }else{
@@ -150,7 +176,7 @@ export function updateBetMemory(previous,r,{capturedAt:t,now,ocr=false}={}){
  for(const id of BET_SEATS){
   const e=state.seats[id],s=r?.table_observation?.seats?.[id],b=amount(s?.bet,s?.bet?.ocr_confidence??s?.bet_confidence);
   const stack=amount(s?.stack,s?.stack?.ocr_confidence??s?.stack_confidence,85);
-  if(!b){e.pending=null;e.warning=e.observed?'Missing sample; holding last value':null;continue;}
+  if(!b){if(!hand||!e.pending||t-e.pending.last>2000)e.pending=null;e.warning=e.observed?'Missing sample; holding last value':null;continue;}
   const v=b.value;
   if(v===e.value&&e.observed){e.pending=null;e.warning=null;e.lastSeen=t;if(!b.approximate)e.approximate=false;if(stack&&!stack.approximate)e.stack=stack.value;continue;}
   const p=e.pending,approximate=!!b.approximate;

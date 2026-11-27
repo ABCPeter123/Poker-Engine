@@ -1,5 +1,5 @@
 import {CurrentStateQueue} from './frame-queue.js';
-import {handCandidateDeck,practiceCandidateReading,deckObservationStatus,updateHeroWagerEvidence,pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
+import {displayedCardInventory,handCandidateDeck,practiceCandidateReading,deckObservationStatus,updateHeroWagerEvidence,pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
 import {practiceActionFallback,practiceCheckFallback,simplePracticeAction,simplePriceDetail,displayCallObservation,observedPotAccounting,practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards,effectiveNumericSnapshot} from './manual-observations.js';
 
@@ -228,8 +228,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  function autoValues(){
   const now=performance.now(),result=observationAge(lastFrame,now,1000).fresh?lastResult:null,obs=result?.table_observation,age=observationAge(lastOcrAt,now,1000),num=age.fresh?lastTable:null;
   const a={street:result?.street_candidate??(result?cardMemory?.displayStreet:undefined),pot:num?.pot?.value,dealer:obs?.dealer?.candidate??undefined,turn:obs?.turn_candidate??turnMemory?.seat??undefined};
-  const groups=[result&&result.hole_slots,result&&result.board_slots];
-  CARD_KEYS.forEach((key,i)=>{const slot=i<2?groups[0]?.[i]:groups[1]?.[i-2];a[key]=slot?.candidate??displayMemory?.fields?.[key]?.value??(slot===null?null:undefined);});
+  Object.assign(a,displayedCardInventory(displayMemory));
   for(const id of Object.keys(SEATS)){
    const s=obs?.seats?.[id],n=num?.seats?.[id];
    a[id+'.stack']=n?.stack?.value;
@@ -244,13 +243,6 @@ export function attachPractice({video,screen,canRun,rotation}){
  }
  function paint(){
   const now=performance.now(),a=autoValues(),history=displayEvidenceValues(displayMemory,now),effective=resolveManual({...a,...history.values},locks),age=observationAge(lastOcrAt,now,1000),direct=directNumericSnapshot(lastResult,lastOcrState?.state,lastFrame,now);
-  // A complete current card candidate is displayed immediately; retained history
-  // fills only missing readings. Manual locks remain authoritative.
-  for(const key of CARD_KEYS){
-   if(!isLocked(locks,key)&&typeof a[key]==='string'&&effective[key]!==a[key]){
-    effective[key]=a[key];history.details[key]={state:'provisional',ageMs:now-lastFrame};
-   }
-  }
   // A visible wager is useful even before hand/round confirmation. It is
   // display-only; never substitute it into the accepted hand ledger.
   for(const id of Object.keys(SEATS)){

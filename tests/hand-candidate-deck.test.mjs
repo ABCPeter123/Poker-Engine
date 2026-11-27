@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {handCandidateDeck,updateDisplayEvidence,createBetMemory} from '../live-practice.js';
+import {handCandidateDeck,updateDisplayEvidence,createBetMemory,displayedCardInventory,updateHandPresence} from '../live-practice.js';
 import {effectiveCards} from '../manual-observations.js';
 import {practiceActionFallback} from '../practice-decision.js';
 const c=candidate=>({candidate}), hand={phase:'active'},state=createBetMemory();
@@ -35,4 +35,37 @@ test('fallback is a separate conservative local practice action only on observed
  assert.equal(practiceActionFallback(a).action,'FOLD');
  assert.equal(practiceActionFallback({...a,prompt:{value:0,source:'explicit check prompt'}}).action,'CHECK');
  for(const b of [{fresh:false},{turn:'right'},{heroVisible:false},{stack:0},{allIn:true},{prompt:null},{price:{reason:'Call price and wagers disagree'}}])assert.equal(practiceActionFallback({...a,...b}),null);
+});
+
+test('a good card in a partially duplicated frame is stored immediately and survives all later misses',()=>{
+ const partial={...frame,hole_slots:[c('3s'),c('3s')],quality:{duplicate_card_candidates:true}};
+ let m=updateDisplayEvidence(null,partial,state,state,{at:100,hand});
+ assert.equal(displayedCardInventory(m)['board.0'],'9h');
+ assert.equal(displayedCardInventory(m)['hole.0'],undefined);
+ for(let at=200;at<=60000;at+=1000){
+  const missing={...frame,board_slots:[c(null),...frame.board_slots.slice(1)]};
+  m=updateDisplayEvidence(m,missing,state,state,{at,hand});
+ }
+ assert.equal(displayedCardInventory(m)['board.0'],'9h');
+});
+test('malformed unrelated group does not discard a newly readable board card',()=>{
+ const malformed={...frame,hole_slots:[c('3s')]};
+ let m=updateDisplayEvidence(null,malformed,state,state,{at:100,hand});
+ assert.equal(displayedCardInventory(m)['board.3'],'8d');
+ const wrong={...frame,board_slots:[c('8d'),...frame.board_slots.slice(1)]};
+ m=updateDisplayEvidence(m,wrong,state,state,{at:200,hand});
+ assert.equal(displayedCardInventory(m)['board.0'],'9h');
+ assert.equal(displayedCardInventory(m)['board.3'],'8d');
+ assert.equal(displayedCardInventory(m,{'board.0':'Th'})['board.0'],'Th');
+ const next=updateDisplayEvidence(m,{...frame,board_slots:Array(5).fill(null)},state,state,{at:300,hand:{...hand,started:true}});
+ assert.equal(displayedCardInventory(next)['board.0'],null);
+});
+test('a hero turn cue prevents an empty OCR crop from ending the observed hand',()=>{
+ let h=updateHandPresence(null,frame,100);
+ const missed={...frame,hole_slots:[null,null],table_observation:{turn_candidate:'hero'}};
+ for(const at of [200,700,1200,1700,2200])h=updateHandPresence(h,missed,at);
+ assert.equal(h.phase,'active');assert.equal(h.absentCount,0);
+ const absent={...missed,table_observation:{}};
+ for(const at of [2700,3200,3700])h=updateHandPresence(h,absent,at);
+ assert.equal(h.phase,'ended');
 });

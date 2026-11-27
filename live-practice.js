@@ -148,6 +148,11 @@ export function updateHandPresence(previous,result,at){
     pair:newHand?pair:old.pair||pair,street:street||old.street};
  }
  if(old.phase!=='active')return s;
+ // An independent hero turn cue contradicts an apparent empty crop.
+ // Do not count these frames toward an end-of-hand reset.
+ const obs=result?.table_observation;
+ if(obs?.turn_candidate==='hero'||obs?.hero_prompt_panel===true||obs?.seats?.hero?.card_visible_candidate===true)
+  return {...s,absentSince:null,absentCount:0};
  const continued=old.absentSince!==null&&at-old.last<=1500;
  const absentSince=continued?old.absentSince:at,absentCount=continued?old.absentCount+1:1;
  return {...s,absentSince,absentCount,phase:absentCount>=3&&at-absentSince>=1000?'ended':'active'};
@@ -329,13 +334,26 @@ export function updateDisplayEvidence(previous,result,state,prior,{at,sampled=fa
  if(hand&&hand.phase!=='active')return {at,fields};
  const incoming={};
  const obs=result?.table_observation;
- if(validSlots(result?.hole_slots,2)&&validSlots(result?.board_slots,5)&&!result.quality?.duplicate_card_candidates){
-  [...result.hole_slots,...result.board_slots].forEach((slot,i)=>{
-   const key=i<2?'hole.'+i:'board.'+(i-2);
-   // Nulls can be temporary presence misses. Confirmed hand reset clears old slots.
-   if(slot?.candidate&&validCard(slot.candidate))incoming[key]=slot.candidate;
-   else if(slot===null&&!fields[key])incoming[key]=null;
-  });
+ // Save individual readable slots even if a different slot is malformed
+ // or duplicated. Do not replace an accepted identity with a duplicate.
+ const cardEntries=[];
+ for(const [group,length] of [['hole',2],['board',5]]){
+  const slots=result?.[group+'_slots'];
+  if(!Array.isArray(slots)||slots.length!==length)continue;
+  for(let i=0;i<length;i++){
+   if(!Object.hasOwn(slots,i))continue;
+   const slot=slots[i],key=group+'.'+i;
+   cardEntries.push({key,slot,value:validCard(slot?.candidate)});
+  }
+ }
+ const counts=new Map();
+ for(const {value} of cardEntries)if(value)counts.set(value,(counts.get(value)||0)+1);
+ for(const {key,slot,value} of cardEntries){
+  if(value){
+   const existing=fields[key]?.value===value;
+   const elsewhere=Object.entries(fields).some(([k,e])=>k!==key&&/^(hole|board)\./.test(k)&&e.value===value);
+   if(existing||counts.get(value)===1&&!elsewhere)incoming[key]=value;
+  }else if(slot===null&&!fields[key])incoming[key]=null;
  }
  if(result?.street_candidate&&!state?.uncertain)incoming.street=result.street_candidate;
  if(BET_SEATS.includes(obs?.turn_candidate))incoming.turn=obs.turn_candidate;
@@ -628,4 +646,16 @@ export function handCandidateDeck(raw,memory,hand,locks={}){
  unrecognized_visible_cards:slots.filter(s=>s&&!s.candidate).length};
  const candidate=candidateCards({hole_slots:slots.slice(0,2),board_slots:board,street_candidate:street,quality});
  return candidate?{...candidate,street,retained}:null;
+}
+
+// Read the persistent inventory for display; a raw rejected candidate must
+// not appear as accepted for one frame and then vanish. Manual values win.
+export function displayedCardInventory(memory,locks={}){
+ const out={};
+ for(const group of ['hole','board'])for(let i=0;i<(group==='hole'?2:5);i++){
+  const key=group+'.'+i;
+  if(Object.hasOwn(locks,key))out[key]=locks[key];
+  else if(Object.hasOwn(memory?.fields||{},key))out[key]=memory.fields[key].value;
+ }
+ return out;
 }

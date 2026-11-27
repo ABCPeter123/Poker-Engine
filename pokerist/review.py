@@ -398,6 +398,12 @@ def read_cards(image, cache=None):
             if key[0]=="board" and not label:
                 alternate=highlighted_board_corner(image,spec)
                 if alternate:return alternate
+                # The small suit and the large central pip can enter the
+                # same fixed crop. The upright reader isolates the leftmost
+                # ink group and uses a separate aspect-aware template bank.
+                from upright_board import upright_board_card
+                alternate=upright_board_card(image,key[1])
+                if alternate and alternate.get("candidate"):return alternate
             if key==("hole",1) and (not label or label[0] in "38"):
                 from offline_card_audit import hero_features,legacy_candidate
                 feature=hero_features(image,1)

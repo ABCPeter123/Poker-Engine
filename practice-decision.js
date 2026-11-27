@@ -73,12 +73,14 @@ export function roundedCallObservation(seats,prompt){
  const valid=c=>c&&whole(c.value);
  if(valid(prompt)&&prompt.approximate)return {value:prompt.value,source:'rounded call prompt'};
  const hero=seats?.hero?.bet;
+ const stack=seats?.hero?.stack;
  if(!valid(hero))return null;
  const amounts=Object.values(seats||{}).map(s=>s?.bet).filter(valid);
  if(!amounts.length)return null;
  const highest=amounts.reduce((a,b)=>a.value>=b.value?a:b);
  if(!(highest.approximate||hero.approximate)||highest.value<=hero.value)return null;
- return {value:highest.value-hero.value,source:'rounded current-round wager difference'};
+ const due=highest.value-hero.value;
+ return {value:valid(stack)&&!stack.approximate?Math.min(stack.value,due):due,source:'rounded current-round wager difference'};
 }
 export function observedCallPrice(seats,prompt,excluded=[]){
  const exact=c=>c&&!c.approximate&&whole(c.value)?c.value:null;
@@ -86,11 +88,14 @@ export function observedCallPrice(seats,prompt,excluded=[]){
  const wagers=ids.map(id=>exact(seats?.[id]?.bet));
  const readable=wagers.filter(v=>v!==null);
  const highest=readable.length?Math.max(...readable):null;
- const difference=hero!==null&&highest!==null?highest-hero:null;
+ const stack=exact(seats?.hero?.stack);
+ const due=hero!==null&&highest!==null?Math.max(0,highest-hero):null;
+ const difference=due===null?null:stack===null?due:Math.min(stack,due);
  const complete=ids.every((id,i)=>wagers[i]!==null||(id!=='hero'&&excluded.includes(id)));
  const retained=ids.some((id,i)=>wagers[i]!==null&&seats?.[id]?.bet?.retained===true);
  const explicit=exact(prompt);
  if(explicit!==null){
+  if(stack!==null&&explicit>stack)return {reason:'Call price exceeds remaining stack'};
   if(difference!==null&&(explicit<difference||(complete&&explicit!==difference)))return {reason:'Call price and wagers disagree'};
   return {value:explicit,source:'call prompt',partial:false};
  }
@@ -112,7 +117,24 @@ export function practicePanelModel({street,pot,prompt,seats,equities,excluded=[]
  if(price.reason)return price;
  const call=price.value;
  if(stack===0||stack!==null&&call>stack)return {reason:'All-in eligibility unresolved'};
- let amount=exact(pot),source=pot?.source||'displayed pot',partial=!!pot?.partialAccounting;
+ let amount=exact(pot),source=pot?.source||'displayed pot',partial=!!pot?.partialAccounting,sidePotLimited=false;
+ // An all-in call buys eligibility only up to the hero's contribution.
+ // On preflop, the current-street wagers provide a conservative subtotal
+ // of that eligible pot, including folded players' dead contributions.
+ // Later streets require complete cumulative contribution evidence.
+ const hero=exact(seats?.hero?.bet);
+ const highest=readable.length?Math.max(...readable):null;
+ if(stack!==null&&call===stack&&call>0){
+  if(street!=='Preflop'||hero===null||!Number.isSafeInteger(hero+call))return {reason:'All-in eligibility unresolved'};
+  if(ids.some(id=>seats?.[id]?.bet?.approximate&&whole(seats[id].bet.value)))return {reason:'Pot unavailable'};
+  if(highest===null||highest<hero+call)return {reason:'All-in eligibility unresolved'};
+  const cap=hero+call,subtotal=readable.reduce((a,b)=>a+b,0);
+  amount=readable.reduce((a,b)=>a+Math.min(b,cap),0);
+  if(!whole(amount))return {reason:'Pot unavailable'};
+  partial=!complete||retained||!!pot?.partialAccounting||(exact(pot)!==null&&exact(pot)!==subtotal);
+  sidePotLimited=true;
+  source='eligible preflop wager subtotal';
+ }
  if(amount===null&&street==='Preflop'&&readable.length){
   // Do not silently omit a rounded large wager from an exact subtotal.
   if(ids.some(id=>seats?.[id]?.bet?.approximate&&whole(seats[id].bet.value)))return {reason:'Pot unavailable'};
@@ -123,7 +145,7 @@ export function practicePanelModel({street,pot,prompt,seats,equities,excluded=[]
  if(!whole(amount))return {reason:'Pot unavailable'};
  const model=conditionalCallModel({pot:amount,call,equities});
  if(!model)return {reason:'Equity unavailable'};
- return {...model,pot:amount,call,source,partial,pricePartial:price.partial,wagerCount:readable.length,priceSource:price.source};
+ return {...model,pot:amount,call,source,partial,pricePartial:price.partial,wagerCount:readable.length,priceSource:price.source,sidePotLimited};
 }
 
 // A deterministic conservative practice baseline is a conditional result,

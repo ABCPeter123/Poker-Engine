@@ -132,3 +132,25 @@ test('a rounded large wager cannot disappear from an otherwise exact preflop sub
  const point=roundedPracticeScenario(args);
  assert.equal(point.pot,10400);assert.equal(point.estimated,true);
 });
+
+test('stack-capped preflop price is not a conflict with a larger opposing wager',()=>{
+ const s={hero:{bet:c(600),stack:c(24400)},left:{bet:c(50000),stack:c(0)},upper_left:{bet:c(200),status_candidate:'Fold'},upper_right:{bet:c(200)},right:{bet:c(200),status_candidate:'Fold'}};
+ const args={street:'Preflop',seats:s,prompt:c(24400),equities:[.533]};
+ assert.equal(observedCallPrice(s,null).value,24400);
+ assert.equal(observedCallPrice(s,c(24400)).value,24400);
+ assert.equal(observedCallPrice(s,c(24000)).reason,'Call price and wagers disagree');
+ const m=practicePanelModel(args);
+ assert.equal(m.call,24400);assert.equal(m.pot,26200);assert.equal(m.sidePotLimited,true);
+ assert.equal(m.odds,24400/50600);
+ assert.equal(conditionalRaiseComparison({model:m,counts:[1],equities:[.533],stack:24400,raiseVisible:true}),null);
+ assert.equal(practicePanelModel({...args,street:'Flop'}).reason,'All-in eligibility unresolved');
+});
+test('rounded all-in screenshot amounts survive point-estimate path without counting unmatchable chips',()=>{
+ const s={hero:{bet:c(600),stack:c(24400)},left:{bet:{value:50000,approximate:true},stack:c(0)},upper_left:{bet:c(200)},upper_right:{bet:c(200)},right:{bet:c(200)}};
+ const args={street:'Preflop',seats:s,prompt:{value:24400,approximate:true},equities:[.533],excluded:['upper_left','right']};
+ assert.equal(roundedCallObservation(s,null).value,24400);
+ const m=roundedPracticeScenario(args);
+ assert.equal(m.call,24400);assert.equal(m.pot,26200);assert.equal(m.estimated,true);assert.equal(m.sidePotLimited,true);
+ assert.equal(m.odds,24400/50600);
+ assert.equal(roundedPracticeScenario({...args,prompt:c(20000)}),null);
+});

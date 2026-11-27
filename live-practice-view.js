@@ -1,7 +1,7 @@
 import {CurrentStateQueue} from './frame-queue.js';
-import {deckObservationStatus,updateHeroWagerEvidence,pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
+import {practiceCandidateReading,deckObservationStatus,updateHeroWagerEvidence,pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
 import {practiceCheckFallback,simplePracticeAction,simplePriceDetail,displayCallObservation,observedPotAccounting,practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
-import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards} from './manual-observations.js';
+import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards,effectiveNumericSnapshot} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
  const $=id=>document.getElementById(id),panel=$('live-panel'),canvas=document.createElement('canvas');
@@ -121,7 +121,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   // Card observation can establish a street independently of wager OCR.
   // If both sources identify different streets, keep the ledger gate.
   const street=betMemory.street||raw.street_candidate;
-  return conditionalDeck(raw,cardMemory,handPresence,street,now,reading?.stable);
+  return conditionalDeck(raw,cardMemory,handPresence,street,now,null,{candidateFirst:true});
  }
  function refreshCandidate(sample){
   if(!active)return;
@@ -129,11 +129,12 @@ export function attachPractice({video,screen,canRun,rotation}){
   const now=performance.now(),complete=CARD_KEYS.every(key=>isLocked(locks,key));
   const fresh=observationAge(lastFrame,now,1000).fresh;
   const candidate=complete||fresh?currentDeck(now):null;
-  if(complete&&candidate)reading={key:candidate.key,count:2,stable:candidate,last:now};
-  else if(sample)reading=stableReading(reading,candidate,lastFrame??now);
-  else if(!candidate||reading?.key!==candidate.key)reading=null;
-  if(!reading?.stable){clearEquity();metric('Cards incomplete');}else evaluate(reading.stable);
-  $('live-confidence').textContent=complete?'Manually locked deck':reading?.stable?(candidate?.retained?.length?'Conditional equity · retained card evidence':'Repeated effective reading'):'Cards incomplete';
+  if(candidate)reading=practiceCandidateReading(reading,candidate,lastFrame??now,{manual:complete});
+  else reading=null;
+  // A short unreadable frame must not cancel already queued simulations.
+  // The result remains gated on a currently usable deck in paintDecision.
+  if(!reading?.stable){metric('Cards incomplete');}else evaluate(reading.stable);
+  $('live-confidence').textContent=complete?'Manually locked deck':reading?.stable?(candidate?.retained?.length?'Conditional equity · retained card candidate':reading.provisional?'Conditional equity · first card reading':'Repeated effective reading'):'Cards incomplete';
  }
  function paintDecision(){
   const show=(message,description='')=>{for(const id of ['live-action','decision-status-text']){const el=$(id);if(el.textContent!==message)el.textContent=message;}for(const id of ['live-action-detail','decision-status-detail']){const el=$(id);if(el.textContent!==description)el.textContent=description;}};
@@ -143,7 +144,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   if(!active){show('Recognition stopped');return;}
   const now=performance.now(),fresh=observationAge(lastFrame,now,1000).fresh;
   const direct=directNumericSnapshot(lastResult,lastOcrState?.state,lastFrame,now);
-  const numeric=withRetainedRoundWagers(direct,betMemory,handPresence,lastResult?.street_candidate);
+  const numeric=effectiveNumericSnapshot(withRetainedRoundWagers(direct,betMemory,handPresence,lastResult?.street_candidate),locks);
   const summary=observationSummary(lastResult,locks,displayMemory,now,fresh,!!numeric,actionEvidence);
   const r=summary.range,opponents=r.min===r.max?String(r.min):r.min+'–'+r.max;
   const pot=summary.pot?summary.pot.value.toLocaleString('en-CA')+' ('+summary.pot.source+')':'unknown';
@@ -171,7 +172,7 @@ export function attachPractice({video,screen,canRun,rotation}){
    show('CALCULATING','Your turn · awaiting model inputs');
    const price=numeric?observedCallPrice(numeric.seats,prompt,r.excluded):null;
    const rounded=numeric&&(!price||price.reason)?roundedCallObservation(numeric.seats,prompt):null;
-   const observedNumeric=withRetainedRoundWagers(fresh&&lastResult?.table_observation,betMemory,handPresence,lastResult?.street_candidate);
+   const observedNumeric=effectiveNumericSnapshot(withRetainedRoundWagers(fresh&&lastResult?.table_observation,betMemory,handPresence,lastResult?.street_candidate),locks);
    const observed=displayCallObservation(observedNumeric?.seats,prompt,{sameStreet:betMemory.street===lastResult?.street_candidate&&!betMemory.boundary&&!betMemory.uncertain,trackedHero:betMemory.seats.hero});
    const fallback=(!price||price.reason)&&!rounded?observed:null;
    const free=practiceCheckFallback({fresh,turn,heroVisible:true,prompt,price,stack:exactStack,allIn:heroAllIn?.confirmed});
@@ -198,7 +199,7 @@ export function attachPractice({video,screen,canRun,rotation}){
      const sizing=raise?.action?practiceRaiseSizing({street,hero,call:model.call,bigBlind:bb,raiseVisible:true,zeroWagerEvidence:zeroEvidence}):null;
      const bounds=sizing?.bounds;
      const headline=sizedPracticeHeadline(model,raise,sizing).text;
-     show(simplePracticeAction(headline),model.estimated||model.partial||model.pricePartial||currentCards.retained?.length?'Conditional estimate · incomplete or retained inputs':'Conditional practice model');
+     show(simplePracticeAction(headline),model.estimated||model.partial||model.pricePartial||reading?.provisional||currentCards.retained?.length?'Conditional estimate · provisional or retained inputs':'Conditional practice model');
      label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+(model.estimated?' (rounded point estimate, not an exact price or legal raise size)':model.pricePartial?' (retained or incomplete wagers; price may change)':'')+' · assumes eligible pot, no side pots and random opponent hands.'+(currentCards.retained?.length?' Retained card evidence.':'')+(raise?' Raise scenario: '+raise.assumption+'. '+(raise.action?(bounds?'Add '+bounds.additional.toLocaleString('en-CA')+' chips; conservative full-raise bound, not exact room minimum.'+(sizing.assumedZero?' Assumes zero commitment from the absent chip label and check prompt.':''):'Raise size not established: '+(sizing?.reason||'missing evidence')+'. Showing the baseline instead.'):'Raise not favored across all scenarios.'):'');
     }else{
      label.textContent+=(label.textContent?' · ':'')+model.reason;
@@ -246,11 +247,18 @@ export function attachPractice({video,screen,canRun,rotation}){
  }
  function paint(){
   const now=performance.now(),a=autoValues(),history=displayEvidenceValues(displayMemory,now),effective=resolveManual({...a,...history.values},locks),age=observationAge(lastOcrAt,now,1000),direct=directNumericSnapshot(lastResult,lastOcrState?.state,lastFrame,now);
+  // A complete current card candidate is displayed immediately; retained history
+  // fills only missing readings. Manual locks remain authoritative.
+  for(const key of CARD_KEYS){
+   if(!isLocked(locks,key)&&typeof a[key]==='string'&&effective[key]!==a[key]){
+    effective[key]=a[key];history.details[key]={state:'provisional',ageMs:now-lastFrame};
+   }
+  }
   // A visible wager is useful even before hand/round confirmation. It is
   // display-only; never substitute it into the accepted hand ledger.
   for(const id of Object.keys(SEATS)){
    const raw=direct?.seats?.[id]?.bet;
-   if(raw&&Number.isSafeInteger(raw.value)&&raw.value>=0&&!isLocked(locks,id+'.bet')&&effective[id+'.bet']===undefined){
+   if(raw&&Number.isSafeInteger(raw.value)&&raw.value>=0&&!direct?.seats?.[id]?.bet_reader_conflict&&!isLocked(locks,id+'.bet')&&effective[id+'.bet']!==raw.value){
     effective[id+'.bet']=raw.value;
     history.details[id+'.bet']={state:'visible candidate',approximate:!!raw.approximate,ageMs:now-lastFrame};
    }
@@ -332,7 +340,7 @@ export function attachPractice({video,screen,canRun,rotation}){
   displayMemory=updateDisplayEvidence(displayMemory,result,betMemory,prior,{at:capturedAt,sampled,hand:handPresence});
   const numeric=sampled?currentNumericSample(null,result,betMemory,prior,{capturedAt,now,sampled}):null;
   lastTable=numeric?.table??null;lastOcrAt=numeric?.at??null;
-  cardMemory=updateCardMemory(cardMemory,result,capturedAt);lastFrame=capturedAt;refreshCandidate(true);if(now-lastPaintAt>=125){lastPaintAt=now;paint();}
+  cardMemory=updateCardMemory(cardMemory,result,capturedAt,{candidateFirst:true});lastFrame=capturedAt;refreshCandidate(true);if(now-lastPaintAt>=125){lastPaintAt=now;paint();}
   $('live-overlay').hidden=false;
  }
  function reportQueue(q){const r=q.report(performance.now()),age=r.lastSnapshotAgeMs;$('frame-telemetry').textContent='Snapshots '+r.processed+'/'+r.captured+' · deliberately sampled out '+r.intentionalSkips+' · source gaps '+r.sourceMissed+' · presented '+(r.sourceFps===null?'—':r.sourceFps.toFixed(1))+' FPS · callbacks '+(r.callbackFps===null?'—':r.callbackFps.toFixed(1))+' FPS · snapshots '+r.processingFps.toFixed(1)+'/s · snapshot age '+(age===null?'—':(age/1000).toFixed(2)+' s')+' · in flight '+(r.oldestAgeMs/1000).toFixed(2)+' s · OCR '+ocrBackend+(lastTimings?' · recognition '+lastTimings.total.toFixed(1)+' ms':'');if(age===null)status('Acquiring first table snapshot.');else if(age>1000)status('Snapshot stale: full table refresh exceeded one second.');else status('Current-state recognition running · snapshot age '+(age/1000).toFixed(2)+' s · automatic values remain candidates.');}

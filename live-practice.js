@@ -46,7 +46,7 @@ const validCard=x=>typeof x==='string'&&/^[2-9TJQKA][cdhs]$/i.test(x)?x[0].toUpp
 const freshSlot=()=>({value:null,count:0,confirmed:false,lastSeen:null,misses:0});
 // Display-only memory: only repeated raw readings can seed it. A carried
 // card never becomes a fresh reading or refreshes its own expiration.
-export function updateCardMemory(previous,result,now){
+export function updateCardMemory(previous,result,now,{candidateFirst=false}={}){
  if(!Number.isFinite(now)||now<0)return null;
  if(previous&&now<=previous.last)return previous;
  const groups=[result?.hole_slots,result?.board_slots];
@@ -59,7 +59,7 @@ export function updateCardMemory(previous,result,now){
  const holeVisible=groups[0].some(Boolean);
  // Clear on a board reset, a conflicting recognized identity or invalid deck.
  // Even one contradictory card can indicate a new hand or alignment change.
- if(old&&((old.boardVisible&&!boardVisible)||duplicate||values.some((v,i)=>v&&old.slots[i]?.confirmed&&old.slots[i].value!==v)))old=null;
+ if(old&&((old.boardVisible&&!boardVisible)||duplicate||values.some((v,i)=>v&&(old.slots[i]?.confirmed||candidateFirst&&old.slots[i]?.value)&&old.slots[i].value!==v)))old=null;
  const slots=values.map((v,i)=>{
   const prior=old?.slots[i]||freshSlot();
   const groupVisible=i<2?holeVisible:boardVisible;
@@ -69,7 +69,7 @@ export function updateCardMemory(previous,result,now){
    const count=same?prior.count+1:1;
    return {value:v,count,confirmed:count>=2,lastSeen:now,misses:0};
   }
-  if(prior.confirmed&&now-prior.lastSeen<=CARD_MEMORY_MS&&prior.misses<3)return {...prior,misses:prior.misses+1};
+  if((prior.confirmed||candidateFirst&&prior.value)&&now-prior.lastSeen<=CARD_MEMORY_MS&&prior.misses<3)return {...prior,misses:prior.misses+1};
   return freshSlot();
  });
  const carried=[];
@@ -77,8 +77,8 @@ export function updateCardMemory(previous,result,now){
  // same card group. Do not resurrect both hero cards or an entire board.
  for(const [start,end] of [[0,2],[2,7]]){
   const missing=[];
-  for(let i=start;i<end;i++)if(!values[i]&&slots[i].confirmed)missing.push(i);
-  const anchor=values.slice(start,end).some((v,j)=>v&&old?.slots[start+j]?.confirmed&&old.slots[start+j].value===v);
+  for(let i=start;i<end;i++)if(!values[i]&&(slots[i].confirmed||candidateFirst&&slots[i].value))missing.push(i);
+  const anchor=values.slice(start,end).some((v,j)=>v&&(old?.slots[start+j]?.confirmed||candidateFirst&&old?.slots[start+j]?.value)&&old.slots[start+j].value===v);
   if(!duplicate&&anchor&&missing.length===1){
    const i=missing[0],v=slots[i].value;
    if(!observed.includes(v)&&!carried.some(j=>slots[j].value===v))carried.push(i);
@@ -94,7 +94,8 @@ export function updateCardMemory(previous,result,now){
  const direct=candidateCards(result);
  const complete=direct&&values.every((v,i)=>!raw[i]||v&&slots[i].confirmed);
  const confirmedDeck=holeVisible&&!duplicate?(complete?{key:direct.key,at:now}:old?.confirmedDeck||null):null;
- return {slots,last:now,boardVisible,holeVisible,carried,displayHole:display.slice(0,2),displayBoard:board,displayStreet:street,confirmedDeck};
+ const candidateDeck=holeVisible&&!duplicate?(direct?{key:direct.key,at:now}:old?.candidateDeck||null):null;
+ return {slots,last:now,boardVisible,holeVisible,carried,displayHole:display.slice(0,2),displayBoard:board,displayStreet:street,confirmedDeck,candidateDeck};
 }
 
 // The capture clock, not response arrival, determines the age of an observation.
@@ -501,7 +502,7 @@ export function updateTurnMemory(previous,result,hand,street,at){
  if(prior)return {...prior,at};
  return null;
 }
-export function conditionalDeck(raw,memory,hand,street,now,previousStable=null){
+export function conditionalDeck(raw,memory,hand,street,now,previousStable=null,{candidateFirst=false}={}){
  const direct=candidateCards(raw);
  if(direct)return {...direct,retained:[]};
  if(hand?.phase!=='active'||!memory||!validSlots(raw?.hole_slots,2)||!validSlots(raw?.board_slots,5)||raw.quality?.duplicate_card_candidates||!memory.carried.length||!observationAge(memory.last,now,1000).fresh)return null;
@@ -510,7 +511,7 @@ export function conditionalDeck(raw,memory,hand,street,now,previousStable=null){
  for(const i of memory.carried){
   const c=memory.slots[i];
   if(slots[i]?.candidate||slots[i]?.manual||slots[i]?.manual_conflict||slots[i]?.unknown)continue;
-  if(!c?.confirmed||!observationAge(c.lastSeen,now,CARD_MEMORY_MS).fresh)continue;
+  if(!(c?.confirmed||candidateFirst&&c?.value)||!observationAge(c.lastSeen,now,CARD_MEMORY_MS).fresh)continue;
   slots[i]={candidate:c.value,cached:true};retained.push(i);
  }
  if(!retained.length)return null;
@@ -520,7 +521,7 @@ export function conditionalDeck(raw,memory,hand,street,now,previousStable=null){
  // Physical absence is less reliable than visible unreadable ink. Only a
  // previously complete same-street deck may support that kind of dropout.
  const original=[...raw.hole_slots,...raw.board_slots];
- const anchor=memory.confirmedDeck;
+ const anchor=memory.confirmedDeck||(candidateFirst?memory.candidateDeck:null);
  const anchored=anchor?.key===candidate.key&&observationAge(anchor.at,now,CARD_MEMORY_MS).fresh;
  if(retained.some(i=>original[i]===null)&&previousStable?.key!==candidate.key&&!anchored)return null;
  return {...candidate,retained};
@@ -581,10 +582,21 @@ export function updateHeroWagerEvidence(previous,prior,next,hand,at){
 // from a deck awaiting independent validation or a calculation.
 export function deckObservationStatus({candidate,reading,memory,street,fresh}){
  if(!fresh)return 'Snapshot stale';
- if(candidate)return reading?.stable?.key===candidate.key?'Deck validated':'Waiting for repeated card reading';
+ if(candidate)return reading?.stable?.key===candidate.key?(reading.provisional?'Deck candidate available':'Deck validated'):'Waiting for card processing';
  if(memory?.carried?.length){
   if(!street||memory.displayStreet!==street)return 'Retained card · street not confirmed';
   return 'Retained card · deck validation pending';
  }
  return 'Card recognition incomplete';
+}
+
+// The private-practice UI may calculate from a complete plausible first read.
+ // It is not independently verified: preserve the provenance separately.
+export function practiceCandidateReading(previous,candidate,now,{manual=false}={}){
+ if(!Number.isFinite(now)||now<0)return null;
+ if(!candidate)return null;
+ if(previous&&Number.isFinite(previous.last)&&now<previous.last)return previous;
+ const same=previous?.key===candidate.key;
+ const count=manual?2:same?(now===previous.last?previous.count:previous.count+1):1;
+ return {key:candidate.key,count,stable:candidate,last:now,provisional:!manual&&(count<2||!!candidate.retained?.length)};
 }

@@ -1,0 +1,45 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {candidateCards,practiceCandidateReading,conditionalDeck,updateCardMemory} from '../live-practice.js';
+import {effectiveNumericSnapshot,effectiveCards} from '../manual-observations.js';
+const c=candidate=>({candidate}),hand={phase:'active'};
+const frame={hole_slots:[c('3c'),c('Ts')],board_slots:Array(5).fill(null),street_candidate:'Preflop',quality:{}};
+test('first complete candidate is usable immediately and explicitly provisional',()=>{
+ const candidate=candidateCards(frame);
+ const first=practiceCandidateReading(null,candidate,100);
+ assert.equal(first.stable.key,candidate.key);assert.equal(first.provisional,true);
+ assert.equal(practiceCandidateReading(first,candidate,100).count,1);
+ const next=practiceCandidateReading(first,candidate,200);
+ assert.equal(next.provisional,false);
+ assert.equal(practiceCandidateReading(null,null,100),null);
+ assert.equal(practiceCandidateReading(null,candidate,100,{manual:true}).provisional,false);
+ assert.equal(candidateCards({...frame,hole_slots:[c('Ts'),c('Ts')]}),null);
+});
+test('one-read candidate can bridge an isolated miss, without inventing a card',()=>{
+ const opt={candidateFirst:true};
+ const initial=updateCardMemory(null,frame,100,opt);
+ const miss={...frame,hole_slots:[c('3c'),null]};
+ const held=updateCardMemory(initial,miss,200,opt);
+ const candidate=conditionalDeck(miss,held,hand,'Preflop',200,null,opt);
+ assert.equal(candidate.key,candidateCards(frame).key);
+ assert.deepEqual(candidate.retained,[1]);
+ assert.equal(practiceCandidateReading(null,candidate,200).provisional,true);
+ assert.equal(conditionalDeck(miss,held,hand,'Preflop',5200,null,opt),null);
+ const conflict={...miss,hole_slots:[c('Ac'),null]};
+ assert.equal(conditionalDeck(conflict,updateCardMemory(held,conflict,300,opt),hand,'Preflop',300,null,opt),null);
+ const empty={...frame,hole_slots:[null,null]};
+ assert.equal(conditionalDeck(empty,updateCardMemory(held,empty,300,opt),hand,'Preflop',300,null,opt),null);
+ assert.equal(conditionalDeck(miss,held,{phase:'ended'},'Preflop',200,null,opt),null);
+});
+test('manual card and numeric corrections override the automatic candidate',()=>{
+ const corrected=candidateCards(effectiveCards(frame,{'hole.1':'8s'}));
+ assert.equal(corrected.labels.hole[1],'8s');
+ const raw={pot:{value:500},seats:{hero:{bet:{value:200},stack:{value:1000}},right:{bet:{value:900},bet_reader_conflict:true}}};
+ const numeric=effectiveNumericSnapshot(raw,{'hero.bet':300,'right.bet':600,'pot':1200});
+ assert.equal(numeric.seats.hero.bet.value,300);
+ assert.equal(numeric.seats.right.bet.value,600);
+ assert.equal(numeric.seats.right.bet_reader_conflict,false);
+ assert.equal(numeric.seats.hero.stack.value,1000);
+ assert.equal(numeric.pot.value,1200);
+ assert.equal(raw.seats.hero.bet.value,200);
+ assert.equal(effectiveNumericSnapshot(null,{'hero.bet':300}),null);
+});

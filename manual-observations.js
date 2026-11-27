@@ -98,3 +98,22 @@ export function effectiveCards(result,locks){
   quality:{...result?.quality,duplicate_card_candidates:known.length!==new Set(known).size,noncontiguous_board:!contiguous,
    unrecognized_visible_cards:slots.filter(s=>s&&!s.candidate).length}};
 }
+
+// A manual correction takes precedence over OCR for the same numeric field.
+ // No missing values are synthesized and no stale capture is made current.
+export function effectiveNumericSnapshot(numeric,locks={}){
+ if(!numeric)return null;
+ const seats={...numeric.seats};
+ for(const id of Object.keys(SEATS)){
+  const s={...seats[id]};
+  for(const kind of ['bet','stack']){
+   const key=id+'.'+kind;
+   if(!isLocked(locks,key)||!Number.isSafeInteger(locks[key])||locks[key]<0)continue;
+   s[kind]={value:locks[key],approximate:false,manual:true,display:String(locks[key])};
+   s[kind+'_reader_conflict']=false;
+  }
+  seats[id]=s;
+ }
+ const pot=isLocked(locks,'pot')?{value:locks.pot,approximate:false,manual:true,display:String(locks.pot)}:numeric.pot;
+ return {...numeric,seats,pot};
+}

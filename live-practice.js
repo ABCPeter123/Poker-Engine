@@ -360,7 +360,7 @@ export function updateDisplayEvidence(previous,result,state,prior,{at,sampled=fa
   const v=numeric?value.value:value,approximate=numeric&&value.approximate;
   const seen=numeric&&Number.isFinite(value.retainedAt)?value.retainedAt:at;
   if(key.endsWith('.status')&&old?.value==='Fold'&&v!=='Fold')continue;
-  if(!old||old.value===null||key.endsWith('.bet')||key==='turn'){
+  if(!old||old.value===null||key.endsWith('.bet')||key==='turn'||(hand&&/^(hole|board)\./.test(key)&&validCard(v)&&old.value!==v)){
    fields[key]={value:v,approximate,seen,votes:key.endsWith('.bet')?2:old?.value===v?old.votes+1:1,pending:null};
   }else if(old.value===v&&old.approximate===approximate){
    fields[key]={...old,seen,votes:old.votes+1,pending:null};
@@ -599,4 +599,33 @@ export function practiceCandidateReading(previous,candidate,now,{manual=false}={
  const same=previous?.key===candidate.key;
  const count=manual?2:same?(now===previous.last?previous.count:previous.count+1):1;
  return {key:candidate.key,count,stable:candidate,last:now,provisional:!manual&&(count<2||!!candidate.retained?.length)};
+}
+
+// Hand-level card inventory, independent of short-lived OCR and worker gates.
+// A missing crop does not erase a card already read in this hand. New
+// cards are never invented, and explicit manual locks override history.
+export function handCandidateDeck(raw,memory,hand,locks={}){
+ if(hand?.phase!=='active'||!validSlots(raw?.hole_slots,2)||!validSlots(raw?.board_slots,5)||heroCardPresence(raw)!=='visible')return null;
+ const fields=memory?.fields||{};
+ const retained=[];
+ const slots=[...raw.hole_slots,...raw.board_slots].map((s,i)=>{
+  const key=i<2?'hole.'+i:'board.'+(i-2);
+  if(Object.hasOwn(locks,key))return locks[key]===null?null:{candidate:locks[key],manual:true};
+  if(s?.candidate)return s;
+  if(s?.manual_conflict)return s;
+  const value=validCard(fields[key]?.value);
+  if(value){retained.push(i);return {candidate:value,cached:true};}
+  return s;
+ });
+ const board=slots.slice(2),n=board.filter(Boolean).length;
+ const street=({0:'Preflop',3:'Flop',4:'Turn',5:'River'})[n];
+ if(!street||Object.hasOwn(locks,'street')&&locks.street!==street)return null;
+ // A newly visible but unreadable board slot blocks a complete-deck
+ // calculation until its identity is supplied, not until an arbitrary timer.
+ const known=slots.map(s=>s?.candidate).filter(Boolean);
+ const quality={duplicate_card_candidates:new Set(known).size!==known.length,
+ noncontiguous_board:board.slice(0,n).some(s=>!s)||board.slice(n).some(Boolean),
+ unrecognized_visible_cards:slots.filter(s=>s&&!s.candidate).length};
+ const candidate=candidateCards({hole_slots:slots.slice(0,2),board_slots:board,street_candidate:street,quality});
+ return candidate?{...candidate,street,retained}:null;
 }

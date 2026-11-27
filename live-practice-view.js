@@ -1,6 +1,6 @@
 import {CurrentStateQueue} from './frame-queue.js';
-import {practiceCandidateReading,deckObservationStatus,updateHeroWagerEvidence,pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
-import {practiceCheckFallback,simplePracticeAction,simplePriceDetail,displayCallObservation,observedPotAccounting,practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
+import {handCandidateDeck,practiceCandidateReading,deckObservationStatus,updateHeroWagerEvidence,pauseHandPresence,scenarioProgress,withRetainedRoundWagers,updateHeroAllIn,updateTurnMemory,conditionalDeck,handContributionDisplay,observedCallHypothesis,heroCardPresence,updateActionEvidence,observationScenarioCounts,observationSummary,updateHandPresence,updateDisplayEvidence,displayEvidenceValues,observedOpponentRange,retainedRoundBet,observedHandCommitment,directNumericSnapshot,snapshotCoverage,reconcileSnapshots,freshBetValue,currentNumericSample,candidateCards,stableReading,practiceInput,updateCardMemory,observationAge,createBetMemory,updateBetMemory,trackedBetLabel,interruptBetMemory} from './live-practice.js';
+import {practiceActionFallback,practiceCheckFallback,simplePracticeAction,simplePriceDetail,displayCallObservation,observedPotAccounting,practiceRaiseSizing,sizedPracticeHeadline,roundedPracticeScenario,practicePriceHeadline,roundedCallObservation,observedCallPrice,conservativeRaiseBounds,observePracticeBlind,conditionalRaiseComparison,practiceHeadline,practicePanelModel,conditionalCallModel,practiceOpponentCount,SEAT_ANCHORS,overlayPosition,decisionInputs,decisionFromEquity,inputValue} from './practice-decision.js';
 import {SEATS,FIELDS,CARD_KEYS,isLocked,setManual,releaseManual,resolveManual,loadManual,saveManual,displayValue,effectiveCards,effectiveNumericSnapshot} from './manual-observations.js';
 
 export function attachPractice({video,screen,canRun,rotation}){
@@ -118,10 +118,7 @@ export function attachPractice({video,screen,canRun,rotation}){
  $('practice-pot-convention').onchange=()=>paintDecision();
  function currentDeck(now){
   const raw=effectiveCards(lastResult,locks);
-  // Card observation can establish a street independently of wager OCR.
-  // If both sources identify different streets, keep the ledger gate.
-  const street=betMemory.street||raw.street_candidate;
-  return conditionalDeck(raw,cardMemory,handPresence,street,now,null,{candidateFirst:true});
+  return handCandidateDeck(raw,displayMemory,handPresence,locks);
  }
  function refreshCandidate(sample){
   if(!active)return;
@@ -175,9 +172,9 @@ export function attachPractice({video,screen,canRun,rotation}){
    const observedNumeric=effectiveNumericSnapshot(withRetainedRoundWagers(fresh&&lastResult?.table_observation,betMemory,handPresence,lastResult?.street_candidate),locks);
    const observed=displayCallObservation(observedNumeric?.seats,prompt,{sameStreet:betMemory.street===lastResult?.street_candidate&&!betMemory.boundary&&!betMemory.uncertain,trackedHero:betMemory.seats.hero});
    const fallback=(!price||price.reason)&&!rounded?observed:null;
-   const free=practiceCheckFallback({fresh,turn,heroVisible:true,prompt,price,stack:exactStack,allIn:heroAllIn?.confirmed});
+   const baseline=practiceActionFallback({fresh,turn,heroVisible:true,prompt,price,stack:exactStack,allIn:heroAllIn?.confirmed});
    const costDetail=fallback?.upperObserved?'Observed wager '+fallback.value.toLocaleString('en-CA')+' · your bet unknown':simplePriceDetail(price,rounded||fallback,exactStack);
-   if(free)show(free.action,free.detail);
+   if(baseline)show(baseline.action,baseline.detail);
    else show('CALCULATING',costDetail);
    if(price&&!price.reason)label.textContent=(price.partial?'At least ':'Call price: ')+price.value.toLocaleString('en-CA')+' · '+price.source;
    else if(rounded)label.textContent='Call price ≈'+rounded.value.toLocaleString('en-CA')+' · '+rounded.source;
@@ -203,12 +200,12 @@ export function attachPractice({video,screen,canRun,rotation}){
      label.textContent='Practice model · '+recommendation.policy+' · '+model.source+(model.partial?' ('+model.wagerCount+'/5 read; missing wagers can change result)':'')+' · '+model.priceSource+(model.estimated?' (rounded point estimate, not an exact price or legal raise size)':model.pricePartial?' (retained or incomplete wagers; price may change)':'')+(model.sidePotLimited?' · capped preflop eligible wager subtotal; random opponent hands, no further betting.':' · assumes eligible pot, no side pots and random opponent hands.')+(currentCards.retained?.length?' Retained card evidence.':'')+(raise?' Raise scenario: '+raise.assumption+'. '+(raise.action?(bounds?'Add '+bounds.additional.toLocaleString('en-CA')+' chips; conservative full-raise bound, not exact room minimum.'+(sizing.assumedZero?' Assumes zero commitment from the absent chip label and check prompt.':''):'Raise size not established: '+(sizing?.reason||'missing evidence')+'. Showing the baseline instead.'):'Raise not favored across all scenarios.'):'');
     }else{
      label.textContent+=(label.textContent?' · ':'')+model.reason;
-     if(!free)show('INPUTS UNRESOLVED',model.reason+' · '+costDetail);
+     if(!baseline)show('INPUTS UNRESOLVED',model.reason+' · '+costDetail);
     }
    }else{
     const blocker=!currentCards||!reading?.stable?deckObservationStatus({candidate:currentCards,reading,memory:cardMemory,street:betMemory.street||lastResult?.street_candidate,fresh}):simulationState==='failed'?'Equity calculation failed':simulationState==='no opponents'?'No opponent scenario available':!scenario?'Calculating current card equity':!numeric?'Numeric snapshot unavailable ('+(lastOcrState?.state||'waiting')+')':'Model inputs unavailable';
     label.textContent+=(label.textContent?' · ':'')+blocker;
-    if(!free)show(!currentCards||!reading?.stable?'CHECK CARD READING':simulationState==='failed'?'SIMULATION ERROR':!numeric?'CHECK TABLE READING':'CALCULATING',blocker+' · '+costDetail);
+    if(!baseline)show(!currentCards||!reading?.stable?'CHECK CARD READING':simulationState==='failed'?'SIMULATION ERROR':!numeric?'CHECK TABLE READING':'CALCULATING',blocker+' · '+costDetail);
    }
   }
   // The optional explicitly configured practice model never hides the
@@ -231,8 +228,8 @@ export function attachPractice({video,screen,canRun,rotation}){
  function autoValues(){
   const now=performance.now(),result=observationAge(lastFrame,now,1000).fresh?lastResult:null,obs=result?.table_observation,age=observationAge(lastOcrAt,now,1000),num=age.fresh?lastTable:null;
   const a={street:result?.street_candidate??(result?cardMemory?.displayStreet:undefined),pot:num?.pot?.value,dealer:obs?.dealer?.candidate??undefined,turn:obs?.turn_candidate??turnMemory?.seat??undefined};
-  const groups=[result&&(cardMemory?.displayHole||result.hole_slots),result&&(cardMemory?.displayBoard||result.board_slots)];
-  CARD_KEYS.forEach((key,i)=>{const slot=i<2?groups[0]?.[i]:groups[1]?.[i-2];a[key]=slot===null?null:slot?.candidate??undefined;});
+  const groups=[result&&result.hole_slots,result&&result.board_slots];
+  CARD_KEYS.forEach((key,i)=>{const slot=i<2?groups[0]?.[i]:groups[1]?.[i-2];a[key]=slot?.candidate??displayMemory?.fields?.[key]?.value??(slot===null?null:undefined);});
   for(const id of Object.keys(SEATS)){
    const s=obs?.seats?.[id],n=num?.seats?.[id];
    a[id+'.stack']=n?.stack?.value;

@@ -298,3 +298,18 @@ export function practiceCheckFallback({fresh,turn,heroVisible,prompt,price,stack
  if(price?.reason==='Call price and wagers disagree'||(price&&!price.reason&&price.value!==0))return null;
  return {action:'CHECK',detail:'Free check · practice baseline'};
 }
+
+// A deliberately conservative local-practice fallback, not a strategic
+// equity verdict. A known paid action permits a zero-additional-chip fold.
+// Never infer the availability of a betting action from a stale turn.
+export function practiceActionFallback(args){
+ const free=practiceCheckFallback(args);
+ if(free)return free;
+ const {fresh,turn,heroVisible,prompt,price,stack,allIn=false}=args;
+ if(!fresh||turn!=='hero'||!heroVisible||allIn||stack===0)return null;
+ if(price?.reason==='Call price and wagers disagree')return null;
+ const explicit=prompt&&whole(prompt.value)?prompt.value:null;
+ if(explicit===0)return null;
+ const paid=explicit>0||explicit===null&&price&&!price.reason&&whole(price.value)&&price.value>0;
+ return paid?{action:'FOLD',detail:'Conservative practice fallback · calculation incomplete'}:null;
+}

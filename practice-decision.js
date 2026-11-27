@@ -114,6 +114,8 @@ export function practicePanelModel({street,pot,prompt,seats,equities,excluded=[]
  if(stack===0||stack!==null&&call>stack)return {reason:'All-in eligibility unresolved'};
  let amount=exact(pot),source=pot?.source||'displayed pot',partial=!!pot?.partialAccounting;
  if(amount===null&&street==='Preflop'&&readable.length){
+  // Do not silently omit a rounded large wager from an exact subtotal.
+  if(ids.some(id=>seats?.[id]?.bet?.approximate&&whole(seats[id].bet.value)))return {reason:'Pot unavailable'};
   amount=readable.reduce((a,b)=>a+b,0);
   source=complete?'visible preflop wagers':'partial visible preflop wagers';
   partial=!complete||retained;
@@ -264,4 +266,13 @@ export function simplePriceDetail(price,rounded,stack=null){
  if(full==='Your turn · Check available')return 'Check available (cost 0)';
  if(full==='Your turn · Price unavailable')return 'Call price unknown';
  return full.replace(/^Your turn · /,'');
+}
+
+// Conservative local-practice baseline only when the fresh game prompt
+// explicitly permits checking. No equity or pot is needed for a free check.
+export function practiceCheckFallback({fresh,turn,heroVisible,prompt,price,stack,allIn=false}){
+ if(!fresh||turn!=='hero'||!heroVisible||allIn||stack===0)return null;
+ if(!prompt||prompt.approximate||prompt.value!==0||prompt.source!=='explicit check prompt')return null;
+ if(price?.reason==='Call price and wagers disagree'||(price&&!price.reason&&price.value!==0))return null;
+ return {action:'CHECK',detail:'Free check · practice baseline'};
 }

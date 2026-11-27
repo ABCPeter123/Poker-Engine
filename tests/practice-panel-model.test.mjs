@@ -128,7 +128,7 @@ test('collected pot convention adds visible wagers exactly once, marks incomplet
 test('a rounded large wager cannot disappear from an otherwise exact preflop subtotal',()=>{
  const seats={hero:{bet:c(200)},left:{bet:c(200)},right:{bet:{value:10000,approximate:true}}};
  const args={street:'Preflop',seats,prompt:c(9800),equities:[.3],excluded:['upper_left','upper_right']};
- assert.equal(practicePanelModel(args).reason,'Rounded call price; exact amount unavailable');
+ assert.equal(practicePanelModel(args).reason,'Pot unavailable');
  const point=roundedPracticeScenario(args);
  assert.equal(point.pot,10400);assert.equal(point.estimated,true);
 });
